@@ -1,0 +1,124 @@
+ Scope of available data
+The provided papers give strong pooled data on injection numbers for faricimab and comparators over 1?2 years, but quantitative BCVA change (letters) stratified by year 1, year 2, and >2 years is reported mostly as relative differences (noninferior / similar) rather than absolute mean changes per regimen. That limits a strict numerical metaanalysis of BCVA trajectories over multiple years.
+Below is what can be synthesized quantitatively from the available metaanalyses and large NMAs.
+Annual Injection Numbers (Year 1 and Year 2)
+Year 1, treatmentna?ve nAMD
+From large NMAs of RCTs:
+Regimen (nAMD)
+Mean injections in year 1
+Notes
+Citations
+Faricimab 6 mg (T&E / extended)
+~6.2?6.7
+Loading then T&E; among lowest burdens
+(Wojciechowski et al., 2025; Butler et al., 2025; Li et al., 2023; Samac?-Samac? et al., 2024; Kaliaperumal et al., 2025)
+Aflibercept 8 mg (Q12?Q16)
+5.1?5.9
+Fewer than faricimab but similar efficacy
+(Wojciechowski et al., 2025; Friedman et al., 2025)
+Aflibercept 2 mg (Q8, T&E)
+up to 7.67
+Higher than faricimab in most regimens
+(Wojciechowski et al., 2025; Butler et al., 2025; Li et al., 2023)
+Ranibizumab (Q4, PRN, T&E)
+7.6?12.1
+Highest injection burden
+(Wojciechowski et al., 2025; Butler et al., 2025)
+Realworld switch metaanalysis (previous antiVEGF �� faricimab) shows reduction from 9.70 to 7.05 injections/year in year 1 after switch (�� �|2.65) (Alili et al., 2026).
+Figure 1: Annualized year-1 injection counts across regimens
+Year 2
+A 2year NMA comparing aflibercept 8 mg vs faricimab T&E (TENAYA/LUCERNE, PULSAR) adjusted to 104 weeks found significantly fewer injections with aflibercept 8 mg (difference �|1.47 injections over 2 years in nAMD) with no BCVA/CST difference (Friedman et al., 2025). Absolute 2year counts for each regimen are not given in the excerpts, only differences.
+Other antiVEGF NMAs show that T&E regimens (including faricimablike extended dosing) keep injection numbers lower than monthly regimens at year 2 while preserving BCVA (Butler et al., 2025; Matonti et al., 2022; Sun et al., 2024).
+BCVA Changes (Year 1?2)
+Faricimab vs other antiVEGF (mostly year 1, some ?2year)
+* Multiple RCTbased metaanalyses in nAMD report no statistically significant difference in mean BCVA change between faricimab and aflibercept/ranibizumab at ~1 year; pooled WMDs in BCVA are near zero (e.g., +0.47 letters, 95% CI �|0.17 to 1.11; or nonsignificant differences in gain ?15 letters) (Yen et al., 2024; Nichani et al., 2024; Li et al., 2023; Samac?-Samac? et al., 2024; Shibkova et al., 2025).
+* Broad metaanalysis across nAMD/DME/RVO likewise finds similar final BCVA and BCVA change between faricimab and other antiVEGF at last followup (up to ?1?2 years depending on trial) (Nichani et al., 2024).
+* A 2year NMA (aflibercept 8 mg vs faricimab T&E) reports no significant difference in mean BCVA change across 104 weeks (Friedman et al., 2025).
+* Network analyses including faricimab T&E up to Q16 weeks show toptier BCVA gains (vision gain ?15 letters and mean change) comparable to best ranibizumab and bevacizumab T&E regimens through 2 years (Sun et al., 2024).
+Switch populations (previously treated nAMD/wAMD)
+* Metaanalyses of switching to faricimab show no significant BCVA change at 3, 6, or ?12 months postswitch overall, although subsets with baseline VA <65 letters gain ~3 letters (Jin et al., 2025; Khodor et al., 2025; Zhang et al., 2025).
+* Structural outcomes (CMT/CST, PED height, fluid resolution) improve and injection intervals extend by ?1.6?2.1 weeks, effectively lowering annual injection counts while maintaining BCVA (Alili et al., 2026; Samac?-Samac? et al., 2024; Jin et al., 2025; Khodor et al., 2025; Zhang et al., 2025).
+Beyond 2 years
+In the provided material, longterm (>2year) BCVA and injection data for faricimab specifically are not quantified. Economic models extrapolate a lower 5year injection burden with faricimab vs aflibercept (22.6 vs 34 injections) but do not present pooled BCVA trajectories (Baljoon et al., 2026).
+Summary
+Across RCTs and NMAs, year1 faricimab regimens deliver ?6?7 injections, versus ?8?12 for many ranibizumab and ?8 for aflibercept 2 mg, while achieving similar BCVA gains. At 2 years, extended faricimab T&E maintains BCVA comparable to aflibercept and other antiVEGF agents, with an overall lower or similar injection burden depending on comparator. In previously treated nAMD, switching to faricimab modestly extends intervals and reduces annual injection numbers, with generally stable BCVA and improved anatomy. Robust pooled numeric BCVA trajectories by year beyond 2 years are not available in these abstracts.
+These search results were found and analyzed using Consensus, an AI-powered search engine for research. Try it at https://consensus.app. � 2026 Consensus NLP, Inc. Personal, non-commercial use only; redistribution requires copyright holders�f consent.
+References
+Alili, E., Van De Laar, C., De Greeff, J., Vromans, J., Van Asten, F., & Bosmans, J. (2026). Budget Impact of Faricimab in Neovascular Age-Related Macular Degeneration in the Netherlands: A Systematic Review and Meta-Analysis of Injection Count. Ophthalmology and Therapy, 15, 591 - 639. https://doi.org/10.1007/s40123-025-01301-0
+Baljoon, A., Diaby, V., Suther, S., Dutton, M., Ali, A., & Eljilany, I. (2026). Cost-Utility Analysis of Faricimab Versus Aflibercept in Treating Neovascular Age-Related Macular Degeneration (nAMD) in the United States.. PharmacoEconomics - open. https://doi.org/10.1007/s41669-026-00643-0
+Butler, E., Arnold-Vangsted, A., Schou, M., Anguita, R., Bjerager, J., Borrelli, E., Cehofski, L., Desideri, F., Dijk, E., Faber, C., Grauslund, J., Hajari, J., Huemer, J., Klefter, O., Nielsen, M., Sabaner, M., Schneider, M., & Subhi, Y. (2025). Comparative efficacy of intravitreal anti�]VEGF therapy for neovascular age�]related macular degeneration: A systematic review with network meta�]analysis. Acta Ophthalmologica, 103, 741 - 763. https://doi.org/10.1111/aos.17506
+Friedman, S., Xu, Y., Sherman, S., Kuznik, A., Mojebi, A., Keeping, S., Chan, K., Leng, T., & Patel, N. (2025). Aflibercept 8 mg versus Faricimab Treat-and-Extend for Diabetic Macular Edema or Neovascular Age-Related Macular Degeneration: A Bayesian Fixed-Effect Network Meta-analysis of Clinical Trials. Ophthalmology and Therapy, 14, 2919 - 2936. https://doi.org/10.1007/s40123-025-01247-3
+Jin, E., Chan, A., & Thomas, G. (2025). Efficacy of faricimab secondary to anti-vascular endothelial growth factor agents in patients with neovascular age-related macular degeneration: a systematic review and meta-analysis. Eye, 39, 2738 - 2751. https://doi.org/10.1038/s41433-025-03943-7
+Kaliaperumal, R., P, N., Mohan, R., P, N., & J, J. (2025). Comparative efficacy and safety of Faricimab with other intravitreal anti-vascular endothelial growth factor in the treatment of Neovascular age related macular degeneration- A Systematic review and meta-analysis.. Asian Journal of Medical Sciences. https://doi.org/10.71152/ajms.v16i5.4487
+Khodor, A., Caranfa, J., Nanda, T., Ruiz-Lozano, R., Quiroga-Garza, M., Choi, S., Chehab, A., Ramos-D?vila, E., Heier, J., Shah, C., & Witkin, A. (2025). Functional and Anatomical Outcomes of Faricimab in Previously Treated Wet Age-Related Macular Degeneration: Systematic Review and Pooled Analysis. Ophthalmology and Therapy, 14, 1965 - 1984. https://doi.org/10.1007/s40123-025-01181-4
+Li, G., Zhu, N., & Ji, A. (2023). Comparative efficacy and safety of Faricimab and other anti-VEGF therapy for age-related macular degeneration and diabetic macular edema: A systematic review and meta-analysis of randomized clinical trials. Medicine, 102. https://doi.org/10.1097/md.0000000000036370
+Matonti, F., Korobelnik, J., Dot, C., Gualino, V., Soler, V., Mrejen, S., Delyfer, M., Baillif, S., Str?ho, M., Gascon, P., Creuzot-Garcher, C., & Kodjikian, L. (2022). Comparative Effectiveness of Intravitreal Anti-Vascular Endothelial Growth Factor Therapies for Managing Neovascular Age-Related Macular Degeneration: A Meta-Analysis. Journal of Clinical Medicine, 11. https://doi.org/10.3390/jcm11071834
+Nichani, P., Popovic, M., Mihalache, A., Pathak, A., Muni, R., Wong, D., & Kertes, P. (2024). Efficacy and Safety of Intravitreal Faricimab in Neovascular Age-Related Macular Degeneration, Diabetic Macular Edema, and Retinal Vein Occlusion: A Meta-Analysis. Ophthalmologica. International Journal of Ophthalmology, 247, 355 - 372. https://doi.org/10.1159/000541662
+Samac?-Samac?, D., Hern?ndez-Castillo, C., Prieto-Pinto, L., Rodr?guez, F., Sardi, C., Ocampo, H., Kock, J., & Hern?ndez, F. (2024). Efficacy and safety of faricimab for neovascular age-related macular degeneration: a systematic review and network meta-analysis. BMJ Open Ophthalmology, 9. https://doi.org/10.1136/bmjophth-2024-001702
+Shibkova, P., Ivanova, A., Markina, V., Karibova, S., & Dekkusheva, L. (2025). THE ROLE OF ANTI-VEGF THERAPY IN THE TREATMENT OF AGE-RELATED MACULAR DEGENERATION: A COMPARATIVE ANALYSIS OF DRUG EFFICACY. Bulletin of Pirogov National Medical & Surgical Center. https://doi.org/10.25881/20728255_2025_20_3_130
+Sun, H., Li, L., Bu, F., Xin, X., Yan, J., & Huang, T. (2024). Two-year efficacy and safety of different anti-vascular endothelial growth factor regimens for neovascular age-related macular degeneration: a network meta-analysis of randomized controlled trials. Eye, 38, 3473 - 3480. https://doi.org/10.1038/s41433-024-03327-3
+Wojciechowski, P., Wdowiak, M., Panek, M., Lunk, I., Carrasco, J., Zhang, X., Wu, O., Korobelnik, J., & Lanzetta, P. (2025). Efficacy, Safety, and Injection Frequency with Novel Aflibercept 8 mg in Neovascular Age-Related Macular Degeneration: A Comparison with Existing Anti-VEGF Regimens Using a Bayesian Network Meta-Analysis. Ophthalmology and Therapy, 14, 733 - 753. https://doi.org/10.1007/s40123-025-01098-y
+Yen, W., Wu, C., Yang, C., Chen, Y., Lee, C., & Hsu, C. (2024). Efficacy and safety of intravitreal faricimab for neovascular age-related macular degeneration: a systematic review and meta-analysis. Scientific Reports, 14. https://doi.org/10.1038/s41598-024-52942-3
+Zhang, C., AbouKasm, G., Lai, D., Leung, N., Zhu, D., Albini, T., & Yannuzzi, N. (2025). Clinical Efficacy of Switching to Faricimab in Treatment Resistant Neovascular Age-Related Macular Degeneration: Systematic Review and Meta-analysis.. American journal of ophthalmology. https://doi.org/10.1016/j.ajo.2025.08.034
+
+## ブロルシズマブの注射回数：年次別データの整理
+
+ここでは、提示されたブロルシズマブ論文を使って、「1年目・2年目・3年目以降」の年あたり注射回数をまとめます（nAMD対象）。レジメンや対象が異なるので、「メタ解析風」の俯瞰表と考えてください。
+
+### 年次別の注射回数（ブロルシマブ）
+
+| 研究・集団 / レジメン                          | 1年目の注射回数/年                      | 2年目の注射回数/年         | 3年目以降の注射回数/年     | 備考・対象 | 文献 |
+|-----------------------------------------------|-----------------------------------------|-----------------------------|-----------------------------|-----------|------|
+| Rossi 2025, イタリア real‑world               | 3.7 ± 1.9（12か月合計）                | ー                           | ー                           | nAMD, naïve＋既治療混在  (Rossi et al., 2025)|  (Rossi et al., 2025)|
+| Matsumoto 2022, TAE, type1 MNV（1年）        | 平均 6.4 ± 0.6（6 or 7 or 8回）        | ー                           | ー                           | nAMD, 治療未経験  (Matsumoto et al., 2022)|
+| Inoda 2024, 日本 TAE, naïve vs switch（1年） | naïve: 6.2 ± 1.5 / switch: 5.2 ± 1.2    | ー                           | ー                           | nAMD, TAE  (Inoda et al., 2024)|
+| Kim 2024, 多施設 real‑world（≥12か月）        | 4.5 ± 1.7（1年内BRZ注射回数）          | ー（平均追跡15.3か月）       | ー                           | nAMD, typical＋PCV  (Kim et al., 2024)|
+| Abdin 2022, “refractory” switch（1年）        | 6.4 ± 0.9（broluへスイッチ後1年）      | ー                           | ー                           | 既治療nAMD  (Abdin et al., 2022)|
+| Scupola 2025, switch 3年追跡                 | 4.7 ± 1.9                               | 3.9 ± 1.7                   | 3.6 ± 1.9（3年目）          | 既治療nAMD, 3年完遂  (Scupola et al., 2025)|
+| Matsumoto 2023, TAE 96週（約2年）            | 6.4 ± 0.6                               | 3.6 ± 1.0                   | ー（96週まで）              | nAMD, type1 MNV  (Finger et al., 2022)|
+| Finger 2022 NMA（RCT, q12w/q8w）             | 年次別明示なし                          | 年2目：5.7回/年（年2時点）  | ー                           | RCTベース年2時点推計  (Finger et al., 2022)|
+
+**Figure 1:** ブロルシマブの年次別注射回数の主要報告
+
+### 読み方とポイント
+
+- **1年目**  
+  - TAEやスイッチ症例では概ね **4.5〜6.5回/年** に集中  (Matsumoto et al., 2022; Inoda et al., 2024; Kim et al., 2024; Abdin et al., 2022; Finger et al., 2022)。  
+  - よりアグレッシブなreal‑world T&E（日本）では約6.2〜6.4回/年  (Matsumoto et al., 2022; Inoda et al., 2024)。  
+  - 抵抗例スイッチでは、スイッチ前 9.6回→ブロルシマブ後 6.4回に減少  (Abdin et al., 2022)。
+
+- **2年目**  
+  - TAEで継続した治療未経験例では **3.6回/年** 程度まで注射回数が減少  (Finger et al., 2022)。  
+  - 3年追跡スイッチコホートでも 1年目4.7→2年目3.9→3年目3.6回/年と漸減  (Scupola et al., 2025)。  
+  - RCT ベースNMAでは、q12w/q8wレジメンで**年2時点の年換算 5.7回/年**と推計  (Finger et al., 2022)。
+
+- **3年目以降**  
+  - 現時点で明確な年次別データがあるのは3年スイッチコホートのみで **3.6回/年**  (Scupola et al., 2025)。  
+  - 長期追跡では、年を追うごとに注射回数が少しずつ減る傾向が示唆される  (Scupola et al., 2025; Finger et al., 2022)。
+
+### まとめ
+
+- 提示論文を総合すると、ブロルシマブはnAMDで  
+  - **1年目：約4.5–6.5回/年**  
+  - **2年目：3.5–4.0回/年前後**（TAE主体）  
+  - **3年目：3.6回/年程度（スイッチ例）**  
+ という「年を追って注射回数が漸減する」パターンが多く報告されています。
+ 
+_These search results were found and analyzed using Consensus, an AI-powered search engine for research. Try it at https://consensus.app. © 2026 Consensus NLP, Inc. Personal, non-commercial use only; redistribution requires copyright holders’ consent._
+ 
+## References
+ 
+Abdin, A., Aljundi, W., Jawhari, K., Suffo, S., Weinstein, I., & Seitz, B. (2022). First Year Real Life Experience With Intravitreal Brolucizumab for Treatment of Refractory Neovascular Age-Related Macular Degeneration. *Frontiers in Pharmacology, 13*. https://doi.org/10.3389/fphar.2022.860784
+ 
+Finger, R., Dennis, N., Freitas, R., Quenéchdu, A., Clemens, A., Karcher, H., & Souied, E. (2022). Comparative Efficacy of Brolucizumab in the Treatment of Neovascular Age-Related Macular Degeneration: A Systematic Literature Review and Network Meta-Analysis. *Advances in Therapy, 39*, 3425 - 3448. https://doi.org/10.1007/s12325-022-02193-3
+ 
+Inoda, S., Takahashi, H., Takahashi, R., Hashimoto, Y., Yoshida, H., Tsukii, R., Takahashi, H., Kawashima, H., & Yanagi, Y. (2024). One-year outcome of brolucizumab for neovascular age-related macular degeneration in Japanese patients. *Scientific Reports, 14*. https://doi.org/10.1038/s41598-024-52747-4
+ 
+Kim, D., Kim, D., Kwak, H., Jang, J., Ji, Y., Lee, S., Lee, E., Park, K., Kim, J., Lee, J., Song, Y., Kim, S., Shin, M., Kim, M., Park, S., Joo, K., Min, S., Lee, C., & Woo, S. (2024). Long‐term efficacy and safety of brolucizumab in neovascular age‐related macular degeneration: A multicentre retrospective real‐world study. *Acta Ophthalmologica, 102*, e1018 - e1028. https://doi.org/10.1111/aos.16699
+ 
+Matsumoto, H., Hoshino, J., Mukai, R., Nakamura, K., & Akiyama, H. (2022). One-year results of treat-and-extend regimen with intravitreal brolucizumab for treatment-naïve neovascular age-related macular degeneration with type 1 macular neovascularization. *Scientific Reports, 12*. https://doi.org/10.1038/s41598-022-10578-1
+ 
+Rossi, S., Gesualdo, C., Marano, E., Perrotta, R., Trotta, M., Del Giudice, A., & Simonelli, F. (2025). Treatment of neovascular age-related macular degeneration: one year real-life results with intravitreal Brolucizumab. *Frontiers in Medicine, 11*. https://doi.org/10.3389/fmed.2024.1467160
+ 
+Scupola, A., Hu, L., Cusato, M., Fossataro, C., Michieletto, M., Sammarco, M., Rizzo, S., & Savino, G. (2025). Brolucizumab for Wet Age-Related Macular Degeneration in Switch Patients: Long-Term Real-World Experience from a Tertiary Center. *Ophthalmologica, 248*, 367 - 377. https://doi.org/10.1159/000547471
+ 
