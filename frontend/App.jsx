@@ -218,6 +218,8 @@ export default function App() {
       clinicalCase,
       timeHorizonYears: Number(timeHorizonYears),
       treatmentDurationYears,
+      discountRate: Number(discountRate) / 100,
+      cycleLengthYears: Number(cycleLengthYears),
       incomeBracket,
       seed: Number.isNaN(seed) ? 42 : seed,
       modelParams,
@@ -232,6 +234,8 @@ export default function App() {
     clinicalCase,
     timeHorizonYears,
     treatmentDurationYears,
+    discountRate,
+    cycleLengthYears,
     incomeBracket,
     patientSeed,
     modelParams,
@@ -861,7 +865,7 @@ export default function App() {
                 <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                     直接医療費（薬剤+投与・モニタリング・有害事象）に対し、年齢別自己負担割合と月次の高額療養費限度額を適用。
-                    QALY は参考値（同一 clinicalKey 内で薬剤間ほぼ同等）。
+                    QALY はコホート Markov（サマリータブと同一・割引済）の参考値。費用・注射は個別患者経路。
                     シード {patientAnalysis.patientProfile.seed}。
                   </p>
                   <table style={tableStyle}>

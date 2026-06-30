@@ -154,7 +154,7 @@ export function runMarkov(input) {
           useLifeTable,
           fixedRate: modelParams.annualMortality ?? null,
           maleRatio: modelParams.maleRatio ?? DEFAULT_MALE_RATIO,
-          entryAge: subtype.meanAge,
+          entryAge: modelParams.entryAge ?? subtype.meanAge,
         }
       : null;
 
