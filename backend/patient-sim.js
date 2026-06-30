@@ -15,7 +15,7 @@ import {
   SUBTYPES,
   getClinicalTables,
   getBscTransitionProbs,
-  getInjectionRate,
+  injectionsForMonth,
 } from "./clinical.js";
 import { getDrug, DRUG_CATALOG, DRUG_IDS } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
@@ -249,7 +249,7 @@ function applyDrugCostsToPath({
   incomeBracket,
   elderlyCopay,
   modelParams,
-  rng,
+  treatmentDurationYears,
 }) {
   const drug = getDrug(drugId);
   const paper = getCostPaper(costPaperId);
@@ -277,9 +277,19 @@ function applyDrugCostsToPath({
   let yearAe = 0;
   let yearInj = 0;
   let yearStartQaly = 0;
+  let injAccumulator = 0;
+
+  const injContext = {
+    clinicalCase,
+    injections,
+    subtypeId,
+    drugId,
+    clinicalKey,
+    treatmentDurationYears,
+  };
 
   for (const step of path.months) {
-    const { month, yearIndex, age, phase, onTreatment } = step;
+    const { month, yearIndex, age, onTreatment } = step;
     let monthDirect = 0;
     let monthDrug = 0;
     let monthMon = 0;
@@ -287,21 +297,16 @@ function applyDrugCostsToPath({
     let monthInj = 0;
 
     if (onTreatment && injUnit != null) {
-      const annualInj = getInjectionRate(
-        clinicalCase,
-        injections,
-        subtypeId,
-        drugId,
-        clinicalKey,
-        phase
-      );
-      const pInj = Math.min(1, annualInj / 12);
-      if (rng() < pInj) {
-        monthInj = 1;
-        monthDrug += injUnit;
-        monthDirect += injUnit;
-        monthAe += aePerInj;
-        monthDirect += aePerInj;
+      injAccumulator += injectionsForMonth(month, injContext);
+      while (injAccumulator >= 1 - 1e-9) {
+        monthInj += 1;
+        injAccumulator -= 1;
+      }
+      if (monthInj > 0) {
+        monthDrug += injUnit * monthInj;
+        monthDirect += injUnit * monthInj;
+        monthAe += aePerInj * monthInj;
+        monthDirect += aePerInj * monthInj;
       }
     }
 
@@ -441,7 +446,6 @@ export function runPatientSimulation(input) {
     };
   }
 
-  const costRng = createRng(seed + 7919);
   const costs = applyDrugCostsToPath({
     path,
     drugId,
@@ -451,7 +455,7 @@ export function runPatientSimulation(input) {
     incomeBracket,
     elderlyCopay,
     modelParams,
-    rng: costRng,
+    treatmentDurationYears,
   });
 
   const warnings = [];
@@ -520,7 +524,6 @@ export function runPatientDrugComparison(input) {
       continue;
     }
 
-    const costRng = createRng(baseSeed + hashString(drugId));
     const costs = applyDrugCostsToPath({
       path,
       drugId,
@@ -530,7 +533,7 @@ export function runPatientDrugComparison(input) {
       incomeBracket: input.incomeBracket ?? "standard",
       elderlyCopay: input.elderlyCopay ?? null,
       modelParams: input.modelParams ?? {},
-      rng: costRng,
+      treatmentDurationYears: input.treatmentDurationYears ?? null,
     });
 
     const warnings = [];

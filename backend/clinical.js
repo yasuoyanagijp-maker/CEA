@@ -1,4 +1,4 @@
-import { deriveBscTransitionProbs, tp } from "./utils.js";
+import { deriveBscTransitionProbs, tp, phaseForCycle, isOnTreatment } from "./utils.js";
 import { buildSubtypeBaseline } from "./config/baseline-characteristics.js";
 import {
   TRANS_BASE_TABLE_S5,
@@ -146,6 +146,125 @@ export function getInjectionRate(
     return schedule[phase] ?? 0;
   }
   return injections?.[subtypeId]?.[clinicalKey]?.[phase] ?? 0;
+}
+
+/**
+ * Table S6 のフェーズ別注射パラメータ（参照表示用）
+ * @returns {{ source: string, phases: Record<string, number>|null, clinicalKey: string }}
+ */
+export function getInjectionPhaseReference(
+  clinicalCase,
+  subtypeId,
+  drugId,
+  drugCatalog
+) {
+  const drug = drugCatalog?.[drugId] ?? { clinicalKey: drugId };
+  const clinicalKey = drug.clinicalKey ?? drugId;
+  const { injections } = getClinicalTables(clinicalCase);
+
+  if (clinicalCase === "2026_meta") {
+    const schedule = getInjections2026MetaForDrug(drugId);
+    return {
+      source: INJECTIONS_2026_META_SOURCE,
+      clinicalKey,
+      phases: schedule,
+      note: "induction=3か月あたり3回換算、year1=年間回数、year2以降=year1−3",
+    };
+  }
+
+  const phases = injections?.[subtypeId]?.[clinicalKey] ?? null;
+  return {
+    source: clinicalCase === "scenario" ? "Supplementary Table S8 (scenario)" : TABLE_S6_SOURCE,
+    clinicalKey,
+    phases,
+    note: "induction=最初3か月の回数、year1/year2/year3plus=年間回数",
+  };
+}
+
+/**
+ * カレンダー年ごとの期待注射回数（Table S6 意味論に基づく決定論的集計）
+ * - induction: 参入後0–2か月に phase 値を3等分（合計=induction値）
+ * - その他: 年間率 × 該当月数 / 12
+ */
+export function buildInjectionYearReference({
+  subtypeId,
+  drugId,
+  clinicalCase = "base",
+  timeHorizonYears = 25,
+  treatmentDurationYears = null,
+  drugCatalog,
+}) {
+  const drug = drugCatalog?.[drugId] ?? { clinicalKey: drugId };
+  const clinicalKey = drug.clinicalKey ?? drugId;
+  const { injections } = getClinicalTables(clinicalCase);
+  const ref = getInjectionPhaseReference(clinicalCase, subtypeId, drugId, drugCatalog);
+  const maxMonths = Math.round(timeHorizonYears * 12);
+  const rows = [];
+  let lifetime = 0;
+
+  for (let year = 0; year < timeHorizonYears; year++) {
+    let expected = 0;
+    for (let month = year * 12; month < Math.min((year + 1) * 12, maxMonths); month++) {
+      if (!isOnTreatment(Math.floor(month / 3), 0.25, treatmentDurationYears)) continue;
+      const phase = phaseForCycle(Math.floor(month / 3), 0.25);
+      const rate = getInjectionRate(
+        clinicalCase,
+        injections,
+        subtypeId,
+        drugId,
+        clinicalKey,
+        phase
+      );
+      if (phase === "induction" && month < 3) {
+        expected += rate / 3;
+      } else if (phase !== "induction") {
+        expected += rate / 12;
+      }
+    }
+    expected = Math.round(expected * 1000) / 1000;
+    lifetime += expected;
+    rows.push({ year, expected });
+  }
+
+  return {
+    ...ref,
+    rows,
+    lifetime: Math.round(lifetime * 1000) / 1000,
+  };
+}
+
+/** 月次の注射回数（Table S6 意味論・決定論的） */
+export function injectionsForMonth(monthIndex, context) {
+  const {
+    clinicalCase,
+    injections,
+    subtypeId,
+    drugId,
+    clinicalKey,
+    treatmentDurationYears,
+  } = context;
+
+  if (!isOnTreatment(Math.floor(monthIndex / 3), 0.25, treatmentDurationYears)) {
+    return 0;
+  }
+
+  const phase = phaseForCycle(Math.floor(monthIndex / 3), 0.25);
+  const rate = getInjectionRate(
+    clinicalCase,
+    injections,
+    subtypeId,
+    drugId,
+    clinicalKey,
+    phase
+  );
+
+  if (phase === "induction" && monthIndex < 3) {
+    return rate / 3;
+  }
+  if (phase === "induction") {
+    return 0;
+  }
+  return rate / 12;
 }
 
 /**

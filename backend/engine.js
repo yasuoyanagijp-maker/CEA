@@ -207,6 +207,9 @@ export {
 } from "./config/japan-nhi.js";
 export {
   getInjectionRate,
+  getInjectionPhaseReference,
+  buildInjectionYearReference,
+  injectionsForMonth,
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";

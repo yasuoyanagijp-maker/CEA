@@ -15,6 +15,8 @@ import {
   runAnalysis,
   runMortalitySensitivity,
   runPatientDrugComparison,
+  buildInjectionYearReference,
+  getInjectionPhaseReference,
   DRUG_CATALOG,
   DRUG_IDS,
   SUBTYPES,
@@ -248,6 +250,34 @@ export default function App() {
       cumPatientOop: Math.round(row.cumPatientOop / 1000),
       cumQALY: row.cumQALY,
     })) ?? [];
+
+  const injectionReference = useMemo(() => {
+    if (!patientDetailDrugId) return null;
+    return buildInjectionYearReference({
+      subtypeId,
+      drugId: patientDetailDrugId,
+      clinicalCase,
+      timeHorizonYears: Number(timeHorizonYears),
+      treatmentDurationYears,
+      drugCatalog: DRUG_CATALOG,
+    });
+  }, [
+    patientDetailDrugId,
+    subtypeId,
+    clinicalCase,
+    timeHorizonYears,
+    treatmentDurationYears,
+  ]);
+
+  const injectionPhaseRef = useMemo(() => {
+    if (!patientDetailDrugId) return null;
+    return getInjectionPhaseReference(
+      clinicalCase,
+      subtypeId,
+      patientDetailDrugId,
+      DRUG_CATALOG
+    );
+  }, [patientDetailDrugId, subtypeId, clinicalCase]);
 
   const toggleDrug = (id) => {
     setSelectedDrugIds((prev) =>
@@ -894,6 +924,54 @@ export default function App() {
                     </label>
                   </div>
 
+                  {injectionPhaseRef?.phases && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        background: "#F8FAFC",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      <strong>注射回数パラメータ（{injectionPhaseRef.source}）</strong>
+                      <br />
+                      clinicalKey: {injectionPhaseRef.clinicalKey} — {injectionPhaseRef.note}
+                      <table style={{ ...tableStyle, marginTop: 8, fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: "#64748B", color: "#fff" }}>
+                            <th style={thStyle}>フェーズ</th>
+                            <th style={thStyle}>Table 値</th>
+                            <th style={thStyle}>意味</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            ["induction", "最初3か月の合計回数"],
+                            ["year1", "2年目の年間回数（導入後1年目）"],
+                            ["year2", "3年目の年間回数"],
+                            ["year3plus", "4年目以降の年間回数"],
+                          ].map(([phase, meaning]) => (
+                            <tr key={phase}>
+                              <td style={tdStyle}>{phase}</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                {injectionPhaseRef.phases[phase] ?? "—"}
+                              </td>
+                              <td style={tdStyle}>{meaning}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {injectionReference && (
+                        <p style={{ margin: "8px 0 0", color: "#64748B" }}>
+                          カレンダー年換算の期待注射（生涯 {injectionReference.lifetime} 回）—
+                          下表「Table期待」と照合
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {patientDetailDrug?.annualTrajectory?.length > 0 && (
                     <>
                       <table style={{ ...tableStyle, marginTop: 12 }}>
@@ -902,6 +980,7 @@ export default function App() {
                             <th style={thStyle}>年</th>
                             <th style={thStyle}>年齢</th>
                             <th style={thStyle}>注射回数</th>
+                            <th style={thStyle}>Table期待</th>
                             <th style={thStyle}>累積注射</th>
                             <th style={thStyle}>直接医療費</th>
                             <th style={thStyle}>患者負担</th>
@@ -916,6 +995,9 @@ export default function App() {
                               <td style={tdStyle}>{row.age}</td>
                               <td style={{ ...tdStyle, textAlign: "right" }}>
                                 {row.injections ?? 0}回
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right", color: "#64748B" }}>
+                                {injectionReference?.rows[row.year]?.expected ?? "—"}
                               </td>
                               <td style={{ ...tdStyle, textAlign: "right" }}>
                                 {row.cumInjections ?? 0}回
