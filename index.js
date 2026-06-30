@@ -7,6 +7,8 @@ export { default } from "./frontend/App.jsx";
 export {
   runAnalysis,
   runMarkov,
+  runPatientSimulation,
+  runPatientDrugComparison,
   listMissingParams,
   DRUG_CATALOG,
   DRUG_IDS,
@@ -16,4 +18,5 @@ export {
   DEFAULT_MODEL_PARAMS,
   DEFAULT_TREATMENT_DURATION_YEARS,
   TREATMENT_DURATION_OPTIONS,
+  INCOME_BRACKET_LIST,
 } from "./backend/engine.js";

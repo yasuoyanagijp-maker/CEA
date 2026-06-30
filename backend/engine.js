@@ -194,6 +194,18 @@ export function runMortalitySensitivity(
 
 export { runMarkov } from "./markov.js";
 export {
+  runPatientSimulation,
+  runPatientDrugComparison,
+  createRng,
+} from "./patient-sim.js";
+export {
+  INCOME_BRACKETS,
+  INCOME_BRACKET_LIST,
+  getCopayRate,
+  getMonthlyOutpatientLimit,
+  computeMonthlyPatientOop,
+} from "./config/japan-nhi.js";
+export {
   getInjectionRate,
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";

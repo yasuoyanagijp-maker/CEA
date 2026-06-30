@@ -14,6 +14,7 @@ import {
 import {
   runAnalysis,
   runMortalitySensitivity,
+  runPatientDrugComparison,
   DRUG_CATALOG,
   DRUG_IDS,
   SUBTYPES,
@@ -23,6 +24,7 @@ import {
   DEFAULT_UTILITIES,
   DEFAULT_UTILITY_NONE,
   TREATMENT_DURATION_OPTIONS,
+  INCOME_BRACKET_LIST,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
 } from "../backend/engine.js";
@@ -71,6 +73,11 @@ export default function App() {
     String(DEFAULT_MODEL_PARAMS.secondEyeMonthlyIncidence ?? "")
   );
   const [includeScenarioAe, setIncludeScenarioAe] = useState(false);
+  const [patientAge, setPatientAge] = useState("75");
+  const [patientSex, setPatientSex] = useState("male");
+  const [incomeBracket, setIncomeBracket] = useState("standard");
+  const [patientSeed, setPatientSeed] = useState("42");
+  const [patientDetailDrugId, setPatientDetailDrugId] = useState("ranibizumab_bs");
 
   const modelParams = useMemo(() => {
     const utilities = utilityInputs.map((v) => parseFloat(v));
@@ -196,6 +203,51 @@ export default function App() {
   const { results, icerRows, missingParams } = analysis;
   const subtype = SUBTYPES[subtypeId];
   const costPaper = COST_PAPER_LIST.find((p) => p.id === costPaperId);
+
+  const patientAnalysis = useMemo(() => {
+    const age = parseInt(patientAge, 10);
+    const seed = parseInt(patientSeed, 10);
+    if (Number.isNaN(age) || age < 40 || age > 100) return null;
+    return runPatientDrugComparison({
+      entryAge: age,
+      sex: patientSex,
+      subtypeId,
+      costPaperId,
+      clinicalCase,
+      timeHorizonYears: Number(timeHorizonYears),
+      treatmentDurationYears,
+      incomeBracket,
+      seed: Number.isNaN(seed) ? 42 : seed,
+      modelParams,
+      selectedDrugIds: DRUG_IDS,
+      includeTrajectory: true,
+    });
+  }, [
+    patientAge,
+    patientSex,
+    subtypeId,
+    costPaperId,
+    clinicalCase,
+    timeHorizonYears,
+    treatmentDurationYears,
+    incomeBracket,
+    patientSeed,
+    modelParams,
+  ]);
+
+  const patientDetailDrug =
+    patientAnalysis?.results[patientDetailDrugId] ??
+    patientAnalysis?.results[selectedDrugIds[0]];
+
+  const patientAnnualData =
+    patientDetailDrug?.annualTrajectory?.map((row) => ({
+      year: row.year,
+      age: row.age,
+      patientOop: Math.round(row.patientOop / 1000),
+      directMedical: Math.round(row.directMedical / 1000),
+      cumPatientOop: Math.round(row.cumPatientOop / 1000),
+      cumQALY: row.cumQALY,
+    })) ?? [];
 
   const toggleDrug = (id) => {
     setSelectedDrugIds((prev) =>
@@ -520,6 +572,57 @@ export default function App() {
             </label>
           </Section>
 
+          <Section title="個別患者（保険負担）">
+            <label style={labelStyle}>
+              参入年齢
+              <input
+                type="number"
+                min={40}
+                max={100}
+                value={patientAge}
+                onChange={(e) => setPatientAge(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+            <label style={labelStyle}>
+              性別
+              <select
+                value={patientSex}
+                onChange={(e) => setPatientSex(e.target.value)}
+                style={selectStyle}
+              >
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+              </select>
+            </label>
+            <label style={labelStyle}>
+              所得区分（高額療養費）
+              <select
+                value={incomeBracket}
+                onChange={(e) => setIncomeBracket(e.target.value)}
+                style={selectStyle}
+              >
+                {INCOME_BRACKET_LIST.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={labelStyle}>
+              乱数シード
+              <input
+                type="number"
+                value={patientSeed}
+                onChange={(e) => setPatientSeed(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+            <p style={hintStyle}>
+              月次で直接医療費・高額療養費上限を適用。同一 clinicalKey 内で臨床経路を共有。
+            </p>
+          </Section>
+
           <Section title="薬剤選択（比較）">
             {DRUG_IDS.map((id) => {
               const d = DRUG_CATALOG[id];
@@ -572,6 +675,7 @@ export default function App() {
           <nav style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
             {[
               ["summary", "サマリー"],
+              ["patient", "個別患者負担"],
               ["costs", "コスト内訳"],
               ["qaly", "QALY推移"],
               ...(showIssuesTab
@@ -713,6 +817,145 @@ export default function App() {
                     本ツールの QALY 水準は Table S12（7–8 QALY）より高く、絶対値の一致より増分の方向性を確認してください。
                   </p>
                 </div>
+              )}
+            </Panel>
+          )}
+
+          {activeTab === "patient" && (
+            <Panel
+              title={`個別患者 — ${patientSex === "male" ? "男性" : "女性"} ${patientAge}歳 • ${subtype.label} • 高額療養費（月次）`}
+            >
+              {!patientAnalysis ? (
+                <p style={{ color: "#B45309" }}>参入年齢（40–100）を入力してください。</p>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                    直接医療費（薬剤+投与・モニタリング・有害事象）に対し、年齢別自己負担割合と月次の高額療養費限度額を適用。
+                    QALY は参考値（同一 clinicalKey 内で薬剤間ほぼ同等）。
+                    シード {patientAnalysis.patientProfile.seed}。
+                  </p>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr style={{ background: "#0F172A", color: "#fff" }}>
+                        <th style={thStyle}>薬剤</th>
+                        <th style={thStyle}>生涯直接医療費</th>
+                        <th style={thStyle}>生涯患者負担</th>
+                        <th style={thStyle}>薬剤+投与</th>
+                        <th style={thStyle}>モニタリング</th>
+                        <th style={thStyle}>QALY（参考）</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientAnalysis.summary.map((row, i) => (
+                        <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                          <td style={tdStyle}>
+                            <span style={{ fontWeight: 600, color: DRUG_CATALOG[row.drugId].color }}>
+                              {row.name}
+                            </span>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.totalDirectMedical)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                            ¥{fmtJpy(row.totalPatientOop)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.costBreakdown.drugAdmin)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.costBreakdown.monitoring)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div style={{ marginTop: 20 }}>
+                    <label style={{ ...labelStyle, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      年度別詳細 — 薬剤
+                      <select
+                        value={patientDetailDrugId}
+                        onChange={(e) => setPatientDetailDrugId(e.target.value)}
+                        style={{ ...selectStyle, width: 220 }}
+                      >
+                        {DRUG_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {DRUG_CATALOG[id].name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {patientDetailDrug?.annualTrajectory?.length > 0 && (
+                    <>
+                      <table style={{ ...tableStyle, marginTop: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#1E3A5F", color: "#fff" }}>
+                            <th style={thStyle}>年</th>
+                            <th style={thStyle}>年齢</th>
+                            <th style={thStyle}>直接医療費</th>
+                            <th style={thStyle}>患者負担</th>
+                            <th style={thStyle}>累積患者負担</th>
+                            <th style={thStyle}>累積QALY</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {patientDetailDrug.annualTrajectory.map((row, i) => (
+                            <tr key={row.year} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                              <td style={tdStyle}>{row.year}</td>
+                              <td style={tdStyle}>{row.age}</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.directMedical)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.patientOop)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.cumPatientOop)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                {row.cumQALY != null ? row.cumQALY.toFixed(3) : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div style={{ marginTop: 20 }}>
+                        <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>患者負担の年次推移（千円）</h3>
+                        <ResponsiveContainer width="100%" height={280}>
+                          <LineChart data={patientAnnualData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="year" label={{ value: "経過年", position: "insideBottom", offset: -4 }} />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line
+                              type="monotone"
+                              dataKey="patientOop"
+                              name="年間患者負担"
+                              stroke="#DC2626"
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="cumPatientOop"
+                              name="累積患者負担"
+                              stroke="#1E40AF"
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </>
+                  )}
+                </>
               )}
             </Panel>
           )}
