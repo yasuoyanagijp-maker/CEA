@@ -842,6 +842,7 @@ export default function App() {
                         <th style={thStyle}>生涯患者負担</th>
                         <th style={thStyle}>薬剤+投与</th>
                         <th style={thStyle}>モニタリング</th>
+                        <th style={thStyle}>生涯注射</th>
                         <th style={thStyle}>QALY（参考）</th>
                       </tr>
                     </thead>
@@ -864,6 +865,9 @@ export default function App() {
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             ¥{fmtJpy(row.costBreakdown.monitoring)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {row.totalInjections ?? "—"}回
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
@@ -897,6 +901,8 @@ export default function App() {
                           <tr style={{ background: "#1E3A5F", color: "#fff" }}>
                             <th style={thStyle}>年</th>
                             <th style={thStyle}>年齢</th>
+                            <th style={thStyle}>注射回数</th>
+                            <th style={thStyle}>累積注射</th>
                             <th style={thStyle}>直接医療費</th>
                             <th style={thStyle}>患者負担</th>
                             <th style={thStyle}>累積患者負担</th>
@@ -908,6 +914,12 @@ export default function App() {
                             <tr key={row.year} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
                               <td style={tdStyle}>{row.year}</td>
                               <td style={tdStyle}>{row.age}</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                {row.injections ?? 0}回
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                {row.cumInjections ?? 0}回
+                              </td>
                               <td style={{ ...tdStyle, textAlign: "right" }}>
                                 ¥{fmtJpy(row.directMedical)}
                               </td>

@@ -266,6 +266,7 @@ function applyDrugCostsToPath({
   let totalDrugAdmin = 0;
   let totalMonitoring = 0;
   let totalAdverseEvents = 0;
+  let totalInjections = 0;
 
   const monthlyRecords = [];
   const annualRecords = [];
@@ -274,6 +275,7 @@ function applyDrugCostsToPath({
   let yearDrug = 0;
   let yearMon = 0;
   let yearAe = 0;
+  let yearInj = 0;
   let yearStartQaly = 0;
 
   for (const step of path.months) {
@@ -282,6 +284,7 @@ function applyDrugCostsToPath({
     let monthDrug = 0;
     let monthMon = 0;
     let monthAe = 0;
+    let monthInj = 0;
 
     if (onTreatment && injUnit != null) {
       const annualInj = getInjectionRate(
@@ -294,6 +297,7 @@ function applyDrugCostsToPath({
       );
       const pInj = Math.min(1, annualInj / 12);
       if (rng() < pInj) {
+        monthInj = 1;
         monthDrug += injUnit;
         monthDirect += injUnit;
         monthAe += aePerInj;
@@ -321,23 +325,28 @@ function applyDrugCostsToPath({
     totalDrugAdmin += monthDrug;
     totalMonitoring += monthMon;
     totalAdverseEvents += monthAe;
+    totalInjections += monthInj;
 
     yearDirect += monthDirect;
     yearOop += patientOop;
     yearDrug += monthDrug;
     yearMon += monthMon;
     yearAe += monthAe;
+    yearInj += monthInj;
 
     monthlyRecords.push({
       month,
       year: yearIndex,
       age: Math.round(age * 10) / 10,
+      injections: monthInj,
       directMedical: Math.round(monthDirect),
       patientOop: Math.round(patientOop),
       drugAdmin: Math.round(monthDrug),
       monitoring: Math.round(monthMon),
       adverseEvents: Math.round(monthAe),
       treatedState: step.treatedState,
+      onTreatment,
+      cumInjections: totalInjections,
       cumDirectMedical: Math.round(totalDirectMedical),
       cumPatientOop: Math.round(totalPatientOop),
       cumQALY: step.cumQALY != null ? Math.round(step.cumQALY * 1000) / 1000 : null,
@@ -348,6 +357,8 @@ function applyDrugCostsToPath({
       annualRecords.push({
         year: yearIndex,
         age: Math.round(age * 10) / 10,
+        injections: yearInj,
+        cumInjections: totalInjections,
         directMedical: Math.round(yearDirect),
         patientOop: Math.round(yearOop),
         drugAdmin: Math.round(yearDrug),
@@ -366,6 +377,7 @@ function applyDrugCostsToPath({
       yearDrug = 0;
       yearMon = 0;
       yearAe = 0;
+      yearInj = 0;
       yearStartQaly = endQaly ?? yearStartQaly;
     }
   }
@@ -374,6 +386,7 @@ function applyDrugCostsToPath({
     totalDirectMedical,
     totalPatientOop,
     totalQALY: path.totalQALY,
+    totalInjections,
     costBreakdown: {
       drugAdmin: totalDrugAdmin,
       monitoring: totalMonitoring,
@@ -457,6 +470,7 @@ export function runPatientSimulation(input) {
     totalQALY: costs.totalQALY,
     totalDirectMedical: costs.totalDirectMedical,
     totalPatientOop: costs.totalPatientOop,
+    totalInjections: costs.totalInjections,
     costBreakdown: costs.costBreakdown,
     annualTrajectory: costs.annualTrajectory,
     monthlyTrajectory: includeTrajectory ? costs.monthlyTrajectory : undefined,
@@ -532,6 +546,7 @@ export function runPatientDrugComparison(input) {
       totalQALY: costs.totalQALY,
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
+      totalInjections: costs.totalInjections,
       costBreakdown: costs.costBreakdown,
       annualTrajectory: costs.annualTrajectory,
       monthlyTrajectory:
@@ -547,6 +562,7 @@ export function runPatientDrugComparison(input) {
       clinicalKey: drug.clinicalKey,
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
+      totalInjections: costs.totalInjections,
       totalQALY: costs.totalQALY,
       costBreakdown: costs.costBreakdown,
     });
