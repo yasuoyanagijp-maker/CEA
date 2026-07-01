@@ -1,7 +1,7 @@
 /**
- * 治療間隔（週）と年間注射回数の対応。
- * Table S6 / scenario 注射回数は Q8 T&E 相当（REFERENCE_INTERVAL_WEEKS）とみなし比例スケール。
- * 2026 meta は薬剤ごとの文献レジメン間隔（getMetaReferenceIntervalWeeks）を基準にスケール。
+ * 治療間隔（週）と年間注射回数。
+ * スイッチ・CMA タブ: 年間注射 = 52 ÷ 間隔（週）— 薬剤共通の単純割り算。
+ * 間隔未指定の Markov（サマリー等）: Table S6 / 2026 meta の文献値を使用。
  */
 export const REFERENCE_INTERVAL_WEEKS = 8;
 

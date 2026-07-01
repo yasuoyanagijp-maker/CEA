@@ -9,8 +9,7 @@ import {
   SUBTYPES,
   getClinicalTables,
   getBscTransitionProbs,
-  getInjectionRate,
-  getInjectionReferenceIntervalWeeks,
+  getEffectiveAnnualInjectionRate,
 } from "./clinical.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
@@ -184,9 +183,11 @@ export function runMarkov(input) {
   if (drugPrice == null) {
     warnings.push(`コスト論文に ${drug.name} の薬価がありません`);
   }
-  const refIntervalWeeks = getInjectionReferenceIntervalWeeks(clinicalCase, drugId);
-  const intervalScale =
-    intervalWeeks != null && intervalWeeks > 0 ? refIntervalWeeks / intervalWeeks : 1;
+  if (intervalWeeks != null && intervalWeeks > 0) {
+    warnings.push(
+      `治療間隔 Q${intervalWeeks}: 年間注射 = 52÷${intervalWeeks} = ${(52 / intervalWeeks).toFixed(2)} 回/年（薬剤共通）`
+    );
+  }
   const societalPaper =
     paper.societal ?? getCostPaper("paper2_rbz").societal;
   if (!paper.societal && costPaperId === "paper1_faricimab") {
@@ -226,14 +227,13 @@ export function runMarkov(input) {
         normalizeTransitionProbs(treatedProbs);
 
     const annualInj = onTreatment
-      ? getInjectionRate(
+      ? getEffectiveAnnualInjectionRate({
           clinicalCase,
-          injections,
           subtypeId,
           drugId,
-          clinicalKey,
-          phase
-        ) * intervalScale
+          intervalWeeks,
+          phase,
+        })
       : 0;
     const injThisCycle = annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);

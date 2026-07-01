@@ -892,11 +892,7 @@ export default function App() {
                   }
                   sub={
                     switchAnalysis.current.annualInjections != null
-                      ? `${switchAnalysis.current.annualInjections.toFixed(2)} 回/年（year1・Markov 同式）${
-                          switchAnalysis.current.metaRegimenLabel
-                            ? ` — 文献 ${switchAnalysis.current.metaRegimenLabel}`
-                            : ""
-                        }`
+                      ? `${switchAnalysis.current.annualInjections.toFixed(2)} 回/年（52÷${switchAnalysis.currentIntervalWeeks}）`
                       : ""
                   }
                 />
@@ -1022,11 +1018,10 @@ export default function App() {
               </table>
 
               <p style={{ fontSize: 11, color: "#64748B", marginTop: 12, lineHeight: 1.5 }}>
-                「年間注射」「薬剤+投与/年」は Markov と同一式（文献値 × 文献レジメン間隔 ÷
-                選択間隔）。<strong>52÷週 とは一致しません。</strong>
-                2026 meta では 8 mg の 5.5 回/年は Q12–Q16 報告値 — Q8 を選ぶと 8.25 回/年に増加します。
-                CMA 目安: 総コスト差 ÷ WTP（¥{(DEFAULT_HORIZON.wtpPerQaly / 1e6).toFixed(1)}
-                M/QALY）。左サイドバーの臨床ケース（base / 2026 meta）を必ず確認してください。
+                年間注射 = <strong>52 ÷ 間隔（週）</strong>。Q8 なら BS も 8 mg も 6.5 回/年。
+                コスト差は薬価の差 × 同じ注射回数。CMA 目安: 総コスト差 ÷ WTP（¥
+                {(DEFAULT_HORIZON.wtpPerQaly / 1e6).toFixed(1)}M/QALY）。
+                サマリー Markov（左サイドバーの臨床ケース）とスイッチタブの注射ロジックは別です。
               </p>
             </Panel>
           )}

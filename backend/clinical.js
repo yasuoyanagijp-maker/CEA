@@ -14,7 +14,7 @@ import {
   getMetaRegimenLabel,
   INJECTIONS_2026_META_SOURCE,
 } from "./config/injections-2026-meta.js";
-import { REFERENCE_INTERVAL_WEEKS } from "./config/treatment-intervals.js";
+import { REFERENCE_INTERVAL_WEEKS, annualInjectionsFromIntervalWeeks } from "./config/treatment-intervals.js";
 import { getDrug } from "./drugs.js";
 
 /** BSC 自然経過 — Table S5 に BSC 列がないため rbz_bs 治療遷移から導出（論文1 簡略モデルと同趣旨） */
@@ -165,13 +165,9 @@ export function getInjectionReferenceIntervalWeeks(clinicalCase, drugId) {
 }
 
 /**
- * 選択間隔を反映した年間注射回数（year1 フェーズ）— Markov と表示で共通
- * @param {object} opts
- * @param {'base'|'scenario'|'2026_meta'} opts.clinicalCase
- * @param {string} opts.subtypeId
- * @param {string} opts.drugId
- * @param {number|null} [opts.intervalWeeks]
- * @param {string} [opts.phase]
+ * 選択間隔を反映した年間注射回数 — Markov とスイッチタブで共通
+ * 間隔指定あり: 52 ÷ 間隔（週）— 薬剤共通
+ * 間隔指定なし: Table S6 / 2026 meta の文献値
  */
 export function getEffectiveAnnualInjectionRate({
   clinicalCase,
@@ -180,10 +176,13 @@ export function getEffectiveAnnualInjectionRate({
   intervalWeeks = null,
   phase = "year1",
 }) {
+  if (intervalWeeks != null && intervalWeeks > 0) {
+    return annualInjectionsFromIntervalWeeks(intervalWeeks);
+  }
   const drug = getDrug(drugId);
   if (!drug) return null;
   const { injections } = getClinicalTables(clinicalCase);
-  const baseRate = getInjectionRate(
+  return getInjectionRate(
     clinicalCase,
     injections,
     subtypeId,
@@ -191,9 +190,6 @@ export function getEffectiveAnnualInjectionRate({
     drug.clinicalKey,
     phase
   );
-  if (intervalWeeks == null || intervalWeeks <= 0) return baseRate;
-  const refWeeks = getInjectionReferenceIntervalWeeks(clinicalCase, drugId);
-  return baseRate * (refWeeks / intervalWeeks);
 }
 
 export { getMetaRegimenLabel };

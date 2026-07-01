@@ -1,10 +1,6 @@
 import { DEFAULT_HORIZON } from "./constants.js";
 import { DRUG_CATALOG } from "./drugs.js";
-import {
-  getEffectiveAnnualInjectionRate,
-  getInjectionReferenceIntervalWeeks,
-  getMetaRegimenLabel,
-} from "./clinical.js";
+import { getEffectiveAnnualInjectionRate } from "./clinical.js";
 import { getCostPaper } from "./papers/index.js";
 import { runMarkov } from "./markov.js";
 import {
@@ -46,9 +42,6 @@ export function annualDrugAdminCostFromModel({
     perInjection: perInj,
     annualInjections: annualInj,
     annualTotal: perInj * annualInj,
-    referenceIntervalWeeks: getInjectionReferenceIntervalWeeks(clinicalCase, drugId),
-    metaRegimenLabel:
-      clinicalCase === "2026_meta" ? getMetaRegimenLabel(drugId) : null,
   };
 }
 
@@ -189,8 +182,6 @@ export function runSwitchCostMinimization(input) {
       label,
       annualInjections: drugAdminAnnual?.annualInjections ?? null,
       annualDrugAdmin: drugAdminAnnual?.annualTotal ?? null,
-      referenceIntervalWeeks: drugAdminAnnual?.referenceIntervalWeeks ?? null,
-      metaRegimenLabel: drugAdminAnnual?.metaRegimenLabel ?? null,
       totalCost: target.totalCost ?? null,
       totalQALY: target.totalQALY ?? null,
       deltaCost,
@@ -224,7 +215,7 @@ export function runSwitchCostMinimization(input) {
     clinicalCase,
     referenceIntervalWeeks: REFERENCE_INTERVAL_WEEKS,
     wtpPerQaly,
-    injectionModelNote: buildInjectionModelNote(clinicalCase, input),
+    injectionModelNote: buildInjectionModelNote(clinicalCase),
     current: {
       drug: DRUG_CATALOG[input.currentDrugId],
       intervalWeeks: input.currentIntervalWeeks,
@@ -235,8 +226,6 @@ export function runSwitchCostMinimization(input) {
       annualDrugAdmin: currentDrugAdmin?.annualTotal ?? null,
       annualInjections: currentDrugAdmin?.annualInjections ?? null,
       perInjectionCost: currentDrugAdmin?.perInjection ?? null,
-      referenceIntervalWeeks: currentDrugAdmin?.referenceIntervalWeeks ?? null,
-      metaRegimenLabel: currentDrugAdmin?.metaRegimenLabel ?? null,
     },
     targetAtSameInterval: sameIntervalRow
       ? {
@@ -277,26 +266,14 @@ export function runSwitchCostMinimization(input) {
   };
 }
 
-function buildInjectionModelNote(clinicalCase, input) {
-  if (clinicalCase === "2026_meta") {
-    const curRef = getInjectionReferenceIntervalWeeks(
-      clinicalCase,
-      input.currentDrugId
-    );
-    const tgtRef = getInjectionReferenceIntervalWeeks(
-      clinicalCase,
-      input.targetDrugId
-    );
-    return (
-      `2026 meta: 年1注射 = 文献値 × (文献レジメン間隔 ÷ 選択間隔)。` +
-      ` 現行 ${DRUG_CATALOG[input.currentDrugId]?.name}: ${getMetaRegimenLabel(input.currentDrugId)}（基準 Q${curRef}）。` +
-      ` スイッチ先: ${getMetaRegimenLabel(input.targetDrugId)}（基準 Q${tgtRef}）。` +
-      ` Q8 を選んでも 8 mg の 5.5 回/年は Q12 報告値 — Q8 運用なら 5.5×12/8=8.25 回/年にスケール。`
-    );
-  }
+function buildInjectionModelNote(clinicalCase) {
+  const metaNote =
+    clinicalCase === "2026_meta"
+      ? " 左サイドバー「2026 meta」の year1 値（7.67 / 5.5 等）はサマリー Markov 用で、スイッチタブでは使いません。"
+      : "";
   return (
-    `Table S6 / scenario: 注射回数は Q${REFERENCE_INTERVAL_WEEKS} 基準 × (Q${REFERENCE_INTERVAL_WEEKS} ÷ 選択間隔)。` +
-    ` 52÷週 の単純式は使いません。`
+    `年間注射 = 52 ÷ 選択間隔（週）。Q8 → 6.5 回/年 — 薬剤に依存せず UI の間隔だけで決まります。` +
+    ` コスト差は主に薬価 × 注射回数の積。${metaNote}`
   );
 }
 
