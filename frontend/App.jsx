@@ -915,7 +915,8 @@ export default function App() {
                     {" — "}
                     この1例の確率経路（視力遷移・死亡・両眼発症）を決める番号です。
                     同一 transitionKey 内（RBZ/ RBZ BS、AFL 2 mg/ BS）は視力・QALY 一致。
-                    注射回数は薬剤×病型別 Table S6、患者負担は薬価差を反映。
+                    コスト・注射は全薬剤共通の最長生存タイムライン（{patientAnalysis.patientProfile.costTimelineMonths} か月）で算出。
+                    QALY・死亡は transitionKey 別。
                   </div>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 10, lineHeight: 1.6 }}>
                     全7薬剤（ラニビズマブ先発・BS、アフリベルセプト 2 mg/BS/8 mg、ファリ、ブロル）を表示。
