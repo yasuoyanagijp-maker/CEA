@@ -57,7 +57,9 @@ export default function App() {
   ]);
   const [referenceDrugId, setReferenceDrugId] = useState("aflibercept");
   const [treatmentDurationMode, setTreatmentDurationMode] = useState("years_5");
-  const [timeHorizonYears, setTimeHorizonYears] = useState(25);
+  const [timeHorizonYears, setTimeHorizonYears] = useState(
+    DEFAULT_HORIZON.timeHorizonYears
+  );
   const [cycleLengthYears, setCycleLengthYears] = useState(0.25);
   const [discountRate, setDiscountRate] = useState(2);
   const [activeTab, setActiveTab] = useState("summary");
@@ -528,7 +530,7 @@ export default function App() {
 
           <Section title="QALY パラメータ">
             <p style={hintStyle}>
-              補足表に未掲載。出典を確認のうえ入力（空欄のままでは QALY は算出されません）。
+              Markov 5状態（BCVA）の遷移から較好眼効用を算出。3ヶ月サイクル・半周期補正・2%割引（論文準拠）。
             </p>
             {STATE_LABELS.map((lbl, i) => (
               <label key={lbl} style={labelStyle}>
@@ -847,8 +849,8 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
-                  <p style={{ fontSize: 11, color: "#B45309", marginTop: 8 }}>
-                    本ツールの QALY 水準は Table S12（7–8 QALY）より高く、絶対値の一致より増分の方向性を確認してください。
+                  <p style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+                    シナリオ・20年・半周期補正では Table S12 と概ね一致。ベースケースは死亡率設定等で差が出る場合があります。
                   </p>
                 </div>
               )}

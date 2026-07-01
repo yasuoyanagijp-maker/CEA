@@ -11,6 +11,10 @@ import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
 import { getInjections2026MetaForDrug } from "./config/injections-2026-meta.js";
+import {
+  expectedBetterEyeUtility,
+  qalyForCycle,
+} from "./qaly.js";
 
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
@@ -24,19 +28,6 @@ function applyTransition(dist, probs) {
     next[Math.max(0, i - 2)] += s * probs.wors2;
   }
   return next;
-}
-
-function expectedBetterEyeUtility(cohort, fellowDist, pSecond, qaly) {
-  const { utilities: u, utilityNone: uNone } = qaly;
-  let expected = 0;
-  for (let i = 0; i < N_STATES; i++) {
-    if (cohort[i] <= 0) continue;
-    expected += (1 - pSecond) * cohort[i] * Math.max(u[i], uNone);
-    for (let j = 0; j < N_STATES; j++) {
-      expected += pSecond * cohort[i] * fellowDist[j] * Math.max(u[i], u[j]);
-    }
-  }
-  return expected;
 }
 
 function monthlyIncidencePerCycle(cycleLengthYears, monthlyRate) {
@@ -226,13 +217,9 @@ export function runMarkov(input) {
       : 0;
     const injThisCycle = annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);
-
-    if (qaly) {
-      totalQALY +=
-        expectedBetterEyeUtility(cohort, fellowDist, pSecond, qaly) *
-        cycleLen *
-        df;
-    }
+    const utilityStart = qaly
+      ? expectedBetterEyeUtility(cohort, fellowDist, pSecond, qaly)
+      : 0;
 
     if (onTreatment) {
       const admin = drugAdminCost(drugId, injThisCycle, aliveMass, df, paper);
@@ -272,21 +259,6 @@ export function runMarkov(input) {
     costBreakdown.physicianVisit += visit;
     totalCost += care + visit;
 
-    if (c % cpy === 0) {
-      trajectory.push({
-        year: c * cycleLen,
-        none: ((cohort[0] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        mild: ((cohort[1] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        moderate: ((cohort[2] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        severe: ((cohort[3] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        blind: ((cohort[4] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        bothEyes: (pSecond * 100).toFixed(1),
-        alive: (aliveMass * 100).toFixed(1),
-        cumQALY: qaly ? totalQALY.toFixed(3) : null,
-        cumCost: Math.round(totalCost),
-      });
-    }
-
     const pNew =
       (1 - pSecond) *
       monthlyIncidencePerCycle(cycleLen, modelParams.secondEyeMonthlyIncidence);
@@ -314,6 +286,34 @@ export function runMarkov(input) {
 
     dist = applyTransition(dist, probs);
     fellowDist = applyTransition(fellowDist, probs);
+
+    if (qaly) {
+      const cohortEnd = dist.map((s) => s * aliveMass);
+      const utilityEnd = expectedBetterEyeUtility(
+        cohortEnd,
+        fellowDist,
+        pSecond,
+        qaly
+      );
+      totalQALY += qalyForCycle(utilityStart, utilityEnd, cycleLen, df);
+    }
+
+    const yearComplete = (c + 1) % cpy === 0;
+    if (yearComplete || c === cycles - 1) {
+      const cohortEnd = dist.map((s) => s * aliveMass);
+      trajectory.push({
+        year: (c + 1) * cycleLen,
+        none: ((cohortEnd[0] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
+        mild: ((cohortEnd[1] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
+        moderate: ((cohortEnd[2] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
+        severe: ((cohortEnd[3] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
+        blind: ((cohortEnd[4] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
+        bothEyes: (pSecond * 100).toFixed(1),
+        alive: (aliveMass * 100).toFixed(1),
+        cumQALY: qaly ? totalQALY.toFixed(3) : null,
+        cumCost: Math.round(totalCost),
+      });
+    }
   }
 
   return {

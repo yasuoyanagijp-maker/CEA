@@ -194,6 +194,10 @@ export function runMortalitySensitivity(
 
 export { runMarkov } from "./markov.js";
 export {
+  expectedBetterEyeUtility,
+  qalyForCycle,
+} from "./qaly.js";
+export {
   runPatientSimulation,
   runPatientDrugComparison,
   createRng,

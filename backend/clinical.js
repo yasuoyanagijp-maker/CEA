@@ -12,6 +12,7 @@ import {
   getInjections2026MetaForDrug,
   INJECTIONS_2026_META_SOURCE,
 } from "./config/injections-2026-meta.js";
+import { DEFAULT_HORIZON } from "./constants.js";
 
 /** BSC 自然経過 — Table S5 に BSC 列がないため rbz_bs 治療遷移から導出（論文1 簡略モデルと同趣旨） */
 export const BSC_PROGRESSION_MULTIPLIER = 1.35;
@@ -190,7 +191,7 @@ export function buildInjectionYearReference({
   subtypeId,
   drugId,
   clinicalCase = "base",
-  timeHorizonYears = 25,
+  timeHorizonYears = DEFAULT_HORIZON.timeHorizonYears,
   treatmentDurationYears = null,
   drugCatalog,
 }) {
