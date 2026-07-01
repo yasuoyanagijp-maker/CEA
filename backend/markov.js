@@ -322,6 +322,10 @@ export function runMarkov(input) {
       );
     }
 
+    dist = applyTransition(dist, probs);
+    fellowDist = applyTransition(fellowDist, probs);
+
+    // 死亡 — サイクル内の視力遷移後・治療眼失明割合 dist[4] で HR 加算（patient-sim と同順序）
     if (mort) {
       const currentAge = Math.min(105, mort.entryAge + c * cycleLen);
       const fixedRate = mort.useLifeTable ? null : mort.fixedRate;
@@ -333,9 +337,6 @@ export function runMarkov(input) {
       deathProb = Math.min(1, Math.max(0, deathProb));
       aliveMass = Math.max(0, aliveMass * (1 - deathProb));
     }
-
-    dist = applyTransition(dist, probs);
-    fellowDist = applyTransition(fellowDist, probs);
 
     const aliveEnd = aliveMass;
     const cohortEnd = dist.map((s) => s * aliveMass);

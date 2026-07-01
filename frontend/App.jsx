@@ -233,7 +233,6 @@ export default function App() {
       seed: Number.isNaN(seed) ? 42 : seed,
       modelParams,
       selectedDrugIds: DRUG_IDS,
-      referenceDrugId,
       includeTrajectory: true,
     });
   }, [
@@ -249,7 +248,6 @@ export default function App() {
     incomeBracket,
     patientSeed,
     modelParams,
-    referenceDrugId,
   ]);
     patientAnalysis?.results[patientDetailDrugId] ??
     patientAnalysis?.results[selectedDrugIds[0]];
@@ -665,11 +663,11 @@ export default function App() {
             </label>
             <p style={hintStyle}>
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
-              視力・死亡は参照薬（比較タブ）の臨床経路を全薬剤で共有。
+              clinicalKey ごとに視力・死亡・QALY の経路が異なります（同一 key 内はコストのみ差）。
               {patientRemainingLife != null && (
                 <>
                   {" "}
-                  余命 ≈ {patientRemainingLife.toFixed(1)} 年。
+                  余命（生命表）≈ {patientRemainingLife.toFixed(1)} 年。
                 </>
               )}
             </p>
@@ -882,12 +880,11 @@ export default function App() {
               ) : (
                 <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
-                    直接医療費（薬剤+投与・モニタリング・有害事象）に対し、年齢別自己負担割合と月次の高額療養費限度額を適用。
-                    余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年、
+                    直接医療費に年齢別自己負担・月次高額療養費を適用。
+                    余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
                     解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
-                    視力・QALY・生存年数・死亡は{" "}
-                    {patientAnalysis.patientProfile.pathReferenceDrugName ?? "参照薬"} の臨床経路を全薬剤で共有（シード{" "}
-                    {patientAnalysis.patientProfile.seed}）。薬剤差はコスト・注射のみ。
+                    QALY・実生存年数・死亡は薬剤（clinicalKey）ごとの視力経路から算出。シード{" "}
+                    {patientAnalysis.patientProfile.seed}。
                   </p>
                   <table style={tableStyle}>
                     <thead>
@@ -898,7 +895,7 @@ export default function App() {
                         <th style={thStyle}>薬剤+投与</th>
                         <th style={thStyle}>モニタリング</th>
                         <th style={thStyle}>生涯注射</th>
-                        <th style={thStyle}>生存年数</th>
+                        <th style={thStyle}>実生存年数</th>
                         <th style={thStyle}>QALY</th>
                         <th style={thStyle}>死亡</th>
                       </tr>
