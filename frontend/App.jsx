@@ -30,6 +30,7 @@ import {
   INCOME_BRACKET_LIST,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
+  getMarkovBaselineBcva,
 } from "../backend/engine.js";
 import { TREATMENT_DURATION_MODES } from "../backend/constants.js";
 import { PAPER_INCREMENTAL_RBZ_VS_AFL, buildS12ModelParams, PAPER_S12_ENTRY_AGE } from "../backend/config/paper-reference.js";
@@ -85,18 +86,19 @@ export default function App() {
   const [patientSex, setPatientSex] = useState("male");
   const [incomeBracket, setIncomeBracket] = useState("standard");
   const [patientSeed, setPatientSeed] = useState("42");
+  const markovBcvaTypical = getMarkovBaselineBcva("typical");
   const [patientBaselineBcvaAffected, setPatientBaselineBcvaAffected] = useState(
-    () => String(SUBTYPES.typical.baselineBcvaAffected)
+    () => String(markovBcvaTypical.baselineBcvaAffected)
   );
   const [patientBaselineBcvaFellow, setPatientBaselineBcvaFellow] = useState(
-    () => String(SUBTYPES.typical.baselineBcvaFellow)
+    () => String(markovBcvaTypical.baselineBcvaFellow)
   );
   const [patientDetailDrugId, setPatientDetailDrugId] = useState("ranibizumab_bs");
 
   useEffect(() => {
-    const st = SUBTYPES[subtypeId];
-    setPatientBaselineBcvaAffected(String(st.baselineBcvaAffected));
-    setPatientBaselineBcvaFellow(String(st.baselineBcvaFellow));
+    const bcva = getMarkovBaselineBcva(subtypeId);
+    setPatientBaselineBcvaAffected(String(bcva.baselineBcvaAffected));
+    setPatientBaselineBcvaFellow(String(bcva.baselineBcvaFellow));
   }, [subtypeId]);
 
   const modelParams = useMemo(() => {
@@ -704,7 +706,7 @@ export default function App() {
               </select>
             </label>
             <label style={labelStyle}>
-              ベースライン視力 — 患眼 BCVA（小数視力）
+              ベースライン視力 — 患眼 BCVA（Markov ベースケース既定: {subtype.baselineBcvaAffected}）
               <input
                 type="number"
                 step={0.01}
@@ -713,10 +715,11 @@ export default function App() {
                 value={patientBaselineBcvaAffected}
                 onChange={(e) => setPatientBaselineBcvaAffected(e.target.value)}
                 style={inputStyle}
+                placeholder={String(subtype.baselineBcvaAffected)}
               />
             </label>
             <label style={labelStyle}>
-              ベースライン視力 — 対側眼 BCVA
+              ベースライン視力 — 対側眼 BCVA（Markov 既定: {subtype.baselineBcvaFellow}）
               <input
                 type="number"
                 step={0.01}
@@ -725,12 +728,12 @@ export default function App() {
                 value={patientBaselineBcvaFellow}
                 onChange={(e) => setPatientBaselineBcvaFellow(e.target.value)}
                 style={inputStyle}
+                placeholder={String(subtype.baselineBcvaFellow)}
               />
             </label>
             <p style={{ ...hintStyle, marginTop: -4 }}>
-              5状態の初期分布は BCVA 平均からガウス近似（Table S2 代替）。
-              1.0＝視力良好、0.5＝軽度障害寄り。QALY は較好眼効用に即反映。
-              コスト・注射はフォロー期間（生存タイムライン）が同じなら一致します。
+              病型切替で Markov ベースケース（Yoneda [1]）の BCVA に自動リセット。
+              既定値のとき初期分布は Table S2（Markov と同一）、変更時は BCVA から導出。
             </p>
             <label style={labelStyle}>
               乱数シード（仮想患者 ID）
@@ -1081,6 +1084,9 @@ export default function App() {
                     {" · "}
                     患眼 BCVA {patientAnalysis.patientProfile.baselineBcvaAffected} /
                     対側眼 {patientAnalysis.patientProfile.baselineBcvaFellow}
+                    {patientAnalysis.patientProfile.initialDistributionSource && (
+                      <> — 初期分布: {patientAnalysis.patientProfile.initialDistributionSource}</>
+                    )}
                     <br />
                     フォロー期間（{patientAnalysis.patientProfile.costTimelineMonths} か月）を決める乱数列です。
                     QALY は transitionKey 別、コスト・注射は最長生存タイムライン共通。

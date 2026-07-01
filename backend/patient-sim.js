@@ -22,7 +22,7 @@ import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDispla
 import { getCostPaper } from "./papers/index.js";
 import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 import { cycleDeathProbability, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
-import { distributionFromMeanBcva } from "./config/baseline-characteristics.js";
+import { distributionFromMeanBcva, isMarkovDefaultBcva, getMarkovBaselineBcva } from "./config/baseline-characteristics.js";
 import { computeQalyFromClinicalPath } from "./qaly.js";
 import { DEFAULT_HORIZON } from "./constants.js";
 
@@ -92,19 +92,30 @@ function patientEffectiveHorizon(entryAge, sex, configuredHorizonYears) {
   });
 }
 
-/** 患眼・対側眼 BCVA（小数視力）から Table S2 相当の初期分布を構築 */
+/** 患眼・対側眼 BCVA — Markov デフォルト時は Table S2、それ以外は BCVA から分布を導出 */
 export function resolvePatientVisionBaseline(subtypeId, patientBaseline = {}) {
   const subtype = SUBTYPES[subtypeId];
+  const markovDefault = getMarkovBaselineBcva(subtypeId);
   const baselineBcvaAffected =
-    patientBaseline.baselineBcvaAffected ?? subtype.baselineBcvaAffected;
+    patientBaseline.baselineBcvaAffected ?? markovDefault.baselineBcvaAffected;
   const baselineBcvaFellow =
-    patientBaseline.baselineBcvaFellow ?? subtype.baselineBcvaFellow;
+    patientBaseline.baselineBcvaFellow ?? markovDefault.baselineBcvaFellow;
+  const useTableS2 = isMarkovDefaultBcva(
+    subtypeId,
+    baselineBcvaAffected,
+    baselineBcvaFellow
+  );
   return {
     baselineBcvaAffected,
     baselineBcvaFellow,
-    treatedInitialDist: distributionFromMeanBcva(baselineBcvaAffected),
-    fellowInitialDist: distributionFromMeanBcva(baselineBcvaFellow),
+    treatedInitialDist: useTableS2
+      ? subtype.treatedInitial
+      : distributionFromMeanBcva(baselineBcvaAffected),
+    fellowInitialDist: useTableS2
+      ? subtype.fellowInitial
+      : distributionFromMeanBcva(baselineBcvaFellow),
     bothEyesBaseline: subtype.bothEyesBaseline,
+    initialDistributionSource: useTableS2 ? "Table S2 (Markov base)" : "BCVA-derived",
   };
 }
 
@@ -744,6 +755,7 @@ export function runPatientDrugComparison(input) {
       baselineBcvaFellow:
         masterPath?.visionBaseline?.baselineBcvaFellow ??
         patientBaseline.baselineBcvaFellow,
+      initialDistributionSource: masterPath?.visionBaseline?.initialDistributionSource,
       remainingLifeExpectancy: remainingYears,
       effectiveHorizonYears: effectiveHorizon,
       configuredHorizonYears: configuredHorizon,

@@ -250,6 +250,10 @@ export {
   LIFE_TABLE_SOURCE,
 } from "./config/mortality.js";
 export {
+  getMarkovBaselineBcva,
+  isMarkovDefaultBcva,
+} from "./config/baseline-characteristics.js";
+export {
   DRUG_CATALOG,
   DRUG_IDS,
   PATIENT_DRUG_IDS,
