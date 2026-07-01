@@ -1467,6 +1467,7 @@ export default function App() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
                         dataKey="year"
+                        domain={[0, "auto"]}
                         label={{ value: "経過年", position: "insideBottom", offset: -4 }}
                       />
                       <YAxis

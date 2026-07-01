@@ -296,6 +296,20 @@ export function runMarkov(input) {
     injContext
   );
 
+  trajectory.push({
+    year: 0,
+    none: (dist[0] * 100).toFixed(1),
+    mild: (dist[1] * 100).toFixed(1),
+    moderate: (dist[2] * 100).toFixed(1),
+    severe: (dist[3] * 100).toFixed(1),
+    blind: (dist[4] * 100).toFixed(1),
+    bothEyes: (pSecond * 100).toFixed(1),
+    alive: (aliveMass * 100).toFixed(1),
+    meanBcva: expectedBcvaFromCohort(dist, aliveMass).toFixed(3),
+    cumQALY: qaly ? "0.000" : null,
+    cumCost: 0,
+  });
+
   for (let c = 0; c < cycles; c++) {
     const df = Math.pow(1 + disc, -c);
     const yearIndex = Math.min(
