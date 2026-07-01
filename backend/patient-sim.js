@@ -526,6 +526,8 @@ export function runPatientSimulation(input) {
 
 /**
  * 同一患者プロファイルで全薬剤（または選択薬剤）を比較
+ * — 視力・死亡・QALY は1本の臨床経路を全薬剤で共有（余命/生存は薬剤非依存）
+ * — 薬剤差はコスト・注射回数のみ
  */
 export function runPatientDrugComparison(input) {
   const drugIds = input.selectedDrugIds?.length ? input.selectedDrugIds : DRUG_IDS;
@@ -539,57 +541,64 @@ export function runPatientDrugComparison(input) {
   );
   const remainingYears = remainingLifeExpectancy(input.entryAge, { sex: input.sex });
 
-  const pathCache = new Map();
-  const qalyCache = new Map();
-  const getPath = (clinicalKey) => {
-    if (!pathCache.has(clinicalKey)) {
-      const rng = createRng(baseSeed + hashString(clinicalKey));
-      const path = simulateClinicalPath({
+  const pathReferenceDrugId =
+    input.pathReferenceDrugId ?? input.referenceDrugId ?? drugIds[0];
+  const pathReferenceDrug = getDrug(pathReferenceDrugId);
+  const pathClinicalKey = input.pathClinicalKey ?? pathReferenceDrug.clinicalKey;
+
+  const rng = createRng(baseSeed);
+  const sharedPath = simulateClinicalPath({
+    entryAge: input.entryAge,
+    sex: input.sex,
+    subtypeId: input.subtypeId,
+    clinicalKey: pathClinicalKey,
+    clinicalCase: input.clinicalCase ?? "base",
+    timeHorizonYears: effectiveHorizon,
+    treatmentDurationYears: input.treatmentDurationYears ?? null,
+    modelParams: input.modelParams ?? {},
+    rng,
+  });
+
+  if (!sharedPath) {
+    const empty = {};
+    for (const drugId of drugIds) {
+      empty[drugId] = { drugId, incomplete: true, reason: "臨床データなし" };
+    }
+    return {
+      results: empty,
+      summary: [],
+      patientProfile: {
         entryAge: input.entryAge,
         sex: input.sex,
         subtypeId: input.subtypeId,
-        clinicalKey,
-        clinicalCase: input.clinicalCase ?? "base",
-        timeHorizonYears: effectiveHorizon,
-        treatmentDurationYears: input.treatmentDurationYears ?? null,
-        modelParams: input.modelParams ?? {},
-        rng,
-      });
-      pathCache.set(clinicalKey, path);
-    }
-    return pathCache.get(clinicalKey);
-  };
+        incomeBracket: input.incomeBracket ?? "standard",
+        remainingLifeExpectancy: remainingYears,
+        effectiveHorizonYears: effectiveHorizon,
+        configuredHorizonYears: configuredHorizon,
+        pathReferenceDrugId,
+        pathClinicalKey,
+        seed: baseSeed,
+      },
+    };
+  }
 
-  const getQaly = (clinicalKey, path) => {
-    if (!qalyCache.has(clinicalKey)) {
-      qalyCache.set(
-        clinicalKey,
-        computePatientPathQaly(path, {
-          entryAge: input.entryAge,
-          sex: input.sex,
-          timeHorizonYears: configuredHorizon,
-          discountRate: input.discountRate ?? DEFAULT_HORIZON.discountRate,
-          cycleLengthYears: input.cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
-          modelParams: input.modelParams ?? {},
-        })
-      );
-    }
-    return qalyCache.get(clinicalKey);
-  };
+  const sharedQaly = computePatientPathQaly(sharedPath, {
+    entryAge: input.entryAge,
+    sex: input.sex,
+    timeHorizonYears: configuredHorizon,
+    discountRate: input.discountRate ?? DEFAULT_HORIZON.discountRate,
+    cycleLengthYears: input.cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
+    modelParams: input.modelParams ?? {},
+  });
 
   const results = {};
   const summary = [];
 
   for (const drugId of drugIds) {
     const drug = getDrug(drugId);
-    const path = getPath(drug.clinicalKey);
-    if (!path) {
-      results[drugId] = { drugId, incomplete: true, reason: "臨床データなし" };
-      continue;
-    }
 
     const costs = applyDrugCostsToPath({
-      path,
+      path: sharedPath,
       drugId,
       subtypeId: input.subtypeId,
       costPaperId: input.costPaperId ?? "paper2_rbz",
@@ -600,11 +609,9 @@ export function runPatientDrugComparison(input) {
       treatmentDurationYears: input.treatmentDurationYears ?? null,
     });
 
-    const qalyResult = getQaly(drug.clinicalKey, path);
-
     const annualTrajectory = mergeCostTrajectoryWithQaly(
       costs.annualTrajectory,
-      qalyResult.annualQaly
+      sharedQaly.annualQaly
     );
 
     const warnings = [];
@@ -617,10 +624,10 @@ export function runPatientDrugComparison(input) {
       sex: input.sex,
       subtypeId: input.subtypeId,
       clinicalKey: drug.clinicalKey,
-      totalQALY: qalyResult.totalQALY,
-      totalLifeYears: qalyResult.totalLifeYears,
-      deathMonth: path.deathMonth,
-      alive: path.alive,
+      totalQALY: sharedQaly.totalQALY,
+      totalLifeYears: sharedQaly.totalLifeYears,
+      deathMonth: sharedPath.deathMonth,
+      alive: sharedPath.alive,
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
       totalInjections: costs.totalInjections,
@@ -628,7 +635,7 @@ export function runPatientDrugComparison(input) {
       annualTrajectory,
       monthlyTrajectory:
         input.includeTrajectory !== false ? costs.monthlyTrajectory : undefined,
-      incomplete: qalyResult.totalQALY == null || costs.injUnitMissing,
+      incomplete: sharedQaly.totalQALY == null || costs.injUnitMissing,
       warnings,
     };
 
@@ -639,10 +646,10 @@ export function runPatientDrugComparison(input) {
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
       totalInjections: costs.totalInjections,
-      totalQALY: qalyResult.totalQALY,
-      totalLifeYears: qalyResult.totalLifeYears,
-      deathMonth: path.deathMonth,
-      alive: path.alive,
+      totalQALY: sharedQaly.totalQALY,
+      totalLifeYears: sharedQaly.totalLifeYears,
+      deathMonth: sharedPath.deathMonth,
+      alive: sharedPath.alive,
       costBreakdown: costs.costBreakdown,
     });
   }
@@ -658,13 +665,10 @@ export function runPatientDrugComparison(input) {
       remainingLifeExpectancy: remainingYears,
       effectiveHorizonYears: effectiveHorizon,
       configuredHorizonYears: configuredHorizon,
+      pathReferenceDrugId,
+      pathClinicalKey,
+      pathReferenceDrugName: pathReferenceDrug.name,
       seed: baseSeed,
     },
   };
-}
-
-function hashString(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
 }

@@ -233,6 +233,7 @@ export default function App() {
       seed: Number.isNaN(seed) ? 42 : seed,
       modelParams,
       selectedDrugIds: DRUG_IDS,
+      referenceDrugId,
       includeTrajectory: true,
     });
   }, [
@@ -248,9 +249,8 @@ export default function App() {
     incomeBracket,
     patientSeed,
     modelParams,
+    referenceDrugId,
   ]);
-
-  const patientDetailDrug =
     patientAnalysis?.results[patientDetailDrugId] ??
     patientAnalysis?.results[selectedDrugIds[0]];
 
@@ -665,6 +665,7 @@ export default function App() {
             </label>
             <p style={hintStyle}>
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
+              視力・死亡は参照薬（比較タブ）の臨床経路を全薬剤で共有。
               {patientRemainingLife != null && (
                 <>
                   {" "}
@@ -882,10 +883,11 @@ export default function App() {
                 <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                     直接医療費（薬剤+投与・モニタリング・有害事象）に対し、年齢別自己負担割合と月次の高額療養費限度額を適用。
-                    QALY・生存年数は同一臨床経路（視力遷移・死亡月で打ち切り）から算出。解析期間上限{" "}
-                    {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1) ?? "—"} 年（余命ベース）。
-                    費用・注射は個別患者経路。シード{" "}
-                    {patientAnalysis.patientProfile.seed}。
+                    余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年、
+                    解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
+                    視力・QALY・生存年数・死亡は{" "}
+                    {patientAnalysis.patientProfile.pathReferenceDrugName ?? "参照薬"} の臨床経路を全薬剤で共有（シード{" "}
+                    {patientAnalysis.patientProfile.seed}）。薬剤差はコスト・注射のみ。
                   </p>
                   <table style={tableStyle}>
                     <thead>
