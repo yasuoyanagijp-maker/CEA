@@ -1,7 +1,7 @@
 /**
  * 治療間隔（週）と年間注射回数の対応。
- * ベースケース（Table S6 / 2026 meta）の注射回数は Q8 T&E 相当とみなし、
- * 選択間隔に応じて比例スケールする。
+ * Table S6 / scenario 注射回数は Q8 T&E 相当（REFERENCE_INTERVAL_WEEKS）とみなし比例スケール。
+ * 2026 meta は薬剤ごとの文献レジメン間隔（getMetaReferenceIntervalWeeks）を基準にスケール。
  */
 export const REFERENCE_INTERVAL_WEEKS = 8;
 

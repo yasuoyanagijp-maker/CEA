@@ -195,6 +195,9 @@ export function runMortalitySensitivity(
 export { runMarkov } from "./markov.js";
 export {
   getInjectionRate,
+  getEffectiveAnnualInjectionRate,
+  getInjectionReferenceIntervalWeeks,
+  getMetaRegimenLabel,
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";
@@ -222,4 +225,5 @@ export {
   REFERENCE_INTERVAL_WEEKS,
   formatIntervalLabel,
   cmaQalyTolerance,
+  annualDrugAdminCostFromModel,
 } from "./switch-analysis.js";

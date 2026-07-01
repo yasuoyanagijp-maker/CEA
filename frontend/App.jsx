@@ -775,8 +775,20 @@ export default function App() {
                 <strong> 総コストが同等以下</strong>になる間隔を Markov モデルで探索します。
                 5状態遷移は同一臨床キーを流用するため QALY はほぼ不変 — CMA（ΔQALY=0）の立場から
                 コスト削減可能な間隔と、WTP 換算の許容 QALY 差の目安を示します。
-                注射回数は Q{REFERENCE_INTERVAL_WEEKS} 基準の Table S6 / 2026 meta から
-                間隔に比例スケール（{formatIntervalLabel(REFERENCE_INTERVAL_WEEKS)} = 倍率 1.0）。
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "#92400E",
+                  background: "#FFFBEB",
+                  padding: "10px 12px",
+                  borderRadius: 6,
+                  lineHeight: 1.55,
+                  marginTop: 0,
+                  marginBottom: 16,
+                }}
+              >
+                {switchAnalysis.injectionModelNote}
               </p>
 
               <div
@@ -880,7 +892,11 @@ export default function App() {
                   }
                   sub={
                     switchAnalysis.current.annualInjections != null
-                      ? `${switchAnalysis.current.annualInjections.toFixed(1)} 回/年`
+                      ? `${switchAnalysis.current.annualInjections.toFixed(2)} 回/年（year1・Markov 同式）${
+                          switchAnalysis.current.metaRegimenLabel
+                            ? ` — 文献 ${switchAnalysis.current.metaRegimenLabel}`
+                            : ""
+                        }`
                       : ""
                   }
                 />
@@ -1006,10 +1022,11 @@ export default function App() {
               </table>
 
               <p style={{ fontSize: 11, color: "#64748B", marginTop: 12, lineHeight: 1.5 }}>
+                「年間注射」「薬剤+投与/年」は Markov と同一式（文献値 × 文献レジメン間隔 ÷
+                選択間隔）。<strong>52÷週 とは一致しません。</strong>
+                2026 meta では 8 mg の 5.5 回/年は Q12–Q16 報告値 — Q8 を選ぶと 8.25 回/年に増加します。
                 CMA 目安: 総コスト差 ÷ WTP（¥{(DEFAULT_HORIZON.wtpPerQaly / 1e6).toFixed(1)}
-                M/QALY）。スイッチで安い場合は「許容 QALY 低下」、高い場合は「必要 QALY 増加」。
-                左サイドバーのサブタイプ・治療期間・割引率を反映。間隔延長は注射回数のみ変化し
-                視力遷移は不変（QALY 中立仮定）— 実臨床では間隔延長に伴う効果低下リスクを別途評価してください。
+                M/QALY）。左サイドバーの臨床ケース（base / 2026 meta）を必ず確認してください。
               </p>
             </Panel>
           )}

@@ -1,12 +1,15 @@
 import { DEFAULT_HORIZON } from "./constants.js";
 import { DRUG_CATALOG } from "./drugs.js";
+import {
+  getEffectiveAnnualInjectionRate,
+  getInjectionReferenceIntervalWeeks,
+  getMetaRegimenLabel,
+} from "./clinical.js";
 import { getCostPaper } from "./papers/index.js";
 import { runMarkov } from "./markov.js";
 import {
   TREATMENT_INTERVAL_OPTIONS,
   REFERENCE_INTERVAL_WEEKS,
-  annualInjectionsFromIntervalWeeks,
-  injectionScaleForIntervalWeeks,
   formatIntervalLabel,
 } from "./config/treatment-intervals.js";
 
@@ -20,34 +23,56 @@ function perInjectionCost(drugId, paper) {
 }
 
 /**
- * 薬剤＋投与費のみの年間コスト（定常 T&E 近似）
+ * Markov と同一ロジックの薬剤＋投与費（year1 年間）
  */
-export function annualDrugAdminCost(drugId, intervalWeeks, costPaperId) {
+export function annualDrugAdminCostFromModel({
+  drugId,
+  intervalWeeks,
+  costPaperId,
+  clinicalCase,
+  subtypeId,
+}) {
   const paper = getCostPaper(costPaperId);
   const perInj = perInjectionCost(drugId, paper);
-  if (perInj == null) return null;
-  const annualInj = annualInjectionsFromIntervalWeeks(intervalWeeks);
+  const annualInj = getEffectiveAnnualInjectionRate({
+    clinicalCase,
+    subtypeId,
+    drugId,
+    intervalWeeks,
+    phase: "year1",
+  });
+  if (perInj == null || annualInj == null) return null;
   return {
     perInjection: perInj,
     annualInjections: annualInj,
     annualTotal: perInj * annualInj,
+    referenceIntervalWeeks: getInjectionReferenceIntervalWeeks(clinicalCase, drugId),
+    metaRegimenLabel:
+      clinicalCase === "2026_meta" ? getMetaRegimenLabel(drugId) : null,
   };
 }
 
 /**
- * 薬剤＋投与費のコストパリティに必要なスイッチ先間隔（週）— 解析的解
+ * 薬剤＋投与費のコストパリティに必要なスイッチ先間隔（週）— Markov 注射ロジック準拠
  */
 export function analyticBreakEvenIntervalWeeks(
   currentDrugId,
   currentIntervalWeeks,
   targetDrugId,
-  costPaperId
+  costPaperId,
+  { clinicalCase = "base", subtypeId = "typical" } = {}
 ) {
-  const current = annualDrugAdminCost(currentDrugId, currentIntervalWeeks, costPaperId);
+  const current = annualDrugAdminCostFromModel({
+    drugId: currentDrugId,
+    intervalWeeks: currentIntervalWeeks,
+    costPaperId,
+    clinicalCase,
+    subtypeId,
+  });
   const targetPerInj = perInjectionCost(targetDrugId, getCostPaper(costPaperId));
   if (!current || targetPerInj == null || targetPerInj <= 0) return null;
 
-  const breakEvenAnnualInj = (current.annualTotal / targetPerInj);
+  const breakEvenAnnualInj = current.annualTotal / targetPerInj;
   if (breakEvenAnnualInj <= 0) return null;
   const weeks = 52 / breakEvenAnnualInj;
   return {
@@ -59,8 +84,6 @@ export function analyticBreakEvenIntervalWeeks(
 
 /**
  * QALY 中立コスト最小化（CMA）の許容 QALY 差の目安
- * @param {number} deltaCost — スイッチ先 − 現行（負 = スイッチで削減）
- * @param {number} wtpPerQaly — 支払意思額（¥/QALY）
  */
 export function cmaQalyTolerance(deltaCost, wtpPerQaly) {
   if (wtpPerQaly == null || wtpPerQaly <= 0) return null;
@@ -89,10 +112,6 @@ export function cmaQalyTolerance(deltaCost, wtpPerQaly) {
 
 /**
  * @param {object} input — runAnalysis と同様 + switch 固有
- * @param {string} input.currentDrugId
- * @param {number} input.currentIntervalWeeks
- * @param {string} input.targetDrugId
- * @param {number} [input.wtpPerQaly]
  */
 export function runSwitchCostMinimization(input) {
   const horizon = { ...DEFAULT_HORIZON, ...input.horizon };
@@ -115,29 +134,33 @@ export function runSwitchCostMinimization(input) {
     modelParams,
   };
 
+  const modelCtx = { clinicalCase, subtypeId, costPaperId };
+
   const current = runMarkov({
     ...markovBase,
     drugId: input.currentDrugId,
     intervalWeeks: input.currentIntervalWeeks,
   });
 
+  const currentDrugAdmin = annualDrugAdminCostFromModel({
+    drugId: input.currentDrugId,
+    intervalWeeks: input.currentIntervalWeeks,
+    ...modelCtx,
+  });
+
   const analyticBe = analyticBreakEvenIntervalWeeks(
     input.currentDrugId,
     input.currentIntervalWeeks,
     input.targetDrugId,
-    costPaperId
+    costPaperId,
+    modelCtx
   );
 
-  const currentDrugAdmin = annualDrugAdminCost(
-    input.currentDrugId,
-    input.currentIntervalWeeks,
-    costPaperId
-  );
-  const targetDrugAdminAtCurrentInterval = annualDrugAdminCost(
-    input.targetDrugId,
-    input.currentIntervalWeeks,
-    costPaperId
-  );
+  const targetDrugAdminAtCurrentInterval = annualDrugAdminCostFromModel({
+    drugId: input.targetDrugId,
+    intervalWeeks: input.currentIntervalWeeks,
+    ...modelCtx,
+  });
 
   const intervalRows = TREATMENT_INTERVAL_OPTIONS.map(({ weeks, label }) => {
     const target = runMarkov({
@@ -153,11 +176,11 @@ export function runSwitchCostMinimization(input) {
       target.totalQALY != null && current.totalQALY != null
         ? target.totalQALY - current.totalQALY
         : null;
-    const drugAdminAnnual = annualDrugAdminCost(
-      input.targetDrugId,
-      weeks,
-      costPaperId
-    );
+    const drugAdminAnnual = annualDrugAdminCostFromModel({
+      drugId: input.targetDrugId,
+      intervalWeeks: weeks,
+      ...modelCtx,
+    });
     const qalyTolerance =
       deltaCost != null ? cmaQalyTolerance(deltaCost, wtpPerQaly) : null;
 
@@ -166,6 +189,8 @@ export function runSwitchCostMinimization(input) {
       label,
       annualInjections: drugAdminAnnual?.annualInjections ?? null,
       annualDrugAdmin: drugAdminAnnual?.annualTotal ?? null,
+      referenceIntervalWeeks: drugAdminAnnual?.referenceIntervalWeeks ?? null,
+      metaRegimenLabel: drugAdminAnnual?.metaRegimenLabel ?? null,
       totalCost: target.totalCost ?? null,
       totalQALY: target.totalQALY ?? null,
       deltaCost,
@@ -196,8 +221,10 @@ export function runSwitchCostMinimization(input) {
     currentDrugId: input.currentDrugId,
     targetDrugId: input.targetDrugId,
     currentIntervalWeeks: input.currentIntervalWeeks,
+    clinicalCase,
     referenceIntervalWeeks: REFERENCE_INTERVAL_WEEKS,
     wtpPerQaly,
+    injectionModelNote: buildInjectionModelNote(clinicalCase, input),
     current: {
       drug: DRUG_CATALOG[input.currentDrugId],
       intervalWeeks: input.currentIntervalWeeks,
@@ -208,6 +235,8 @@ export function runSwitchCostMinimization(input) {
       annualDrugAdmin: currentDrugAdmin?.annualTotal ?? null,
       annualInjections: currentDrugAdmin?.annualInjections ?? null,
       perInjectionCost: currentDrugAdmin?.perInjection ?? null,
+      referenceIntervalWeeks: currentDrugAdmin?.referenceIntervalWeeks ?? null,
+      metaRegimenLabel: currentDrugAdmin?.metaRegimenLabel ?? null,
     },
     targetAtSameInterval: sameIntervalRow
       ? {
@@ -217,6 +246,7 @@ export function runSwitchCostMinimization(input) {
           deltaQaly: sameIntervalRow.deltaQaly,
           qalyTolerance: sameIntervalRow.qalyTolerance,
           annualDrugAdmin: targetDrugAdminAtCurrentInterval?.annualTotal ?? null,
+          annualInjections: targetDrugAdminAtCurrentInterval?.annualInjections ?? null,
         }
       : null,
     analyticBreakEven: analyticBe,
@@ -226,6 +256,7 @@ export function runSwitchCostMinimization(input) {
           label: markovBreakEven.label,
           deltaCost: markovBreakEven.deltaCost,
           totalCost: markovBreakEven.totalCost,
+          annualInjections: markovBreakEven.annualInjections,
         }
       : null,
     bestFeasible,
@@ -234,13 +265,39 @@ export function runSwitchCostMinimization(input) {
     recommendation: buildRecommendation({
       currentDrugId: input.currentDrugId,
       targetDrugId: input.targetDrugId,
+      clinicalCase,
       bestFeasible,
       markovBreakEven,
       analyticBe,
       sameIntervalRow,
       wtpPerQaly,
+      currentDrugAdmin,
+      targetDrugAdminAtCurrentInterval,
     }),
   };
+}
+
+function buildInjectionModelNote(clinicalCase, input) {
+  if (clinicalCase === "2026_meta") {
+    const curRef = getInjectionReferenceIntervalWeeks(
+      clinicalCase,
+      input.currentDrugId
+    );
+    const tgtRef = getInjectionReferenceIntervalWeeks(
+      clinicalCase,
+      input.targetDrugId
+    );
+    return (
+      `2026 meta: 年1注射 = 文献値 × (文献レジメン間隔 ÷ 選択間隔)。` +
+      ` 現行 ${DRUG_CATALOG[input.currentDrugId]?.name}: ${getMetaRegimenLabel(input.currentDrugId)}（基準 Q${curRef}）。` +
+      ` スイッチ先: ${getMetaRegimenLabel(input.targetDrugId)}（基準 Q${tgtRef}）。` +
+      ` Q8 を選んでも 8 mg の 5.5 回/年は Q12 報告値 — Q8 運用なら 5.5×12/8=8.25 回/年にスケール。`
+    );
+  }
+  return (
+    `Table S6 / scenario: 注射回数は Q${REFERENCE_INTERVAL_WEEKS} 基準 × (Q${REFERENCE_INTERVAL_WEEKS} ÷ 選択間隔)。` +
+    ` 52÷週 の単純式は使いません。`
+  );
 }
 
 function buildRecommendation(ctx) {
@@ -271,16 +328,19 @@ function buildRecommendation(ctx) {
     const w = Math.ceil(ctx.analyticBe.weeks);
     return (
       `Markov 総コストではコスト同等の間隔はありませんが、` +
-      `薬剤＋投与費のみなら ${formatIntervalLabel(w)} 以上の延長で現行と同等以下になります。` +
-      ` 視力維持のため許容できる QALY 差は左表の WTP 換算を参照してください。`
+      `薬剤＋投与費（Markov 注射ロジック）のみなら ${formatIntervalLabel(w)} 以上の延長で現行と同等以下になります。` +
+      ` 視力維持のため許容できる QALY 差は表の WTP 換算を参照してください。`
     );
   }
 
   if (ctx.sameIntervalRow?.deltaCost != null && ctx.sameIntervalRow.deltaCost > 0) {
     const gain = ctx.sameIntervalRow.qalyTolerance;
+    const curInj = ctx.currentDrugAdmin?.annualInjections?.toFixed(1);
+    const tgtInj = ctx.targetDrugAdminAtCurrentInterval?.annualInjections?.toFixed(1);
     return (
-      `同一間隔では総コストが ¥${Math.round(ctx.sameIntervalRow.deltaCost).toLocaleString("ja-JP")} 増加。` +
-      ` CMA（QALY 中立）の観点ではスイッチ非推奨。` +
+      `同一間隔では総コストが ¥${Math.round(ctx.sameIntervalRow.deltaCost).toLocaleString("ja-JP")} 増加` +
+      (curInj && tgtInj ? `（年1注射: 現行 ${curInj} → スイッチ先 ${tgtInj} 回/年）。` : "。") +
+      ` CMA（QALY 中立）ではスイッチ非推奨。` +
       (gain?.kind === "min_required_gain"
         ? ` WTP 内に収めるには QALY が少なくとも +${gain.qaly.toFixed(3)} 必要。`
         : "")
@@ -294,6 +354,4 @@ export {
   TREATMENT_INTERVAL_OPTIONS,
   REFERENCE_INTERVAL_WEEKS,
   formatIntervalLabel,
-  injectionScaleForIntervalWeeks,
-  annualInjectionsFromIntervalWeeks,
 };

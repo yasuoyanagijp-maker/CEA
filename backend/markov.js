@@ -5,13 +5,18 @@ import {
   normalizeTransitionProbs,
   isOnTreatment,
 } from "./utils.js";
-import { SUBTYPES, getClinicalTables, getBscTransitionProbs, getInjectionRate } from "./clinical.js";
+import {
+  SUBTYPES,
+  getClinicalTables,
+  getBscTransitionProbs,
+  getInjectionRate,
+  getInjectionReferenceIntervalWeeks,
+} from "./clinical.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
 import { getInjections2026MetaForDrug } from "./config/injections-2026-meta.js";
-import { injectionScaleForIntervalWeeks } from "./config/treatment-intervals.js";
 
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
@@ -179,8 +184,9 @@ export function runMarkov(input) {
   if (drugPrice == null) {
     warnings.push(`コスト論文に ${drug.name} の薬価がありません`);
   }
+  const refIntervalWeeks = getInjectionReferenceIntervalWeeks(clinicalCase, drugId);
   const intervalScale =
-    intervalWeeks != null ? injectionScaleForIntervalWeeks(intervalWeeks) : 1;
+    intervalWeeks != null && intervalWeeks > 0 ? refIntervalWeeks / intervalWeeks : 1;
   const societalPaper =
     paper.societal ?? getCostPaper("paper2_rbz").societal;
   if (!paper.societal && costPaperId === "paper1_faricimab") {
