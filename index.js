@@ -8,6 +8,7 @@ export {
   runAnalysis,
   runMarkov,
   listMissingParams,
+  runSwitchCostMinimization,
   DRUG_CATALOG,
   DRUG_IDS,
   SUBTYPES,
@@ -16,4 +17,5 @@ export {
   DEFAULT_MODEL_PARAMS,
   DEFAULT_TREATMENT_DURATION_YEARS,
   TREATMENT_DURATION_OPTIONS,
+  TREATMENT_INTERVAL_OPTIONS,
 } from "./backend/engine.js";

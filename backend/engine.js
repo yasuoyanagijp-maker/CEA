@@ -216,3 +216,10 @@ export {
   DEFAULT_UTILITIES,
   DEFAULT_UTILITY_NONE,
 };
+export {
+  runSwitchCostMinimization,
+  TREATMENT_INTERVAL_OPTIONS,
+  REFERENCE_INTERVAL_WEEKS,
+  formatIntervalLabel,
+  cmaQalyTolerance,
+} from "./switch-analysis.js";

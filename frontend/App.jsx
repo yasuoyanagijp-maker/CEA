@@ -14,6 +14,7 @@ import {
 import {
   runAnalysis,
   runMortalitySensitivity,
+  runSwitchCostMinimization,
   DRUG_CATALOG,
   DRUG_IDS,
   SUBTYPES,
@@ -23,6 +24,9 @@ import {
   DEFAULT_UTILITIES,
   DEFAULT_UTILITY_NONE,
   TREATMENT_DURATION_OPTIONS,
+  TREATMENT_INTERVAL_OPTIONS,
+  REFERENCE_INTERVAL_WEEKS,
+  formatIntervalLabel,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
 } from "../backend/engine.js";
@@ -71,6 +75,9 @@ export default function App() {
     String(DEFAULT_MODEL_PARAMS.secondEyeMonthlyIncidence ?? "")
   );
   const [includeScenarioAe, setIncludeScenarioAe] = useState(false);
+  const [switchCurrentDrugId, setSwitchCurrentDrugId] = useState("aflibercept_bs");
+  const [switchTargetDrugId, setSwitchTargetDrugId] = useState("aflibercept");
+  const [switchCurrentIntervalWeeks, setSwitchCurrentIntervalWeeks] = useState(8);
 
   const modelParams = useMemo(() => {
     const utilities = utilityInputs.map((v) => parseFloat(v));
@@ -192,6 +199,33 @@ export default function App() {
       };
     });
   }, [costPaperId, clinicalCase, horizon, treatmentDurationYears, modelParams]);
+
+  const switchAnalysis = useMemo(
+    () =>
+      runSwitchCostMinimization({
+        currentDrugId: switchCurrentDrugId,
+        targetDrugId: switchTargetDrugId,
+        currentIntervalWeeks: switchCurrentIntervalWeeks,
+        subtypeId,
+        costPaperId,
+        clinicalCase,
+        horizon,
+        treatmentDurationYears,
+        modelParams,
+        wtpPerQaly: DEFAULT_HORIZON.wtpPerQaly,
+      }),
+    [
+      switchCurrentDrugId,
+      switchTargetDrugId,
+      switchCurrentIntervalWeeks,
+      subtypeId,
+      costPaperId,
+      clinicalCase,
+      horizon,
+      treatmentDurationYears,
+      modelParams,
+    ]
+  );
 
   const { results, icerRows, missingParams } = analysis;
   const subtype = SUBTYPES[subtypeId];
@@ -573,6 +607,7 @@ export default function App() {
             {[
               ["summary", "サマリー"],
               ["costs", "コスト内訳"],
+              ["switch", "スイッチ・CMA"],
               ["qaly", "QALY推移"],
               ...(showIssuesTab
                 ? [["missing", `要確認 (${missingParams.length + (hasIncompleteResults ? 1 : 0)})`]]
@@ -730,6 +765,252 @@ export default function App() {
                   <Bar dataKey="societal" name="社会的費用" stackId="a" fill="#94A3B8" />
                 </BarChart>
               </ResponsiveContainer>
+            </Panel>
+          )}
+
+          {activeTab === "switch" && (
+            <Panel title="薬剤スイッチ — QALY 中立コスト最小化（CMA）">
+              <p style={{ fontSize: 12, color: "#64748B", lineHeight: 1.6, marginTop: 0 }}>
+                現行レジメン（薬剤＋治療間隔）を基準に、スイッチ先薬剤で
+                <strong> 総コストが同等以下</strong>になる間隔を Markov モデルで探索します。
+                5状態遷移は同一臨床キーを流用するため QALY はほぼ不変 — CMA（ΔQALY=0）の立場から
+                コスト削減可能な間隔と、WTP 換算の許容 QALY 差の目安を示します。
+                注射回数は Q{REFERENCE_INTERVAL_WEEKS} 基準の Table S6 / 2026 meta から
+                間隔に比例スケール（{formatIntervalLabel(REFERENCE_INTERVAL_WEEKS)} = 倍率 1.0）。
+              </p>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: 12,
+                  marginBottom: 20,
+                  padding: 14,
+                  background: "#F8FAFC",
+                  borderRadius: 8,
+                }}
+              >
+                <label style={labelStyle}>
+                  現行薬剤
+                  <select
+                    value={switchCurrentDrugId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSwitchCurrentDrugId(id);
+                      if (id === switchTargetDrugId) {
+                        const alt = DRUG_IDS.find((d) => d !== id);
+                        if (alt) setSwitchTargetDrugId(alt);
+                      }
+                    }}
+                    style={selectStyle}
+                  >
+                    {DRUG_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {DRUG_CATALOG[id].name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={labelStyle}>
+                  現行治療間隔
+                  <select
+                    value={switchCurrentIntervalWeeks}
+                    onChange={(e) => setSwitchCurrentIntervalWeeks(Number(e.target.value))}
+                    style={selectStyle}
+                  >
+                    {TREATMENT_INTERVAL_OPTIONS.map((o) => (
+                      <option key={o.weeks} value={o.weeks}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={labelStyle}>
+                  スイッチ先薬剤
+                  <select
+                    value={switchTargetDrugId}
+                    onChange={(e) => setSwitchTargetDrugId(e.target.value)}
+                    style={selectStyle}
+                  >
+                    {DRUG_IDS.filter((id) => id !== switchCurrentDrugId).map((id) => (
+                      <option key={id} value={id}>
+                        {DRUG_CATALOG[id].name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  background: switchAnalysis.feasibleCount > 0 ? "#ECFDF5" : "#FEF3C7",
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}
+              >
+                {switchAnalysis.recommendation}
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 10,
+                  marginBottom: 20,
+                }}
+              >
+                <MetricCard
+                  label="現行 総コスト"
+                  value={
+                    switchAnalysis.current.totalCost != null
+                      ? `¥${fmtJpy(switchAnalysis.current.totalCost)}`
+                      : "—"
+                  }
+                  sub={`${switchAnalysis.current.drug?.name} • ${switchAnalysis.current.intervalLabel}`}
+                />
+                <MetricCard
+                  label="現行 薬剤+投与（年間）"
+                  value={
+                    switchAnalysis.current.annualDrugAdmin != null
+                      ? `¥${fmtJpy(switchAnalysis.current.annualDrugAdmin)}`
+                      : "—"
+                  }
+                  sub={
+                    switchAnalysis.current.annualInjections != null
+                      ? `${switchAnalysis.current.annualInjections.toFixed(1)} 回/年`
+                      : ""
+                  }
+                />
+                <MetricCard
+                  label="同一間隔での Δコスト"
+                  value={
+                    switchAnalysis.targetAtSameInterval?.deltaCost != null
+                      ? `${switchAnalysis.targetAtSameInterval.deltaCost <= 0 ? "" : "+"}¥${fmtJpy(switchAnalysis.targetAtSameInterval.deltaCost)}`
+                      : "—"
+                  }
+                  sub={DRUG_CATALOG[switchTargetDrugId]?.name}
+                />
+                <MetricCard
+                  label="Markov コスト同等間隔"
+                  value={
+                    switchAnalysis.markovBreakEven
+                      ? switchAnalysis.markovBreakEven.label
+                      : "—（延長必要）"
+                  }
+                  sub={
+                    switchAnalysis.analyticBreakEven?.weeks
+                      ? `薬剤費のみ: ${formatIntervalLabel(Math.ceil(switchAnalysis.analyticBreakEven.weeks))} 以上`
+                      : ""
+                  }
+                />
+              </div>
+
+              {switchAnalysis.bestFeasible && (
+                <div style={{ marginBottom: 16, fontSize: 13 }}>
+                  <strong>最もコスト削減できる間隔:</strong>{" "}
+                  {switchAnalysis.bestFeasible.label}（Δ ¥
+                  {fmtJpy(Math.abs(switchAnalysis.bestFeasible.deltaCost ?? 0))}）
+                  {switchAnalysis.bestFeasible.qalyTolerance?.kind === "max_acceptable_loss" && (
+                    <>
+                      {" "}
+                      — 許容 QALY 低下 ≤{" "}
+                      {switchAnalysis.bestFeasible.qalyTolerance.qaly.toFixed(3)}（WTP ¥
+                      {(DEFAULT_HORIZON.wtpPerQaly / 1e6).toFixed(1)}M/QALY）
+                    </>
+                  )}
+                </div>
+              )}
+
+              <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>
+                スイッチ先 — 全間隔オプション（現行比）
+              </h3>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={{ background: "#0F172A", color: "#fff" }}>
+                    <th style={thStyle}>間隔</th>
+                    <th style={thStyle}>年間注射</th>
+                    <th style={thStyle}>薬剤+投与/年</th>
+                    <th style={thStyle}>総コスト</th>
+                    <th style={thStyle}>Δコスト</th>
+                    <th style={thStyle}>ΔQALY</th>
+                    <th style={thStyle}>CMA 目安</th>
+                    <th style={thStyle}>判定</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {switchAnalysis.intervalRows.map((row, i) => (
+                    <tr
+                      key={row.weeks}
+                      style={{
+                        background: row.costNeutralOrBetter
+                          ? "#ECFDF5"
+                          : row.weeks === switchCurrentIntervalWeeks
+                            ? "#EFF6FF"
+                            : i % 2
+                              ? "#fff"
+                              : "#F8FAFC",
+                      }}
+                    >
+                      <td style={tdStyle}>
+                        {row.label}
+                        {row.weeks === switchCurrentIntervalWeeks && (
+                          <span style={{ fontSize: 10, color: "#64748B" }}>（現行）</span>
+                        )}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {row.annualInjections?.toFixed(1) ?? "—"}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {row.annualDrugAdmin != null ? `¥${fmtJpy(row.annualDrugAdmin)}` : "—"}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {row.totalCost != null ? `¥${fmtJpy(row.totalCost)}` : "—"}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          textAlign: "right",
+                          fontWeight: row.costNeutralOrBetter ? 600 : 400,
+                          color: row.deltaCost != null && row.deltaCost <= 0 ? "#059669" : "#B45309",
+                        }}
+                      >
+                        {row.deltaCost != null
+                          ? `${row.deltaCost > 0 ? "+" : ""}¥${fmtJpy(row.deltaCost)}`
+                          : "—"}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {row.deltaQaly != null
+                          ? `${row.deltaQaly > 0 ? "+" : ""}${row.deltaQaly.toFixed(4)}`
+                          : "—"}
+                      </td>
+                      <td style={{ ...tdStyle, fontSize: 11 }}>
+                        {row.qalyTolerance?.kind === "max_acceptable_loss" &&
+                          `許容 QALY ↓${row.qalyTolerance.qaly.toFixed(3)}`}
+                        {row.qalyTolerance?.kind === "min_required_gain" &&
+                          `必要 QALY +${row.qalyTolerance.qaly.toFixed(3)}`}
+                        {row.qalyTolerance?.kind === "neutral" && "—"}
+                      </td>
+                      <td style={tdStyle}>
+                        {row.costNeutralOrBetter ? (
+                          <span style={{ color: "#059669", fontWeight: 600 }}>CMA 推奨</span>
+                        ) : (
+                          <span style={{ color: "#94A3B8" }}>コスト増</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <p style={{ fontSize: 11, color: "#64748B", marginTop: 12, lineHeight: 1.5 }}>
+                CMA 目安: 総コスト差 ÷ WTP（¥{(DEFAULT_HORIZON.wtpPerQaly / 1e6).toFixed(1)}
+                M/QALY）。スイッチで安い場合は「許容 QALY 低下」、高い場合は「必要 QALY 増加」。
+                左サイドバーのサブタイプ・治療期間・割引率を反映。間隔延長は注射回数のみ変化し
+                視力遷移は不変（QALY 中立仮定）— 実臨床では間隔延長に伴う効果低下リスクを別途評価してください。
+              </p>
             </Panel>
           )}
 
@@ -972,6 +1253,25 @@ function TabButton({ active, onClick, label }) {
     >
       {label}
     </button>
+  );
+}
+
+function MetricCard({ label, value, sub }) {
+  return (
+    <div
+      style={{
+        padding: 12,
+        background: "#fff",
+        border: "1px solid #E2E8F0",
+        borderRadius: 8,
+      }}
+    >
+      <div style={{ fontSize: 10, color: "#64748B", fontWeight: 600, marginBottom: 4 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A" }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>{sub}</div>}
+    </div>
   );
 }
 

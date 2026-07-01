@@ -11,6 +11,7 @@ import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
 import { getInjections2026MetaForDrug } from "./config/injections-2026-meta.js";
+import { injectionScaleForIntervalWeeks } from "./config/treatment-intervals.js";
 
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
@@ -113,6 +114,7 @@ function societalCosts(cohort, pBoth, cycleLen, df, paper) {
  * @param {{timeHorizonYears,cycleLengthYears,discountRate}} input.horizon
  * @param {number|null} [input.treatmentDurationYears] — null=生涯治療、2/5=その年数後にBSC
  * @param {object|null} input.modelParams — utilities, mortality, etc.
+ * @param {number|null} [input.intervalWeeks] — 治療間隔（週）。Q8 基準の注射回数を比例スケール
  */
 export function runMarkov(input) {
   const {
@@ -123,6 +125,7 @@ export function runMarkov(input) {
     horizon,
     treatmentDurationYears = null,
     modelParams = {},
+    intervalWeeks = null,
   } = input;
 
   const drug = getDrug(drugId);
@@ -176,6 +179,8 @@ export function runMarkov(input) {
   if (drugPrice == null) {
     warnings.push(`コスト論文に ${drug.name} の薬価がありません`);
   }
+  const intervalScale =
+    intervalWeeks != null ? injectionScaleForIntervalWeeks(intervalWeeks) : 1;
   const societalPaper =
     paper.societal ?? getCostPaper("paper2_rbz").societal;
   if (!paper.societal && costPaperId === "paper1_faricimab") {
@@ -222,7 +227,7 @@ export function runMarkov(input) {
           drugId,
           clinicalKey,
           phase
-        )
+        ) * intervalScale
       : 0;
     const injThisCycle = annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);
