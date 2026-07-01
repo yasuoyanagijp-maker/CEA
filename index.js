@@ -9,6 +9,7 @@ export {
   runMarkov,
   runPatientSimulation,
   runPatientDrugComparison,
+  buildPatientAnnualDrugComparison,
   listMissingParams,
   DRUG_CATALOG,
   DRUG_IDS,

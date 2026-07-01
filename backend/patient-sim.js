@@ -525,6 +525,67 @@ export function runPatientSimulation(input) {
 }
 
 /**
+ * 薬剤別・年度別比較テーブル用データ
+ * @returns {{ years: number[], drugs: object[], flatRows: object[], byYear: object[] }}
+ */
+export function buildPatientAnnualDrugComparison(
+  results,
+  drugIds,
+  drugCatalog = DRUG_CATALOG
+) {
+  const activeIds = drugIds.filter((id) => results[id]?.annualTrajectory?.length);
+  if (!activeIds.length) {
+    return { years: [], drugs: [], flatRows: [], byYear: [] };
+  }
+
+  const years = [
+    ...new Set(
+      activeIds.flatMap((id) => results[id].annualTrajectory.map((r) => r.year))
+    ),
+  ].sort((a, b) => a - b);
+
+  const drugs = activeIds.map((id) => ({
+    drugId: id,
+    name: drugCatalog[id]?.name ?? id,
+    color: drugCatalog[id]?.color,
+    clinicalKey: drugCatalog[id]?.clinicalKey,
+  }));
+
+  const flatRows = [];
+  const byYear = [];
+
+  for (const year of years) {
+    const yearEntry = { year, age: null, drugs: {} };
+    for (const drugId of activeIds) {
+      const row = results[drugId].annualTrajectory.find((r) => r.year === year);
+      if (!row) continue;
+      if (yearEntry.age == null) yearEntry.age = row.age;
+      const metrics = {
+        injections: row.injections ?? 0,
+        directMedical: row.directMedical ?? 0,
+        patientOop: row.patientOop ?? 0,
+        cumInjections: row.cumInjections ?? 0,
+        cumDirectMedical: row.cumDirectMedical ?? 0,
+        cumPatientOop: row.cumPatientOop ?? 0,
+      };
+      yearEntry.drugs[drugId] = metrics;
+      flatRows.push({
+        year,
+        age: row.age,
+        drugId,
+        name: drugCatalog[drugId]?.name ?? drugId,
+        color: drugCatalog[drugId]?.color,
+        clinicalKey: drugCatalog[drugId]?.clinicalKey,
+        ...metrics,
+      });
+    }
+    byYear.push(yearEntry);
+  }
+
+  return { years, drugs, flatRows, byYear };
+}
+
+/**
  * 同一患者プロファイルで全薬剤（または選択薬剤）を比較
  * — clinicalKey ごとに臨床経路（視力・死亡・QALY）を生成。同一 key 内はコストのみ差し替え
  */
@@ -652,6 +713,7 @@ export function runPatientDrugComparison(input) {
   return {
     results,
     summary,
+    annualComparison: buildPatientAnnualDrugComparison(results, drugIds),
     patientProfile: {
       entryAge: input.entryAge,
       sex: input.sex,

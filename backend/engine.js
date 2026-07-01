@@ -211,6 +211,7 @@ export {
 export {
   runPatientSimulation,
   runPatientDrugComparison,
+  buildPatientAnnualDrugComparison,
   createRng,
 } from "./patient-sim.js";
 export {

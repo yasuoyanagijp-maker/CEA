@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import {
   LineChart,
   Line,
@@ -980,6 +980,122 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
+
+                  {patientAnalysis.annualComparison?.flatRows?.length > 0 && (
+                    <div style={{ marginTop: 24 }}>
+                      <h3 style={{ fontSize: 15, margin: "0 0 8px", color: "#0F172A" }}>
+                        薬剤別 年度比較
+                      </h3>
+                      <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                        同一患者（seed {patientAnalysis.patientProfile.seed}）で、薬剤ごとの
+                        年齢・注射・直接医療費・患者負担を経過年ごとに並べて比較します。
+                      </p>
+
+                      <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                        <table style={{ ...tableStyle, fontSize: 11, minWidth: 720 }}>
+                          <thead>
+                            <tr style={{ background: "#334155", color: "#fff" }}>
+                              <th style={thStyle}>経過年</th>
+                              <th style={thStyle}>年齢</th>
+                              {patientAnalysis.annualComparison.drugs.map((d) => (
+                                <th
+                                  key={d.drugId}
+                                  colSpan={3}
+                                  style={{ ...thStyle, textAlign: "center", color: d.color }}
+                                >
+                                  {d.name}
+                                </th>
+                              ))}
+                            </tr>
+                            <tr style={{ background: "#475569", color: "#fff" }}>
+                              <th style={thStyle} />
+                              <th style={thStyle} />
+                              {patientAnalysis.annualComparison.drugs.map((d) => (
+                                <Fragment key={d.drugId}>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>注射</th>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>直接医療</th>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>患者負担</th>
+                                </Fragment>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {patientAnalysis.annualComparison.byYear.map((yearRow, i) => (
+                              <tr key={yearRow.year} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                                <td style={tdStyle}>{yearRow.year}</td>
+                                <td style={tdStyle}>{yearRow.age}</td>
+                                {patientAnalysis.annualComparison.drugs.map((d) => {
+                                  const m = yearRow.drugs[d.drugId];
+                                  return (
+                                    <Fragment key={d.drugId}>
+                                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                                        {m ? `${m.injections}回` : "—"}
+                                      </td>
+                                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                                        {m ? `¥${fmtJpy(m.directMedical)}` : "—"}
+                                      </td>
+                                      <td
+                                        style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}
+                                      >
+                                        {m ? `¥${fmtJpy(m.patientOop)}` : "—"}
+                                      </td>
+                                    </Fragment>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <table style={{ ...tableStyle, fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: "#0F172A", color: "#fff" }}>
+                            <th style={thStyle}>経過年</th>
+                            <th style={thStyle}>薬剤</th>
+                            <th style={thStyle}>年齢</th>
+                            <th style={thStyle}>注射</th>
+                            <th style={thStyle}>直接医療費</th>
+                            <th style={thStyle}>患者負担</th>
+                            <th style={thStyle}>累積注射</th>
+                            <th style={thStyle}>累積患者負担</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {patientAnalysis.annualComparison.flatRows.map((row, i) => (
+                            <tr
+                              key={`${row.year}-${row.drugId}`}
+                              style={{
+                                background:
+                                  i % 2 === 0
+                                    ? "#fff"
+                                    : row.drugId === patientAnalysis.annualComparison.drugs[0]?.drugId
+                                      ? "#F1F5F9"
+                                      : "#F8FAFC",
+                              }}
+                            >
+                              <td style={tdStyle}>{row.year}</td>
+                              <td style={tdStyle}>
+                                <span style={{ fontWeight: 600, color: row.color }}>{row.name}</span>
+                              </td>
+                              <td style={tdStyle}>{row.age}</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>{row.injections}回</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.directMedical)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                                ¥{fmtJpy(row.patientOop)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>{row.cumInjections}回</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.cumPatientOop)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 
                   <div style={{ marginTop: 20 }}>
                     <label style={{ ...labelStyle, display: "inline-flex", alignItems: "center", gap: 8 }}>
