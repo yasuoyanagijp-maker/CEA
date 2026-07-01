@@ -252,6 +252,7 @@ export function runMarkov(input) {
   let totalQALY = 0;
   let totalLifeYears = 0;
   let totalCost = 0;
+  let totalInjections = 0;
   const trajectory = [];
   const costBreakdown = {
     drugAdmin: 0,
@@ -356,6 +357,9 @@ export function runMarkov(input) {
     });
 
     totalCost += addHalfCycleCosts(costBreakdown, costStart, costEnd);
+    if (onTreatment && injThisCycle > 0) {
+      totalInjections += ((aliveStart + aliveEnd) / 2) * injThisCycle;
+    }
     totalLifeYears += ((aliveStart + aliveEnd) / 2) * cycleLen;
 
     if (qaly) {
@@ -389,6 +393,7 @@ export function runMarkov(input) {
     drugId,
     totalQALY: qaly ? totalQALY : null,
     totalLifeYears: mort ? totalLifeYears : null,
+    totalInjections,
     totalCost,
     trajectory,
     costBreakdown,

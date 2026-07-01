@@ -12,6 +12,10 @@ import {
   DEFAULT_UTILITIES,
   DEFAULT_UTILITY_NONE,
 } from "./config/default-model-params.js";
+import {
+  buildS12ModelParams,
+  PAPER_S12_ENTRY_AGE,
+} from "./config/paper-reference.js";
 
 /**
  * フロントエンド → バックエンド入力スキーマ
@@ -220,6 +224,11 @@ export {
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";
+export {
+  buildS12ModelParams,
+  PAPER_S12_ENTRY_AGE,
+  PAPER_INCREMENTAL_RBZ_VS_AFL,
+} from "./config/paper-reference.js";
 export {
   MORTALITY_DEFAULTS,
   annualMortalityForAge,

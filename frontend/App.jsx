@@ -31,7 +31,7 @@ import {
   INJECTIONS_2026_META_SOURCE,
 } from "../backend/engine.js";
 import { TREATMENT_DURATION_MODES } from "../backend/constants.js";
-import { PAPER_INCREMENTAL_RBZ_VS_AFL } from "../backend/config/paper-reference.js";
+import { PAPER_INCREMENTAL_RBZ_VS_AFL, buildS12ModelParams, PAPER_S12_ENTRY_AGE } from "../backend/config/paper-reference.js";
 import {
   MORTALITY_DEFAULTS,
   entryMortalityForSubtype,
@@ -865,7 +865,7 @@ export default function App() {
                     </tbody>
                   </table>
                   <p style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
-                    シナリオ・20年・半周期補正では Table S12 と概ね一致。ベースケースは死亡率設定等で差が出る場合があります。
+                    typical・参入74歳・シナリオでは Cost が S12 に近接（±1%）。QALY は生命表差でやや高め。
                   </p>
                 </div>
               )}
@@ -897,7 +897,8 @@ export default function App() {
                         <th style={thStyle}>モニタリング</th>
                         <th style={thStyle}>生涯注射</th>
                         <th style={thStyle}>生存年数</th>
-                        <th style={thStyle}>QALY（参考）</th>
+                        <th style={thStyle}>QALY</th>
+                        <th style={thStyle}>死亡</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -930,6 +931,13 @@ export default function App() {
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontSize: 11 }}>
+                            {row.deathMonth != null
+                              ? `${Math.floor(row.deathMonth / 12)}年${(row.deathMonth % 12) + 1}月`
+                              : row.alive === false
+                                ? "—"
+                                : "生存"}
                           </td>
                         </tr>
                       ))}
@@ -1135,8 +1143,8 @@ export default function App() {
           {activeTab === "validate" && costPaperId === "paper2_rbz" && (
             <Panel title={`Table S12 照合（${subtype.label}・シナリオ）`}>
               <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
-                臨床=シナリオ（S7–S8）で再計算した値と論文記載値の比較。
-                遷移確率は合計100%に正規化（PCVシナリオの丸め誤差対策）。
+                臨床=シナリオ（S7–S8）。参入年齢={PAPER_S12_ENTRY_AGE[subtypeId] ?? subtype.meanAge}歳（S12 論文設定）、
+                20年・半周期補正・令和5年生命表。
               </p>
               <table style={tableStyle}>
                 <thead>
@@ -1145,6 +1153,7 @@ export default function App() {
                     <th style={thStyle}>指標</th>
                     <th style={thStyle}>論文 S12</th>
                     <th style={thStyle}>本ツール</th>
+                    <th style={thStyle}>差</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1157,27 +1166,63 @@ export default function App() {
                       costPaperId: "paper2_rbz",
                       clinicalCase: "scenario",
                       horizon,
-                      modelParams,
+                      modelParams: buildS12ModelParams(subtypeId, modelParams),
                     }).results[id];
-                    return ["QALY", "Cost"].map((metric, idx) => (
+                    return ["QALY", "Cost", "注射"].map((metric, idx) => {
+                      const toolVal =
+                        metric === "QALY"
+                          ? scen?.totalQALY
+                          : metric === "Cost"
+                            ? scen?.totalCost
+                            : scen?.totalInjections;
+                      const paperVal =
+                        metric === "QALY"
+                          ? refv.qaly
+                          : metric === "Cost"
+                            ? refv.cost
+                            : null;
+                      let delta = "—";
+                      if (toolVal != null && paperVal != null) {
+                        const d = toolVal - paperVal;
+                        delta =
+                          metric === "QALY"
+                            ? d.toFixed(3)
+                            : metric === "Cost"
+                              ? `¥${fmtJpy(d)}`
+                              : d.toFixed(1);
+                      }
+                      return (
                       <tr key={`${id}-${metric}`} style={{ background: idx % 2 ? "#fff" : "#F8FAFC" }}>
                         <td style={tdStyle}>{DRUG_CATALOG[id].name}</td>
                         <td style={tdStyle}>{metric}</td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
-                          {metric === "QALY" ? refv.qaly.toFixed(3) : `¥${fmtJpy(refv.cost)}`}
+                          {metric === "QALY"
+                            ? refv.qaly.toFixed(3)
+                            : metric === "Cost"
+                              ? `¥${fmtJpy(refv.cost)}`
+                              : "—"}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           {metric === "QALY"
                             ? scen?.totalQALY?.toFixed(3) ?? "—"
-                            : scen?.totalCost != null
-                              ? `¥${fmtJpy(scen.totalCost)}`
-                              : "—"}
+                            : metric === "Cost"
+                              ? scen?.totalCost != null
+                                ? `¥${fmtJpy(scen.totalCost)}`
+                                : "—"
+                              : scen?.totalInjections != null
+                                ? scen.totalInjections.toFixed(1)
+                                : "—"}
                         </td>
+                        <td style={{ ...tdStyle, textAlign: "right", color: "#64748B" }}>{delta}</td>
                       </tr>
-                    ));
+                      );
+                    });
                   })}
                 </tbody>
               </table>
+              <p style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+                typical の Cost は参入74歳で論文に近接。PCV/RAP は社会的費用（視力経路・余命）の差が大きい。
+              </p>
 
               {mortalitySensitivity?.rows?.length > 0 && (
                 <>
