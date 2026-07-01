@@ -12,6 +12,8 @@ export {
   listMissingParams,
   DRUG_CATALOG,
   DRUG_IDS,
+  PATIENT_CORE_DRUG_IDS,
+  patientDrugIds,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,

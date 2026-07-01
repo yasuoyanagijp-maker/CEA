@@ -17,6 +17,15 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept",
   },
+  aflibercept_bs: {
+    id: "aflibercept_bs",
+    name: "アフリベルセプト BS",
+    brand: "（バイオシミラー）",
+    color: "#0277BD",
+    monitoringRegimen: "tae",
+    clinicalKey: "aflibercept",
+    clinicalNote: "遷移・注射回数は aflibercept 列と同等",
+  },
   aflibercept_8mg: {
     id: "aflibercept_8mg",
     name: "アフリベルセプト 8 mg",
@@ -52,18 +61,17 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "rbz_bs",
   },
-  aflibercept_bs: {
-    id: "aflibercept_bs",
-    name: "アフリベルセプト BS",
-    brand: "（バイオシミラー）",
-    color: "#0277BD",
-    monitoringRegimen: "tae",
-    clinicalKey: "aflibercept",
-    clinicalNote: "遷移・注射回数は aflibercept 列と同等",
-  },
 };
 
 export const DRUG_IDS = Object.keys(DRUG_CATALOG);
+
+/** 個別患者タブで常に表示する BS 比較軸 */
+export const PATIENT_CORE_DRUG_IDS = ["ranibizumab_bs", "aflibercept", "aflibercept_bs"];
+
+/** 個別患者比較 — コア BS 3 剤 + サイドバーで選択した薬剤 */
+export function patientDrugIds(selectedDrugIds = DRUG_IDS) {
+  return [...new Set([...PATIENT_CORE_DRUG_IDS, ...selectedDrugIds])];
+}
 
 export function getDrug(drugId) {
   return DRUG_CATALOG[drugId];

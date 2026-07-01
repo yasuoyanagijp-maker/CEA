@@ -3,7 +3,12 @@ import {
   DEFAULT_TREATMENT_DURATION_YEARS,
   TREATMENT_DURATION_OPTIONS,
 } from "./constants.js";
-import { DRUG_CATALOG, DRUG_IDS } from "./drugs.js";
+import {
+  DRUG_CATALOG,
+  DRUG_IDS,
+  PATIENT_CORE_DRUG_IDS,
+  patientDrugIds,
+} from "./drugs.js";
 import { SUBTYPES } from "./clinical.js";
 import { COST_PAPER_LIST } from "./papers/index.js";
 import { runMarkov } from "./markov.js";
@@ -242,6 +247,8 @@ export {
 export {
   DRUG_CATALOG,
   DRUG_IDS,
+  PATIENT_CORE_DRUG_IDS,
+  patientDrugIds,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,

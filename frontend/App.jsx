@@ -19,6 +19,7 @@ import {
   getInjectionPhaseReference,
   DRUG_CATALOG,
   DRUG_IDS,
+  patientDrugIds,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,
@@ -54,6 +55,7 @@ export default function App() {
   const [selectedDrugIds, setSelectedDrugIds] = useState([
     "ranibizumab_bs",
     "aflibercept",
+    "aflibercept_bs",
     "faricimab",
   ]);
   const [referenceDrugId, setReferenceDrugId] = useState("aflibercept");
@@ -215,6 +217,11 @@ export default function App() {
   const subtype = SUBTYPES[subtypeId];
   const costPaper = COST_PAPER_LIST.find((p) => p.id === costPaperId);
 
+  const patientCompareDrugIds = useMemo(
+    () => patientDrugIds(selectedDrugIds),
+    [selectedDrugIds]
+  );
+
   const patientAnalysis = useMemo(() => {
     const age = parseInt(patientAge, 10);
     const seed = parseInt(patientSeed, 10);
@@ -232,7 +239,7 @@ export default function App() {
       incomeBracket,
       seed: Number.isNaN(seed) ? 42 : seed,
       modelParams,
-      selectedDrugIds: DRUG_IDS,
+      selectedDrugIds: patientCompareDrugIds,
       includeTrajectory: true,
     });
   }, [
@@ -248,6 +255,7 @@ export default function App() {
     incomeBracket,
     patientSeed,
     modelParams,
+    patientCompareDrugIds,
   ]);
 
   const patientDetailDrug =
@@ -665,8 +673,9 @@ export default function App() {
             </label>
             <p style={hintStyle}>
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
-              clinicalKey ごとに遷移表(S5)が異なりますが、乱数列（seed）は全 key で共有。
-              同一 key 内（AFL/ファリ/ブロル等）は経路・QALY 完全一致、コストのみ差。
+              ラニビズマブ BS・アフリベルセプト 2 mg・アフリベルセプト BS を常に表示（BS は
+              aflibercept 遷移・注射回数、薬価のみ BS）。乱数列（seed）は clinicalKey 間で共有。
+              同一 key 内（AFL 2 mg / AFL BS / ファリ等）は経路・QALY 一致、コストのみ差。
               {patientRemainingLife != null && (
                 <>
                   {" "}
@@ -910,6 +919,11 @@ export default function App() {
                             <span style={{ fontWeight: 600, color: DRUG_CATALOG[row.drugId].color }}>
                               {row.name}
                             </span>
+                            {DRUG_CATALOG[row.drugId].clinicalNote && (
+                              <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>
+                                {DRUG_CATALOG[row.drugId].clinicalNote}
+                              </div>
+                            )}
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             ¥{fmtJpy(row.totalDirectMedical)}
@@ -954,7 +968,7 @@ export default function App() {
                         onChange={(e) => setPatientDetailDrugId(e.target.value)}
                         style={{ ...selectStyle, width: 220 }}
                       >
-                        {DRUG_IDS.map((id) => (
+                        {patientCompareDrugIds.map((id) => (
                           <option key={id} value={id}>
                             {DRUG_CATALOG[id].name}
                           </option>
