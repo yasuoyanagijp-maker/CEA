@@ -1,4 +1,5 @@
 import { N_STATES, BLINDNESS_SOCIETAL_COST_WEIGHT } from "./constants.js";
+import { STATE_BCVA_CENTROIDS } from "./config/baseline-characteristics.js";
 import {
   phaseForCycle,
   cyclesPerYear,
@@ -15,6 +16,11 @@ import {
   expectedBetterEyeUtility,
   qalyForCycle,
 } from "./qaly.js";
+
+function expectedBcvaFromCohort(cohortEnd, aliveMass) {
+  if (aliveMass <= 1e-9) return 0;
+  return cohortEnd.reduce((s, m, i) => s + m * STATE_BCVA_CENTROIDS[i], 0) / aliveMass;
+}
 
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
@@ -402,6 +408,7 @@ export function runMarkov(input) {
         blind: ((cohortEnd[4] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
         bothEyes: (pSecond * 100).toFixed(1),
         alive: (aliveMass * 100).toFixed(1),
+        meanBcva: expectedBcvaFromCohort(cohortEnd, aliveMass).toFixed(3),
         cumQALY: qaly ? totalQALY.toFixed(3) : null,
         cumCost: Math.round(totalCost),
       });

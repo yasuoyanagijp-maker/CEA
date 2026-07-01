@@ -367,27 +367,27 @@ export default function App() {
     })
   );
 
-  const trajectoryDrugs = selectedDrugIds.filter((id) =>
-    results[id]?.trajectory?.some((t) => t.cumQALY != null)
+  const visionTrajectoryDrugs = selectedDrugIds.filter(
+    (id) => results[id]?.trajectory?.some((t) => t.meanBcva != null)
   );
 
-  const hasQalyTrajectory = trajectoryDrugs.length > 0;
+  const hasVisionTrajectory = visionTrajectoryDrugs.length > 0;
 
-  const trajectoryLength = Math.max(
+  const visionTrajectoryLength = Math.max(
     0,
-    ...trajectoryDrugs.map((id) => results[id].trajectory.length)
+    ...visionTrajectoryDrugs.map((id) => results[id].trajectory.length)
   );
 
-  const trajectoryData = Array.from({ length: trajectoryLength }, (_, i) => {
+  const visionTrajectoryData = Array.from({ length: visionTrajectoryLength }, (_, i) => {
     const row = {
       year:
-        trajectoryDrugs
+        visionTrajectoryDrugs
           .map((id) => results[id]?.trajectory?.[i]?.year)
           .find((y) => y != null) ?? i,
     };
-    trajectoryDrugs.forEach((id) => {
+    visionTrajectoryDrugs.forEach((id) => {
       const t = results[id]?.trajectory?.[i];
-      if (t?.cumQALY != null) row[id] = parseFloat(t.cumQALY);
+      if (t?.meanBcva != null) row[id] = parseFloat(t.meanBcva);
     });
     return row;
   });
@@ -815,7 +815,7 @@ export default function App() {
             {[
               ["summary", "サマリー"],
               ["patient", "個別患者負担"],
-              ["qaly", "QALY推移"],
+              ["vision", "視力推移"],
               ...(showIssuesTab
                 ? [["missing", `要確認 (${missingParams.length + (hasIncompleteResults ? 1 : 0)})`]]
                 : []),
@@ -1450,35 +1450,46 @@ export default function App() {
             </Panel>
           )}
 
-          {activeTab === "qaly" && (
-            <Panel title="累積 QALY（全選択薬剤）">
-              {!hasQalyTrajectory ? (
+          {activeTab === "vision" && (
+            <Panel title="視力推移 — 期待 BCVA（選択薬剤・Markov コホート平均）">
+              {!hasVisionTrajectory ? (
                 <p style={{ color: "#B45309" }}>
-                  効用パラメータが未設定のため QALY 曲線を表示できません。左サイドバー「QALY
-                  パラメータ」を確認してください。
+                  解析結果がありません。薬剤を選択し、左サイドバーの設定を確認してください。
                 </p>
               ) : (
-                <ResponsiveContainer width="100%" height={360}>
-                  <LineChart data={trajectoryData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="year" label={{ value: "年", position: "insideBottom", offset: -4 }} />
-                    <YAxis label={{ value: "累積 QALY", angle: -90, position: "insideLeft" }} />
-                    <Tooltip />
-                    <Legend />
-                    {trajectoryDrugs.map((id) => (
-                      <Line
-                        key={id}
-                        type="monotone"
-                        dataKey={id}
-                        name={DRUG_CATALOG[id].name}
-                        stroke={DRUG_CATALOG[id].color}
-                        strokeWidth={2}
-                        dot={false}
-                        connectNulls
+                <>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                    各薬剤の Markov コホートにおける治療眼の期待 BCVA（5状態中央値の加重平均）。
+                    生存者の状態分布（{STATE_LABELS.join(" / ")}）から算出。
+                  </p>
+                  <ResponsiveContainer width="100%" height={360}>
+                    <LineChart data={visionTrajectoryData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="year"
+                        label={{ value: "経過年", position: "insideBottom", offset: -4 }}
                       />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
+                      <YAxis
+                        domain={[0, "auto"]}
+                        label={{ value: "期待 BCVA", angle: -90, position: "insideLeft" }}
+                      />
+                      <Tooltip formatter={(v) => Number(v).toFixed(3)} />
+                      <Legend />
+                      {visionTrajectoryDrugs.map((id) => (
+                        <Line
+                          key={id}
+                          type="monotone"
+                          dataKey={id}
+                          name={DRUG_CATALOG[id].name}
+                          stroke={DRUG_CATALOG[id].color}
+                          strokeWidth={2}
+                          dot={false}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </>
               )}
             </Panel>
           )}
