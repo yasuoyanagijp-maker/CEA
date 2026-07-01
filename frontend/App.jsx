@@ -266,7 +266,6 @@ export default function App() {
       patientOop: Math.round(row.patientOop / 1000),
       directMedical: Math.round(row.directMedical / 1000),
       cumPatientOop: Math.round(row.cumPatientOop / 1000),
-      cumQALY: row.cumQALY,
     })) ?? [];
 
   const injectionReference = useMemo(() => {
@@ -674,9 +673,9 @@ export default function App() {
               注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ、
               視力遷移は transitionKey（rbz_bs / aflibercept）を使用。
               <br />
-              <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、この1例の視力遷移・死亡・両眼発症に
-              使う乱数列の番号です。同じ seed なら結果を再現でき、変えると別の確率経路（別患者1例）になります。
-              同一 transitionKey の薬剤は視力経路が一致、注射回数・薬価は薬剤ごとに異なります。
+              <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、フォロー期間（最長生存タイムライン）の
+              視力遷移・両眼発症に使う乱数列の番号です。同じ seed なら結果を再現でき、変えると別の経路になります。
+              注射回数・薬価は薬剤ごとに異なります。
               {patientRemainingLife != null && (
                 <>
                   {" "}
@@ -896,8 +895,7 @@ export default function App() {
                     直接医療費に年齢別自己負担・月次高額療養費を適用。
                     余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
                     解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
-                    QALY・実生存・死亡は transitionKey ごとの S5 遷移表から算出。
-                    注射・コストは薬剤×病型別。
+                    注射・コストは薬剤×病型別。フォロー期間は全 transitionKey 中最長生存タイムライン（同一 seed）。
                   </p>
                   <div
                     style={{
@@ -913,14 +911,12 @@ export default function App() {
                   >
                     <strong>乱数シード {patientAnalysis.patientProfile.seed}</strong>
                     {" — "}
-                    この1例の確率経路（視力遷移・死亡・両眼発症）を決める番号です。
-                    同一 transitionKey 内（RBZ/ RBZ BS、AFL 2 mg/ BS）は視力・QALY 一致。
-                    コスト・注射は全薬剤共通の最長生存タイムライン（{patientAnalysis.patientProfile.costTimelineMonths} か月）で算出。
-                    QALY・死亡は transitionKey 別。
+                    フォロー期間（{patientAnalysis.patientProfile.costTimelineMonths} か月）を決める乱数列です。
+                    全薬剤で同一タイムライン上に注射・コストを算出します。
                   </div>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 10, lineHeight: 1.6 }}>
                     全7薬剤（ラニビズマブ先発・BS、アフリベルセプト 2 mg/BS/8 mg、ファリ、ブロル）を表示。
-                    RBZ 先発と RBZ BS は注射回数・QALY 同一、患者負担は薬価差。
+                    RBZ 先発と RBZ BS は注射回数同一、患者負担は薬価差。
                   </p>
                   <table style={tableStyle}>
                     <thead>
@@ -931,9 +927,6 @@ export default function App() {
                         <th style={thStyle}>薬剤+投与</th>
                         <th style={thStyle}>モニタリング</th>
                         <th style={thStyle}>生涯注射</th>
-                        <th style={thStyle}>実生存年数</th>
-                        <th style={thStyle}>QALY</th>
-                        <th style={thStyle}>死亡</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -944,14 +937,14 @@ export default function App() {
                           <>
                             {showRbzHeader && (
                               <tr key="hdr-rbz" style={{ background: "#ECFDF5" }}>
-                                <td colSpan={9} style={{ ...tdStyle, fontWeight: 700, color: "#065F46" }}>
+                                <td colSpan={6} style={{ ...tdStyle, fontWeight: 700, color: "#065F46" }}>
                                   ラニビズマブ系（transitionKey: rbz_bs）
                                 </td>
                               </tr>
                             )}
                             {showAflHeader && (
                               <tr key="hdr-afl" style={{ background: "#EFF6FF" }}>
-                                <td colSpan={9} style={{ ...tdStyle, fontWeight: 700, color: "#1E40AF" }}>
+                                <td colSpan={6} style={{ ...tdStyle, fontWeight: 700, color: "#1E40AF" }}>
                                   アフリベルセプト系（transitionKey: aflibercept）
                                 </td>
                               </tr>
@@ -984,21 +977,6 @@ export default function App() {
                             {row.injectionReference && (
                               <div style={{ fontSize: 10, color: "#B45309" }}>参考(AFL×0.8)</div>
                             )}
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: "right" }}>
-                            {patientAnalysis.results[row.drugId]?.totalLifeYears != null
-                              ? patientAnalysis.results[row.drugId].totalLifeYears.toFixed(3)
-                              : "—"}
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: "right" }}>
-                            {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: "right", fontSize: 11 }}>
-                            {row.deathMonth != null
-                              ? `${Math.floor(row.deathMonth / 12)}年${(row.deathMonth % 12) + 1}月`
-                              : row.alive === false
-                                ? "—"
-                                : "生存"}
                           </td>
                             </tr>
                           </>
@@ -1226,7 +1204,6 @@ export default function App() {
                             <th style={thStyle}>直接医療費</th>
                             <th style={thStyle}>患者負担</th>
                             <th style={thStyle}>累積患者負担</th>
-                            <th style={thStyle}>累積QALY</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1251,9 +1228,6 @@ export default function App() {
                               </td>
                               <td style={{ ...tdStyle, textAlign: "right" }}>
                                 ¥{fmtJpy(row.cumPatientOop)}
-                              </td>
-                              <td style={{ ...tdStyle, textAlign: "right" }}>
-                                {row.cumQALY != null ? row.cumQALY.toFixed(3) : "—"}
                               </td>
                             </tr>
                           ))}

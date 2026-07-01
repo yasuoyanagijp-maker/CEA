@@ -1,8 +1,9 @@
 /**
  * 個別患者マイクロシミュレーション
- * — 年齢・性別・病型を指定し、月次で直接医療費・患者負担（高額療養費）・QALY を算出
+ * — 年齢・性別・病型を指定し、月次で直接医療費・患者負担（高額療養費）を算出
  *
- * 薬剤比較時は drugId ごとに臨床経路・注射回数を算出（遷移 S5 は transitionKey、注射 S6 は薬剤×病型）。
+ * 薬剤比較時は drugId ごとに注射回数を算出（遷移 S5 は transitionKey、注射 S6 は薬剤×病型）。
+ * コスト用タイムラインは transitionKey 中最長生存経路（同一 seed）を共用。
  */
 
 import { N_STATES } from "./constants.js";
@@ -21,7 +22,6 @@ import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDispla
 import { getCostPaper } from "./papers/index.js";
 import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 import { cycleDeathProbability, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
-import { computeQalyFromClinicalPath } from "./qaly.js";
 import { DEFAULT_HORIZON } from "./constants.js";
 
 /** Mulberry32 決定論的 RNG */
@@ -90,40 +90,6 @@ function patientEffectiveHorizon(entryAge, sex, configuredHorizonYears) {
   });
 }
 
-/** 個別患者 QALY — 臨床経路（死亡打ち切り）と整合 */
-function computePatientPathQaly(path, input) {
-  const effectiveHorizon = patientEffectiveHorizon(
-    input.entryAge,
-    input.sex,
-    input.timeHorizonYears ?? DEFAULT_HORIZON.timeHorizonYears
-  );
-  const qalyResult = computeQalyFromClinicalPath(path, {
-    modelParams: input.modelParams ?? {},
-    discountRate: input.discountRate ?? DEFAULT_HORIZON.discountRate,
-    cycleLengthYears: input.cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
-  });
-
-  return {
-    ...qalyResult,
-    effectiveHorizonYears: effectiveHorizon,
-    remainingLifeExpectancy: remainingLifeExpectancy(input.entryAge, {
-      sex: input.sex,
-    }),
-  };
-}
-
-function mergeCostTrajectoryWithQaly(costAnnual, annualQaly) {
-  let prevCum = 0;
-  return costAnnual.map((row) => {
-    const qr = annualQaly.find((q) => q.year === row.year);
-    const cumQALY = qr?.cumQALY ?? null;
-    const qaly =
-      qr?.qaly ?? (cumQALY != null ? cumQALY - prevCum : null);
-    if (cumQALY != null) prevCum = cumQALY;
-    return { ...row, qaly, cumQALY };
-  });
-}
-
 function monthlyMortality(age, sex, blind, blindHr, useLifeTable, fixedRate) {
   let deathProb = cycleDeathProbability(age, 1 / 12, {
     sex,
@@ -184,7 +150,7 @@ function getTransitionProbs(transitions, subtypeId, clinicalKey, phase, onTreatm
 }
 
 /**
- * clinicalKey 単位で臨床経路を1本生成（状態・QALY・死亡）
+ * transitionKey 単位で臨床経路を1本生成（最長生存タイムライン決定用）
  */
 function simulateClinicalPath({
   entryAge,
@@ -495,20 +461,6 @@ export function runPatientSimulation(input) {
     treatmentDurationYears,
   });
 
-  const qalyResult = computePatientPathQaly(path, {
-    entryAge,
-    sex,
-    timeHorizonYears,
-    discountRate,
-    cycleLengthYears,
-    modelParams,
-  });
-
-  const annualTrajectory = mergeCostTrajectoryWithQaly(
-    costs.annualTrajectory,
-    qalyResult.annualQaly
-  );
-
   const warnings = [];
   if (drug.clinicalNote) warnings.push(drug.clinicalNote);
   if (costs.injUnitMissing) warnings.push(`薬価未設定: ${drug.name}`);
@@ -520,19 +472,15 @@ export function runPatientSimulation(input) {
     subtypeId,
     seed,
     incomeBracket,
-    alive: path.alive,
-    deathMonth: path.deathMonth,
-    totalQALY: qalyResult.totalQALY,
-    totalLifeYears: qalyResult.totalLifeYears,
-    remainingLifeExpectancy: qalyResult.remainingLifeExpectancy,
-    effectiveHorizonYears: qalyResult.effectiveHorizonYears,
+    remainingLifeExpectancy: remainingLifeExpectancy(entryAge, { sex }),
+    effectiveHorizonYears: effectiveHorizon,
     totalDirectMedical: costs.totalDirectMedical,
     totalPatientOop: costs.totalPatientOop,
     totalInjections: costs.totalInjections,
     costBreakdown: costs.costBreakdown,
-    annualTrajectory,
+    annualTrajectory: costs.annualTrajectory,
     monthlyTrajectory: includeTrajectory ? costs.monthlyTrajectory : undefined,
-    incomplete: qalyResult.totalQALY == null || costs.injUnitMissing,
+    incomplete: costs.injUnitMissing,
     warnings,
     costPaperId,
     clinicalCase,
@@ -605,8 +553,7 @@ export function buildPatientAnnualDrugComparison(
 
 /**
  * 同一患者プロファイルで全薬剤（または選択薬剤）を比較
- * — 視力・QALY は transitionKey ごと、コスト・注射は drugId ごと
- * — コスト用タイムラインは全 transitionKey 中最長生存（同一フォロー期間で比較）
+ * — コスト・注射は drugId ごと、タイムラインは transitionKey 中最長生存（同一 seed）
  */
 export function runPatientDrugComparison(input) {
   const drugIds = input.selectedDrugIds?.length ? input.selectedDrugIds : DRUG_IDS;
@@ -621,7 +568,6 @@ export function runPatientDrugComparison(input) {
   const remainingYears = remainingLifeExpectancy(input.entryAge, { sex: input.sex });
 
   const pathCache = new Map();
-  const qalyCache = new Map();
 
   const getPathByTransitionKey = (transitionKey) => {
     if (!pathCache.has(transitionKey)) {
@@ -652,23 +598,6 @@ export function runPatientDrugComparison(input) {
     }
   }
 
-  const getQaly = (transitionKey, path) => {
-    if (!qalyCache.has(transitionKey)) {
-      qalyCache.set(
-        transitionKey,
-        computePatientPathQaly(path, {
-          entryAge: input.entryAge,
-          sex: input.sex,
-          timeHorizonYears: configuredHorizon,
-          discountRate: input.discountRate ?? DEFAULT_HORIZON.discountRate,
-          cycleLengthYears: input.cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
-          modelParams: input.modelParams ?? {},
-        })
-      );
-    }
-    return qalyCache.get(transitionKey);
-  };
-
   const results = {};
   const summary = [];
 
@@ -693,13 +622,6 @@ export function runPatientDrugComparison(input) {
       treatmentDurationYears: input.treatmentDurationYears ?? null,
     });
 
-    const qalyResult = getQaly(transitionKey, clinicalPath);
-
-    const annualTrajectory = mergeCostTrajectoryWithQaly(
-      costs.annualTrajectory,
-      qalyResult.annualQaly
-    );
-
     const warnings = [];
     if (drug.clinicalNote) warnings.push(drug.clinicalNote);
     if (drug.injectionReference) {
@@ -714,19 +636,15 @@ export function runPatientDrugComparison(input) {
       subtypeId: input.subtypeId,
       clinicalKey: drug.clinicalKey,
       transitionKey,
-      totalQALY: qalyResult.totalQALY,
-      totalLifeYears: qalyResult.totalLifeYears,
-      deathMonth: clinicalPath.deathMonth,
-      alive: clinicalPath.alive,
       costTimelineMonths: masterPath.months.length,
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
       totalInjections: costs.totalInjections,
       costBreakdown: costs.costBreakdown,
-      annualTrajectory,
+      annualTrajectory: costs.annualTrajectory,
       monthlyTrajectory:
         input.includeTrajectory !== false ? costs.monthlyTrajectory : undefined,
-      incomplete: qalyResult.totalQALY == null || costs.injUnitMissing,
+      incomplete: costs.injUnitMissing,
       injectionReference: drug.injectionReference ?? false,
       warnings,
     };
@@ -740,10 +658,6 @@ export function runPatientDrugComparison(input) {
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
       totalInjections: costs.totalInjections,
-      totalQALY: qalyResult.totalQALY,
-      totalLifeYears: qalyResult.totalLifeYears,
-      deathMonth: clinicalPath.deathMonth,
-      alive: clinicalPath.alive,
       costBreakdown: costs.costBreakdown,
     });
   }
@@ -765,7 +679,7 @@ export function runPatientDrugComparison(input) {
       seed: baseSeed,
       costTimelineMonths: masterPath?.months.length ?? 0,
       costTimelineNote:
-        "コスト・注射は全薬剤共通の最長生存タイムライン（同一 seed）で算出。QALY・死亡は transitionKey 別。",
+        "コスト・注射は全薬剤共通の最長生存タイムライン（同一 seed）で算出。",
     },
   };
 }
