@@ -625,7 +625,9 @@ export function runPatientDrugComparison(input) {
     const warnings = [];
     if (drug.clinicalNote) warnings.push(drug.clinicalNote);
     if (drug.injectionReference) {
-      warnings.push(`注射回数は参考値（AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`);
+      warnings.push(
+        `注射回数は参考値（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`
+      );
     }
     if (costs.injUnitMissing) warnings.push(`薬価未設定: ${drug.name}`);
 

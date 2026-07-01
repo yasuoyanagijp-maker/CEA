@@ -19,11 +19,17 @@ export const DRUG_TRANSITION_KEY = {
   brolucizumab: "aflibercept",
 };
 
-/** S6 未掲載 — 同一病型 AFL 2 mg (aflibercept 列) × 係数 */
+/** S6 未掲載 — induction は薬剤別、year1以降は同一病型 AFL 2 mg × 係数 */
 export const AFL2MG_DERIVED_DRUG_IDS = ["aflibercept_8mg", "faricimab", "brolucizumab"];
 export const AFL2MG_DERIVED_INJECTION_FACTOR = 0.8;
+/** @type {Record<string, { induction: number }>} */
+export const AFL2MG_DERIVED_INJECTION_OVERRIDES = {
+  aflibercept_8mg: { induction: 3 },
+  faricimab: { induction: 4 },
+  brolucizumab: { induction: 2 },
+};
 export const AFL2MG_DERIVED_INJECTION_NOTE =
-  "参考値: 同一病型の AFL 2 mg（Table S6 aflibercept 列）× 0.8。S6 未掲載のため暫定。";
+  "参考値: induction は薬剤別（AFL 8 mg=3, ファリ=4, ブロル=2）。year1以降は同一病型 AFL 2 mg × 0.8。S6 未掲載のため暫定。";
 
 /** Supplementary Table S8 — scenario 注射回数（clinical.js 由来） */
 const S8_SCENARIO_RAW = {
@@ -60,14 +66,23 @@ export function isAfl2mgDerivedInjection(drugId) {
   return AFL2MG_DERIVED_DRUG_IDS.includes(drugId);
 }
 
-/** AFL 2 mg フェーズ別注射 × 係数 */
-export function deriveInjectionFromAfl2mg(afl2mgPhases, factor = AFL2MG_DERIVED_INJECTION_FACTOR) {
-  return {
+/** AFL 2 mg フェーズ別注射 × 係数（induction は薬剤別上書き可） */
+export function deriveInjectionFromAfl2mg(
+  afl2mgPhases,
+  drugId,
+  factor = AFL2MG_DERIVED_INJECTION_FACTOR
+) {
+  const derived = {
     induction: round3(afl2mgPhases.induction * factor),
     year1: round3(afl2mgPhases.year1 * factor),
     year2: round3(afl2mgPhases.year2 * factor),
     year3plus: round3(afl2mgPhases.year3plus * factor),
   };
+  const override = AFL2MG_DERIVED_INJECTION_OVERRIDES[drugId];
+  if (override?.induction != null) {
+    derived.induction = override.induction;
+  }
+  return derived;
 }
 
 function expandSubtypeInjections(subtypeId, sourceTable) {
@@ -81,7 +96,7 @@ function expandSubtypeInjections(subtypeId, sourceTable) {
     out[drugId] = { ...s6Row.aflibercept };
   }
   for (const drugId of AFL2MG_DERIVED_DRUG_IDS) {
-    out[drugId] = deriveInjectionFromAfl2mg(s6Row.aflibercept);
+    out[drugId] = deriveInjectionFromAfl2mg(s6Row.aflibercept, drugId);
   }
 
   return out;

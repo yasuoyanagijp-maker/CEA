@@ -179,7 +179,7 @@ export function getInjectionPhaseReference(
     injectionReferenceFactor: isReference ? AFL2MG_DERIVED_INJECTION_FACTOR : null,
     injectionReferenceNote: isReference ? AFL2MG_DERIVED_INJECTION_NOTE : null,
     note: isReference
-      ? `参考値 — 同一病型 AFL 2 mg (aflibercept 列) × ${AFL2MG_DERIVED_INJECTION_FACTOR}。induction=最初3か月、year1/year2/year3plus=年間回数`
+      ? `参考値 — induction は薬剤別（AFL 8 mg=3, ファリ=4, ブロル=2）。year1以降は同一病型 AFL 2 mg × ${AFL2MG_DERIVED_INJECTION_FACTOR}`
       : "induction=最初3か月の回数、year1/year2/year3plus=年間回数（病型×薬剤別）",
   };
 }

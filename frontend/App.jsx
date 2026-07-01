@@ -975,7 +975,7 @@ export default function App() {
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             {row.totalInjections ?? "—"}回
                             {row.injectionReference && (
-                              <div style={{ fontSize: 10, color: "#B45309" }}>参考(AFL×0.8)</div>
+                              <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
                             )}
                           </td>
                             </tr>
@@ -995,7 +995,7 @@ export default function App() {
                         年齢・注射・直接医療費・患者負担を経過年ごとに並べて比較します。
                         <br />
                         <span style={{ color: "#B45309" }}>
-                          ※ AFL 8 mg / ファリ / ブロルの注射は参考値（同一病型 AFL 2 mg Table S6 × 0.8）。
+                          ※ AFL 8 mg / ファリ / ブロルの注射は参考値（induction 薬剤別、year1以降 AFL 2 mg Table S6 × 0.8）。
                         </span>
                       </p>
 

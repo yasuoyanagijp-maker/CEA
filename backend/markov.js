@@ -221,7 +221,9 @@ export function runMarkov(input) {
   const warnings = [];
   if (drug.clinicalNote) warnings.push(drug.clinicalNote);
   if (drug.injectionReference && clinicalCase !== "2026_meta") {
-    warnings.push(`注射回数は参考値（AFL 2 mg × 0.8、${subtypeId} 病型 S6）`);
+    warnings.push(
+      `注射回数は参考値（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${subtypeId} 病型 S6）`
+    );
   }
   if (clinicalCase === "2026_meta" && !getInjections2026MetaForDrug(drugId)) {
     warnings.push(`${drug.name}: 2026 meta 注射回数が未設定`);
