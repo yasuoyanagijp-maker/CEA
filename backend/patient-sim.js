@@ -544,7 +544,8 @@ export function runPatientDrugComparison(input) {
   const qalyCache = new Map();
   const getPath = (clinicalKey) => {
     if (!pathCache.has(clinicalKey)) {
-      const rng = createRng(baseSeed + hashString(clinicalKey));
+      // 同一患者の乱数列を全 clinicalKey で共有 — 薬剤差は遷移表(S5)のみ
+      const rng = createRng(baseSeed);
       const path = simulateClinicalPath({
         entryAge: input.entryAge,
         sex: input.sex,
@@ -662,10 +663,4 @@ export function runPatientDrugComparison(input) {
       seed: baseSeed,
     },
   };
-}
-
-function hashString(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
 }

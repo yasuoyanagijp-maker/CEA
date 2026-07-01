@@ -249,6 +249,8 @@ export default function App() {
     patientSeed,
     modelParams,
   ]);
+
+  const patientDetailDrug =
     patientAnalysis?.results[patientDetailDrugId] ??
     patientAnalysis?.results[selectedDrugIds[0]];
 
@@ -663,7 +665,8 @@ export default function App() {
             </label>
             <p style={hintStyle}>
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
-              clinicalKey ごとに視力・死亡・QALY の経路が異なります（同一 key 内はコストのみ差）。
+              clinicalKey ごとに遷移表(S5)が異なりますが、乱数列（seed）は全 key で共有。
+              同一 key 内（AFL/ファリ/ブロル等）は経路・QALY 完全一致、コストのみ差。
               {patientRemainingLife != null && (
                 <>
                   {" "}
@@ -883,8 +886,8 @@ export default function App() {
                     直接医療費に年齢別自己負担・月次高額療養費を適用。
                     余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
                     解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
-                    QALY・実生存年数・死亡は薬剤（clinicalKey）ごとの視力経路から算出。シード{" "}
-                    {patientAnalysis.patientProfile.seed}。
+                    QALY・実生存・死亡は clinicalKey ごとの遷移表から算出（同一 seed・乱数列共有）。
+                    シード {patientAnalysis.patientProfile.seed}。
                   </p>
                   <table style={tableStyle}>
                     <thead>
