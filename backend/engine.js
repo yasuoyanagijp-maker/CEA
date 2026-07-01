@@ -7,8 +7,10 @@ import {
   DRUG_CATALOG,
   DRUG_IDS,
   PATIENT_DRUG_IDS,
+  PATIENT_DISPLAY_ORDER,
   patientDrugIds,
   getDrugTransitionKey,
+  sortByDrugDisplayOrder,
 } from "./drugs.js";
 import { SUBTYPES } from "./clinical.js";
 import { COST_PAPER_LIST } from "./papers/index.js";
@@ -252,6 +254,8 @@ export {
   PATIENT_DRUG_IDS,
   patientDrugIds,
   getDrugTransitionKey,
+  sortByDrugDisplayOrder,
+  PATIENT_DISPLAY_ORDER,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,

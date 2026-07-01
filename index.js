@@ -16,6 +16,8 @@ export {
   PATIENT_DRUG_IDS,
   patientDrugIds,
   getDrugTransitionKey,
+  sortByDrugDisplayOrder,
+  PATIENT_DISPLAY_ORDER,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,

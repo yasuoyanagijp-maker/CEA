@@ -17,7 +17,7 @@ import {
   getBscTransitionProbs,
   injectionsForMonth,
 } from "./clinical.js";
-import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey } from "./drugs.js";
+import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDisplayOrder } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 import { cycleDeathProbability, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
@@ -542,7 +542,7 @@ export function buildPatientAnnualDrugComparison(
     ),
   ].sort((a, b) => a - b);
 
-  const drugs = activeIds.map((id) => ({
+  const drugs = sortByDrugDisplayOrder(activeIds).map((id) => ({
     drugId: id,
     name: drugCatalog[id]?.name ?? id,
     color: drugCatalog[id]?.color,
@@ -555,7 +555,7 @@ export function buildPatientAnnualDrugComparison(
 
   for (const year of years) {
     const yearEntry = { year, age: null, drugs: {} };
-    for (const drugId of activeIds) {
+    for (const drugId of sortByDrugDisplayOrder(activeIds)) {
       const row = results[drugId].annualTrajectory.find((r) => r.year === year);
       if (!row) continue;
       if (yearEntry.age == null) yearEntry.age = row.age;
@@ -718,8 +718,10 @@ export function runPatientDrugComparison(input) {
 
   return {
     results,
-    summary,
-    annualComparison: buildPatientAnnualDrugComparison(results, drugIds),
+    summary: sortByDrugDisplayOrder(summary.map((s) => s.drugId)).map(
+      (id) => summary.find((s) => s.drugId === id)
+    ),
+    annualComparison: buildPatientAnnualDrugComparison(results, sortByDrugDisplayOrder(drugIds)),
     patientProfile: {
       entryAge: input.entryAge,
       sex: input.sex,

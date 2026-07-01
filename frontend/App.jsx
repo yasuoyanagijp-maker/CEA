@@ -53,6 +53,7 @@ export default function App() {
   const [costPaperId, setCostPaperId] = useState("paper2_rbz");
   const [clinicalCase, setClinicalCase] = useState("base");
   const [selectedDrugIds, setSelectedDrugIds] = useState([
+    "ranibizumab",
     "ranibizumab_bs",
     "aflibercept",
     "aflibercept_bs",
@@ -913,9 +914,13 @@ export default function App() {
                     <strong>乱数シード {patientAnalysis.patientProfile.seed}</strong>
                     {" — "}
                     この1例の確率経路（視力遷移・死亡・両眼発症）を決める番号です。
-                    同一 transitionKey 内（例: RBZ/ RBZ BS）は視力・QALY 一致。
+                    同一 transitionKey 内（RBZ/ RBZ BS、AFL 2 mg/ BS）は視力・QALY 一致。
                     注射回数は薬剤×病型別 Table S6、患者負担は薬価差を反映。
                   </div>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 10, lineHeight: 1.6 }}>
+                    全7薬剤（ラニビズマブ先発・BS、アフリベルセプト 2 mg/BS/8 mg、ファリ、ブロル）を表示。
+                    RBZ 先発と RBZ BS は注射回数・QALY 同一、患者負担は薬価差。
+                  </p>
                   <table style={tableStyle}>
                     <thead>
                       <tr style={{ background: "#0F172A", color: "#fff" }}>
@@ -931,8 +936,26 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {patientAnalysis.summary.map((row, i) => (
-                        <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                      {patientAnalysis.summary.map((row, i) => {
+                        const showRbzHeader = row.drugId === "ranibizumab";
+                        const showAflHeader = row.drugId === "aflibercept";
+                        return (
+                          <>
+                            {showRbzHeader && (
+                              <tr key="hdr-rbz" style={{ background: "#ECFDF5" }}>
+                                <td colSpan={9} style={{ ...tdStyle, fontWeight: 700, color: "#065F46" }}>
+                                  ラニビズマブ系（transitionKey: rbz_bs）
+                                </td>
+                              </tr>
+                            )}
+                            {showAflHeader && (
+                              <tr key="hdr-afl" style={{ background: "#EFF6FF" }}>
+                                <td colSpan={9} style={{ ...tdStyle, fontWeight: 700, color: "#1E40AF" }}>
+                                  アフリベルセプト系（transitionKey: aflibercept）
+                                </td>
+                              </tr>
+                            )}
+                            <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
                           <td style={tdStyle}>
                             <span style={{ fontWeight: 600, color: DRUG_CATALOG[row.drugId].color }}>
                               {row.name}
@@ -976,8 +999,10 @@ export default function App() {
                                 ? "—"
                                 : "生存"}
                           </td>
-                        </tr>
-                      ))}
+                            </tr>
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
 

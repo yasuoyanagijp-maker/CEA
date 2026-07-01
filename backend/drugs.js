@@ -8,7 +8,17 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "ranibizumab",
     transitionKey: "rbz_bs",
-    clinicalNote: "遷移 S5: rbz_bs 列。注射 S6: typical/PCV/RAP 実臨床（rbz_bs 列）",
+    clinicalNote: "遷移 S5: rbz_bs 列。注射 S6: 病型別 rbz_bs 列（BS と同一回数）",
+  },
+  ranibizumab_bs: {
+    id: "ranibizumab_bs",
+    name: "ラニビズマブ BS",
+    brand: "ラニビズマブ BS",
+    color: "#00695C",
+    monitoringRegimen: "tae",
+    clinicalKey: "ranibizumab_bs",
+    transitionKey: "rbz_bs",
+    clinicalNote: "遷移 S5: rbz_bs 列。注射 S6: 病型別 rbz_bs 列（先発と同一回数、薬価のみ BS）",
   },
   aflibercept: {
     id: "aflibercept",
@@ -18,6 +28,7 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept",
     transitionKey: "aflibercept",
+    clinicalNote: "遷移 S5: aflibercept 列。注射 S6: 病型別 aflibercept 列",
   },
   aflibercept_bs: {
     id: "aflibercept_bs",
@@ -27,7 +38,7 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept_bs",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列。注射 S6: 病型別 aflibercept 列（薬価のみ BS）",
+    clinicalNote: "遷移 S5: aflibercept 列。注射 S6: 病型別 aflibercept 列（2 mg と同一回数、薬価のみ BS）",
   },
   aflibercept_8mg: {
     id: "aflibercept_8mg",
@@ -62,22 +73,20 @@ export const DRUG_CATALOG = {
     clinicalNote: "遷移 S5: aflibercept 列（暫定）。注射: 参考値（AFL 2 mg × 0.8、病型別 S6）",
     injectionReference: true,
   },
-  ranibizumab_bs: {
-    id: "ranibizumab_bs",
-    name: "ラニビズマブ BS",
-    brand: "ラニビズマブ BS",
-    color: "#00695C",
-    monitoringRegimen: "tae",
-    clinicalKey: "ranibizumab_bs",
-    transitionKey: "rbz_bs",
-    clinicalNote: "遷移 S5: rbz_bs 列。注射 S6: 病型別 rbz_bs 列",
-  },
 };
 
 export const DRUG_IDS = Object.keys(DRUG_CATALOG);
 
-/** 個別患者タブ — 全薬剤を表示 */
+/** 個別患者タブ — 全薬剤（RBZ 先発・BS を先頭） */
 export const PATIENT_DRUG_IDS = DRUG_IDS;
+
+/** 個別患者サマリー表示順 */
+export const PATIENT_DISPLAY_ORDER = [...DRUG_IDS];
+
+export function sortByDrugDisplayOrder(ids) {
+  const order = new Map(PATIENT_DISPLAY_ORDER.map((id, i) => [id, i]));
+  return [...ids].sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999));
+}
 
 /** @deprecated patientDrugIds — 後方互換。常に全薬剤 */
 export function patientDrugIds(_selectedDrugIds = DRUG_IDS) {
