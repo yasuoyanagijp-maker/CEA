@@ -769,6 +769,7 @@ export default function App() {
                     <th style={thStyle}>薬剤</th>
                     <th style={thStyle}>QALY</th>
                     <th style={thStyle}>総コスト</th>
+                    <th style={thStyle}>注射回数</th>
                     <th style={thStyle}>ΔQALY</th>
                     <th style={thStyle}>Δコスト</th>
                     <th style={thStyle}>ICER</th>
@@ -795,6 +796,12 @@ export default function App() {
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           {r?.totalCost != null ? `¥${fmtJpy(r.totalCost)}` : "—"}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          {r?.totalInjections != null ? `${r.totalInjections.toFixed(1)}回` : "—"}
+                          {DRUG_CATALOG[id].injectionReference && (
+                            <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
+                          )}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           {ic?.deltaQaly != null
