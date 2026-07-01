@@ -302,23 +302,48 @@ export default function App() {
     );
   };
 
-  const costChartData = selectedDrugIds
+  const costBreakdownData = selectedDrugIds
     .filter((id) => results[id]?.totalCost != null)
-    .map((id) => ({
-      name: DRUG_CATALOG[id].name,
-      total: Math.round(results[id].totalCost / 1_000_000),
-      drug: results[id].costBreakdown?.drugAdmin
-        ? Math.round(results[id].costBreakdown.drugAdmin / 1_000_000)
-        : 0,
-      societal: results[id].costBreakdown
-        ? Math.round(
-            (results[id].costBreakdown.societalCare +
-              results[id].costBreakdown.physicianVisit) /
-              1_000_000
-          )
-        : 0,
-      color: DRUG_CATALOG[id].color,
-    }));
+    .map((id) => {
+      const bd = results[id].costBreakdown ?? {};
+      const drugAdmin = bd.drugAdmin ?? 0;
+      const monitoring = bd.monitoring ?? 0;
+      const adverseEvents = bd.adverseEvents ?? 0;
+      const societalCare = bd.societalCare ?? 0;
+      const physicianVisit = bd.physicianVisit ?? 0;
+      const societal = societalCare + physicianVisit;
+      const total = results[id].totalCost;
+      const toM = (v) => Math.round(v / 1_000_000);
+      return {
+        drugId: id,
+        name: DRUG_CATALOG[id].name,
+        color: DRUG_CATALOG[id].color,
+        total,
+        drugAdmin,
+        monitoring,
+        adverseEvents,
+        societalCare,
+        physicianVisit,
+        societal,
+        drugM: toM(drugAdmin),
+        monitoringM: toM(monitoring),
+        adverseEventsM: toM(adverseEvents),
+        societalM: toM(societal),
+        societalCareM: toM(societalCare),
+        physicianVisitM: toM(physicianVisit),
+        totalM: toM(total),
+        chartStackM: toM(drugAdmin + societal),
+      };
+    });
+
+  const costChartData = costBreakdownData.map(
+    ({ name, drugM, societalM, color }) => ({
+      name,
+      drug: drugM,
+      societal: societalM,
+      color,
+    })
+  );
 
   const trajectoryDrugs = selectedDrugIds.filter((id) =>
     results[id]?.trajectory?.some((t) => t.cumQALY != null)
@@ -738,7 +763,6 @@ export default function App() {
             {[
               ["summary", "サマリー"],
               ["patient", "個別患者負担"],
-              ["costs", "コスト内訳"],
               ["qaly", "QALY推移"],
               ...(showIssuesTab
                 ? [["missing", `要確認 (${missingParams.length + (hasIncompleteResults ? 1 : 0)})`]]
@@ -833,6 +857,80 @@ export default function App() {
                   })}
                 </tbody>
               </table>
+
+              {costBreakdownData.length > 0 && (
+                <div style={{ marginTop: 28 }}>
+                  <h3 style={{ fontSize: 15, margin: "0 0 8px", color: "#0F172A" }}>
+                    コスト内訳
+                  </h3>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                    積み上げ棒グラフは薬剤+投与（青）と社会的費用＝介護+通院（灰）を百万円単位で表示。
+                    下表にグラフの元データ（円・百万円）とモニタリング・有害事象を併記。
+                  </p>
+                  <ResponsiveContainer width="100%" height={360}>
+                    <BarChart data={costChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis label={{ value: "百万円", angle: -90, position: "insideLeft" }} />
+                      <Tooltip formatter={(v) => `${v} 百万円`} />
+                      <Legend />
+                      <Bar dataKey="drug" name="薬剤+投与" stackId="a" fill="#3B82F6" />
+                      <Bar dataKey="societal" name="社会的費用" stackId="a" fill="#94A3B8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <table style={{ ...tableStyle, marginTop: 16 }}>
+                    <thead>
+                      <tr style={{ background: "#334155", color: "#fff" }}>
+                        <th style={thStyle}>薬剤</th>
+                        <th style={thStyle}>薬剤+投与</th>
+                        <th style={thStyle}>社会的費用</th>
+                        <th style={thStyle}>グラフ合計</th>
+                        <th style={thStyle}>モニタリング</th>
+                        <th style={thStyle}>有害事象</th>
+                        <th style={thStyle}>総コスト</th>
+                      </tr>
+                      <tr style={{ background: "#475569", color: "#fff", fontSize: 10 }}>
+                        <th style={thStyle} />
+                        <th style={thStyle} colSpan={6}>
+                          上段＝円 / 下段＝百万円（グラフは薬剤+投与・社会的費用のみ積上げ）
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {costBreakdownData.map((row, i) => (
+                        <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                          <td style={tdStyle}>
+                            <span style={{ fontWeight: 600, color: row.color }}>{row.name}</span>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.drugAdmin)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.drugM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.societal)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.societalM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                            {row.chartStackM} M¥
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.monitoring)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.monitoringM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.adverseEvents)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.adverseEventsM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                            ¥{fmtJpy(row.total)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.totalM} M¥</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {paperIncrementalRows && (
                 <div style={{ marginTop: 20 }}>
@@ -1287,22 +1385,6 @@ export default function App() {
                   )}
                 </>
               )}
-            </Panel>
-          )}
-
-          {activeTab === "costs" && (
-            <Panel title="コスト内訳（百万円）">
-              <ResponsiveContainer width="100%" height={360}>
-                <BarChart data={costChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="drug" name="薬剤+投与" stackId="a" fill="#3B82F6" />
-                  <Bar dataKey="societal" name="社会的費用" stackId="a" fill="#94A3B8" />
-                </BarChart>
-              </ResponsiveContainer>
             </Panel>
           )}
 
