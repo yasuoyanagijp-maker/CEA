@@ -221,6 +221,10 @@ export {
   MORTALITY_DEFAULTS,
   annualMortalityForAge,
   entryMortalityForSubtype,
+  remainingLifeExpectancy,
+  analysisHorizonYears,
+  survivalProbability,
+  cycleDeathProbability,
   LIFE_TABLE_SOURCE,
 } from "./config/mortality.js";
 export {

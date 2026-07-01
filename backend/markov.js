@@ -9,7 +9,7 @@ import { SUBTYPES, getClinicalTables, getBscTransitionProbs, getInjectionRate } 
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
-import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
+import { cycleDeathProbability, DEFAULT_MALE_RATIO, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
 import { getInjections2026MetaForDrug } from "./config/injections-2026-meta.js";
 import {
   expectedBetterEyeUtility,
@@ -181,6 +181,7 @@ export function runMarkov(input) {
   let pSecond = subtype.bothEyesBaseline;
 
   let totalQALY = 0;
+  let totalLifeYears = 0;
   let totalCost = 0;
   const trajectory = [];
   const costBreakdown = {
@@ -220,6 +221,7 @@ export function runMarkov(input) {
     const utilityStart = qaly
       ? expectedBetterEyeUtility(cohort, fellowDist, pSecond, qaly)
       : 0;
+    const aliveStart = aliveMass;
 
     if (onTreatment) {
       const admin = drugAdminCost(drugId, injThisCycle, aliveMass, df, paper);
@@ -272,20 +274,21 @@ export function runMarkov(input) {
 
     if (mort) {
       const currentAge = Math.min(105, mort.entryAge + c * cycleLen);
-      const annualRate = mort.useLifeTable
-        ? annualMortalityForAge(currentAge, { maleRatio: mort.maleRatio })
-        : annualMortalityForAge(currentAge, {
-            useLifeTable: false,
-            fixedRate: mort.fixedRate,
-            maleRatio: mort.maleRatio,
-          });
-      const m = annualRate * cycleLen;
-      const blindExtra = (mort.blindMortalityHr - 1) * m;
-      aliveMass = Math.max(0, aliveMass - aliveMass * (m + dist[4] * blindExtra));
+      const fixedRate = mort.useLifeTable ? null : mort.fixedRate;
+      let deathProb = cycleDeathProbability(currentAge, cycleLen, {
+        maleRatio: mort.maleRatio,
+        fixedRate,
+      });
+      deathProb *= 1 + dist[4] * (mort.blindMortalityHr - 1);
+      deathProb = Math.min(1, Math.max(0, deathProb));
+      aliveMass = Math.max(0, aliveMass * (1 - deathProb));
     }
 
     dist = applyTransition(dist, probs);
     fellowDist = applyTransition(fellowDist, probs);
+
+    const aliveEnd = aliveMass;
+    totalLifeYears += ((aliveStart + aliveEnd) / 2) * cycleLen;
 
     if (qaly) {
       const cohortEnd = dist.map((s) => s * aliveMass);
@@ -319,6 +322,7 @@ export function runMarkov(input) {
   return {
     drugId,
     totalQALY: qaly ? totalQALY : null,
+    totalLifeYears: mort ? totalLifeYears : null,
     totalCost,
     trajectory,
     costBreakdown,

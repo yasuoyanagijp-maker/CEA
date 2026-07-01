@@ -10,9 +10,21 @@ import {
   LIFE_TABLE_SOURCE,
   DEFAULT_MALE_RATIO,
   nqxAtAgeInterpolated,
+  survivalProbability,
+  cycleDeathProbability,
+  remainingLifeExpectancy,
+  lxAtAge,
 } from "./mortality-life-table-r5.js";
 
-export { LIFE_TABLE_SOURCE, DEFAULT_MALE_RATIO, nqxAtAgeInterpolated };
+export {
+  LIFE_TABLE_SOURCE,
+  DEFAULT_MALE_RATIO,
+  nqxAtAgeInterpolated,
+  survivalProbability,
+  cycleDeathProbability,
+  remainingLifeExpectancy,
+  lxAtAge,
+};
 
 export const MORTALITY_DEFAULTS = {
   /** 固定値（感度分析用）。null = 生命表を使用 */
@@ -43,4 +55,18 @@ export function annualMortalityForAge(
 /** モデル参入時（サブタイプ平均年齢）の qx — UI 表示用 */
 export function entryMortalityForSubtype(meanAge, maleRatio = DEFAULT_MALE_RATIO) {
   return nqxAtAgeInterpolated(meanAge, maleRatio);
+}
+
+/**
+ * 参入年齢の余命に基づく解析期間（年）
+ * コホート解析は configuredHorizon をそのまま使用（論文20年）。個別患者は余命で上限。
+ */
+export function analysisHorizonYears(
+  entryAge,
+  configuredHorizonYears,
+  { maleRatio = DEFAULT_MALE_RATIO, sex = null, useLifeExpectancyCap = false } = {}
+) {
+  if (!useLifeExpectancyCap) return configuredHorizonYears;
+  const remaining = remainingLifeExpectancy(entryAge, { maleRatio, sex });
+  return Math.min(configuredHorizonYears, Math.max(0.25, remaining));
 }

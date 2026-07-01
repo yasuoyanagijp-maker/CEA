@@ -36,6 +36,7 @@ import {
   MORTALITY_DEFAULTS,
   entryMortalityForSubtype,
   LIFE_TABLE_SOURCE,
+  remainingLifeExpectancy,
 } from "../backend/config/mortality.js";
 import { fmtJpy } from "../backend/utils.js";
 import { STATE_LABELS } from "../backend/constants.js";
@@ -112,6 +113,12 @@ export default function App() {
     secondEyeMonthly,
     includeScenarioAe,
   ]);
+
+  const patientRemainingLife = useMemo(() => {
+    const age = parseFloat(patientAge);
+    if (Number.isNaN(age)) return null;
+    return remainingLifeExpectancy(age, { sex: patientSex });
+  }, [patientAge, patientSex]);
 
   const treatmentDurationYears = TREATMENT_DURATION_MODES[treatmentDurationMode];
 
@@ -573,10 +580,12 @@ export default function App() {
               />
             </label>
             <p style={{ fontSize: 11, color: "#64748B", margin: "4px 0 0" }}>
-              {LIFE_TABLE_SOURCE}。男性比率 {((DEFAULT_MODEL_PARAMS.maleRatio ?? 0.614) * 100).toFixed(1)}%。
-              本サブタイプ平均年齢 {SUBTYPES[subtypeId].meanAge} 歳の qx ≈{" "}
-              {entryMortalityForSubtype(SUBTYPES[subtypeId].meanAge).toFixed(4)}（コホートはサイクルごとに加齢）。
-              感度分析では固定値 0.02–0.04 を上書き入力。
+              {LIFE_TABLE_SOURCE}。空欄時は lx 比から区間生存率を算出（余命表準拠）。男性比率{" "}
+              {((DEFAULT_MODEL_PARAMS.maleRatio ?? 0.614) * 100).toFixed(1)}%。
+              平均年齢 {SUBTYPES[subtypeId].meanAge} 歳: qx ≈{" "}
+              {entryMortalityForSubtype(SUBTYPES[subtypeId].meanAge).toFixed(4)}、余命 ≈{" "}
+              {remainingLifeExpectancy(SUBTYPES[subtypeId].meanAge).toFixed(1)} 年。
+              感度分析では固定 qx 0.02–0.04 を上書き。
             </p>
             <label style={labelStyle}>
               失明時死亡 HR（文献目安 1.3–1.5、既定 {MORTALITY_DEFAULTS.blindMortalityHr}）
@@ -655,7 +664,13 @@ export default function App() {
               />
             </label>
             <p style={hintStyle}>
-              月次で直接医療費・高額療養費上限を適用。同一 clinicalKey 内で臨床経路を共有。
+              月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
+              {patientRemainingLife != null && (
+                <>
+                  {" "}
+                  余命 ≈ {patientRemainingLife.toFixed(1)} 年。
+                </>
+              )}
             </p>
           </Section>
 
@@ -867,8 +882,10 @@ export default function App() {
                 <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                     直接医療費（薬剤+投与・モニタリング・有害事象）に対し、年齢別自己負担割合と月次の高額療養費限度額を適用。
-                    QALY はコホート Markov（サマリータブと同一・割引済）の参考値。費用・注射は個別患者経路。
-                    シード {patientAnalysis.patientProfile.seed}。
+                    QALY・生存年数は生命表余命に基づく解析期間（
+                    {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1) ?? "—"} 年）の
+                    コホート Markov 参考値。費用・注射は個別患者経路。シード{" "}
+                    {patientAnalysis.patientProfile.seed}。
                   </p>
                   <table style={tableStyle}>
                     <thead>
@@ -879,6 +896,7 @@ export default function App() {
                         <th style={thStyle}>薬剤+投与</th>
                         <th style={thStyle}>モニタリング</th>
                         <th style={thStyle}>生涯注射</th>
+                        <th style={thStyle}>生存年数</th>
                         <th style={thStyle}>QALY（参考）</th>
                       </tr>
                     </thead>
@@ -904,6 +922,11 @@ export default function App() {
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             {row.totalInjections ?? "—"}回
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {patientAnalysis.results[row.drugId]?.totalLifeYears != null
+                              ? patientAnalysis.results[row.drugId].totalLifeYears.toFixed(3)
+                              : "—"}
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
