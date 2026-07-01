@@ -663,7 +663,7 @@ export default function App() {
               </select>
             </label>
             <label style={labelStyle}>
-              乱数シード
+              乱数シード（仮想患者 ID）
               <input
                 type="number"
                 value={patientSeed}
@@ -674,8 +674,12 @@ export default function App() {
             <p style={hintStyle}>
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
               ラニビズマブ BS・アフリベルセプト 2 mg・アフリベルセプト BS を常に表示（BS は
-              aflibercept 遷移・注射回数、薬価のみ BS）。乱数列（seed）は clinicalKey 間で共有。
-              同一 key 内（AFL 2 mg / AFL BS / ファリ等）は経路・QALY 一致、コストのみ差。
+              aflibercept 遷移・注射回数、薬価のみ BS）。同一 key 内（AFL 2 mg / AFL BS / ファリ等）は
+              経路・QALY 一致、コストのみ差。
+              <br />
+              <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、この1例の視力遷移・死亡・両眼発症に
+              使う乱数列の番号です。同じ seed なら結果を再現でき、変えると別の確率経路（別患者1例）になります。
+              全薬剤で seed を共有するため、薬剤差は S5 遷移表の差のみです。
               {patientRemainingLife != null && (
                 <>
                   {" "}
@@ -895,9 +899,26 @@ export default function App() {
                     直接医療費に年齢別自己負担・月次高額療養費を適用。
                     余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
                     解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
-                    QALY・実生存・死亡は clinicalKey ごとの遷移表から算出（同一 seed・乱数列共有）。
-                    シード {patientAnalysis.patientProfile.seed}。
+                    QALY・実生存・死亡は clinicalKey ごとの遷移表から算出。
                   </p>
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: "10px 12px",
+                      background: "#EFF6FF",
+                      border: "1px solid #BFDBFE",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      lineHeight: 1.6,
+                      color: "#1E3A5F",
+                    }}
+                  >
+                    <strong>乱数シード {patientAnalysis.patientProfile.seed}</strong>
+                    {" — "}
+                    この1例の確率経路（視力遷移・死亡・両眼発症）を決める番号です。
+                    例: seed 42 なら常に同じ経路が再現されます。seed を変えると別の1例になります
+                    （Markov のコホート平均とは異なります）。全薬剤で同一 seed を共有しています。
+                  </div>
                   <table style={tableStyle}>
                     <thead>
                       <tr style={{ background: "#0F172A", color: "#fff" }}>
