@@ -1460,7 +1460,8 @@ export default function App() {
                 <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                     各薬剤の Markov コホートにおける治療眼の期待 BCVA（5状態中央値の加重平均）。
-                    生存者の状態分布（{STATE_LABELS.join(" / ")}）から算出。
+                    生存者の状態分布（{STATE_LABELS.join(" / ")}）から算出。初期分布は Table S2、遷移は Table S5
+                    （typical/PCV: Yoneda Y1 → Jin Y≥2；RAP: Yoneda Y1 → Hoshino Y2 → Kertes Y≥3；導入期は Yanagi 前研究仮定）。
                   </p>
                   <ResponsiveContainer width="100%" height={360}>
                     <LineChart data={visionTrajectoryData}>
