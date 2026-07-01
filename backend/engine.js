@@ -216,6 +216,7 @@ export {
   runPatientDrugComparison,
   buildPatientAnnualDrugComparison,
   createRng,
+  resolvePatientVisionBaseline,
 } from "./patient-sim.js";
 export {
   INCOME_BRACKETS,

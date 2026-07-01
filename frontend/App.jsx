@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import {
   LineChart,
   Line,
@@ -85,7 +85,19 @@ export default function App() {
   const [patientSex, setPatientSex] = useState("male");
   const [incomeBracket, setIncomeBracket] = useState("standard");
   const [patientSeed, setPatientSeed] = useState("42");
+  const [patientBaselineBcvaAffected, setPatientBaselineBcvaAffected] = useState(
+    () => String(SUBTYPES.typical.baselineBcvaAffected)
+  );
+  const [patientBaselineBcvaFellow, setPatientBaselineBcvaFellow] = useState(
+    () => String(SUBTYPES.typical.baselineBcvaFellow)
+  );
   const [patientDetailDrugId, setPatientDetailDrugId] = useState("ranibizumab_bs");
+
+  useEffect(() => {
+    const st = SUBTYPES[subtypeId];
+    setPatientBaselineBcvaAffected(String(st.baselineBcvaAffected));
+    setPatientBaselineBcvaFellow(String(st.baselineBcvaFellow));
+  }, [subtypeId]);
 
   const modelParams = useMemo(() => {
     const utilities = utilityInputs.map((v) => parseFloat(v));
@@ -224,6 +236,11 @@ export default function App() {
     const age = parseInt(patientAge, 10);
     const seed = parseInt(patientSeed, 10);
     if (Number.isNaN(age) || age < 40 || age > 100) return null;
+    const bcvaAffected = parseFloat(patientBaselineBcvaAffected);
+    const bcvaFellow = parseFloat(patientBaselineBcvaFellow);
+    const patientBaseline = {};
+    if (Number.isFinite(bcvaAffected)) patientBaseline.baselineBcvaAffected = bcvaAffected;
+    if (Number.isFinite(bcvaFellow)) patientBaseline.baselineBcvaFellow = bcvaFellow;
     return runPatientDrugComparison({
       entryAge: age,
       sex: patientSex,
@@ -237,6 +254,7 @@ export default function App() {
       incomeBracket,
       seed: Number.isNaN(seed) ? 42 : seed,
       modelParams,
+      patientBaseline,
       selectedDrugIds: patientCompareDrugIds,
       includeTrajectory: true,
     });
@@ -252,6 +270,8 @@ export default function App() {
     cycleLengthYears,
     incomeBracket,
     patientSeed,
+    patientBaselineBcvaAffected,
+    patientBaselineBcvaFellow,
     modelParams,
   ]);
 
@@ -684,6 +704,35 @@ export default function App() {
               </select>
             </label>
             <label style={labelStyle}>
+              ベースライン視力 — 患眼 BCVA（小数視力）
+              <input
+                type="number"
+                step={0.01}
+                min={0}
+                max={2}
+                value={patientBaselineBcvaAffected}
+                onChange={(e) => setPatientBaselineBcvaAffected(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+            <label style={labelStyle}>
+              ベースライン視力 — 対側眼 BCVA
+              <input
+                type="number"
+                step={0.01}
+                min={0}
+                max={2}
+                value={patientBaselineBcvaFellow}
+                onChange={(e) => setPatientBaselineBcvaFellow(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+            <p style={{ ...hintStyle, marginTop: -4 }}>
+              5状態の初期分布は BCVA 平均からガウス近似（Table S2 代替）。
+              1.0＝視力良好、0.5＝軽度障害寄り。QALY は較好眼効用に即反映。
+              コスト・注射はフォロー期間（生存タイムライン）が同じなら一致します。
+            </p>
+            <label style={labelStyle}>
               乱数シード（仮想患者 ID）
               <input
                 type="number"
@@ -1029,9 +1078,12 @@ export default function App() {
                     }}
                   >
                     <strong>乱数シード {patientAnalysis.patientProfile.seed}</strong>
-                    {" — "}
+                    {" · "}
+                    患眼 BCVA {patientAnalysis.patientProfile.baselineBcvaAffected} /
+                    対側眼 {patientAnalysis.patientProfile.baselineBcvaFellow}
+                    <br />
                     フォロー期間（{patientAnalysis.patientProfile.costTimelineMonths} か月）を決める乱数列です。
-                    全薬剤で同一タイムライン上に注射・コストを算出します。
+                    QALY は transitionKey 別、コスト・注射は最長生存タイムライン共通。
                   </div>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 10, lineHeight: 1.6 }}>
                     全7薬剤（ラニビズマブ先発・BS、アフリベルセプト 2 mg/BS/8 mg、ファリ、ブロル）を表示。
@@ -1046,6 +1098,7 @@ export default function App() {
                         <th style={thStyle}>薬剤+投与</th>
                         <th style={thStyle}>モニタリング</th>
                         <th style={thStyle}>生涯注射</th>
+                        <th style={thStyle}>QALY</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1056,14 +1109,14 @@ export default function App() {
                           <>
                             {showRbzHeader && (
                               <tr key="hdr-rbz" style={{ background: "#ECFDF5" }}>
-                                <td colSpan={6} style={{ ...tdStyle, fontWeight: 700, color: "#065F46" }}>
+                                <td colSpan={7} style={{ ...tdStyle, fontWeight: 700, color: "#065F46" }}>
                                   ラニビズマブ系（transitionKey: rbz_bs）
                                 </td>
                               </tr>
                             )}
                             {showAflHeader && (
                               <tr key="hdr-afl" style={{ background: "#EFF6FF" }}>
-                                <td colSpan={6} style={{ ...tdStyle, fontWeight: 700, color: "#1E40AF" }}>
+                                <td colSpan={7} style={{ ...tdStyle, fontWeight: 700, color: "#1E40AF" }}>
                                   アフリベルセプト系（transitionKey: aflibercept）
                                 </td>
                               </tr>
@@ -1096,6 +1149,9 @@ export default function App() {
                             {row.injectionReference && (
                               <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
                             )}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
                           </td>
                             </tr>
                           </>

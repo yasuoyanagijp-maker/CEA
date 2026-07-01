@@ -40,10 +40,9 @@ export function qalyForCycle(utilityStart, utilityEnd, cycleLen, discountFactor)
   return ((utilityStart + utilityEnd) / 2) * cycleLen * discountFactor;
 }
 
-/** 個別患者 — 較好眼効用（両眼モデル） */
+/** 個別患者 — 較好眼効用（両眼モデル・状態から直接） */
 export function patientBetterEyeUtility(treatedState, fellowState, secondEye, qaly) {
-  const { utilities: u, utilityNone: uNone } = qaly;
-  if (!secondEye) return Math.max(u[treatedState], uNone);
+  const { utilities: u } = qaly;
   return Math.max(u[treatedState], u[fellowState]);
 }
 
