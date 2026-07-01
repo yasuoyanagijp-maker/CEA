@@ -5,13 +5,16 @@ import {
   TABLE_S5_SOURCE,
 } from "./config/table-s5-transitions.js";
 import {
-  INJ_BASE_TABLE_S6,
   TABLE_S6_SOURCE,
 } from "./config/table-s6-injections.js";
 import {
   getInjections2026MetaForDrug,
   INJECTIONS_2026_META_SOURCE,
 } from "./config/injections-2026-meta.js";
+import {
+  buildInjectionsByDrugSubtype,
+  getTransitionKey,
+} from "./config/drug-clinical-profile.js";
 import { DEFAULT_HORIZON } from "./constants.js";
 
 /** BSC 自然経過 — Table S5 に BSC 列がないため rbz_bs 治療遷移から導出（論文1 簡略モデルと同趣旨） */
@@ -97,25 +100,13 @@ export const TRANS_SCENARIO = {
   },
 };
 
-/** ベースケース注射回数 — Supplementary Table S6 */
-export const INJ_BASE = INJ_BASE_TABLE_S6;
+/** ベースケース注射回数 — Supplementary Table S6（薬剤ID × 病型） */
+export const INJ_BASE = buildInjectionsByDrugSubtype("base");
 
 export { TABLE_S6_SOURCE };
 
-export const INJ_SCENARIO = {
-  typical: {
-    rbz_bs: { induction: 3.0, year1: 1.2, year2: 2.0, year3plus: 1.6 },
-    aflibercept: { induction: 3.0, year1: 1.5, year2: 1.9, year3plus: 1.3 },
-  },
-  pcv: {
-    rbz_bs: { induction: 3.0, year1: 1.1, year2: 2.0, year3plus: 1.4 },
-    aflibercept: { induction: 3.0, year1: 1.5, year2: 1.8, year3plus: 1.7 },
-  },
-  rap: {
-    rbz_bs: { induction: 3.0, year1: 4.2, year2: 4.7, year3plus: 4.7 },
-    aflibercept: { induction: 3.0, year1: 4.7, year2: 4.9, year3plus: 4.9 },
-  },
-};
+/** scenario 注射 — Supplementary Table S8 */
+export const INJ_SCENARIO = buildInjectionsByDrugSubtype("scenario");
 
 export function getClinicalTables(clinicalCase) {
   if (clinicalCase === "scenario") {
@@ -138,7 +129,6 @@ export function getInjectionRate(
   injections,
   subtypeId,
   drugId,
-  clinicalKey,
   phase
 ) {
   if (clinicalCase === "2026_meta") {
@@ -146,7 +136,7 @@ export function getInjectionRate(
     if (!schedule) return 0;
     return schedule[phase] ?? 0;
   }
-  return injections?.[subtypeId]?.[clinicalKey]?.[phase] ?? 0;
+  return injections?.[subtypeId]?.[drugId]?.[phase] ?? 0;
 }
 
 /**
@@ -161,6 +151,7 @@ export function getInjectionPhaseReference(
 ) {
   const drug = drugCatalog?.[drugId] ?? { clinicalKey: drugId };
   const clinicalKey = drug.clinicalKey ?? drugId;
+  const transitionKey = drug.transitionKey ?? getTransitionKey(drugId);
   const { injections } = getClinicalTables(clinicalCase);
 
   if (clinicalCase === "2026_meta") {
@@ -168,17 +159,19 @@ export function getInjectionPhaseReference(
     return {
       source: INJECTIONS_2026_META_SOURCE,
       clinicalKey,
+      transitionKey,
       phases: schedule,
       note: "induction=3か月あたり3回換算、year1=年間回数、year2以降=year1−3",
     };
   }
 
-  const phases = injections?.[subtypeId]?.[clinicalKey] ?? null;
+  const phases = injections?.[subtypeId]?.[drugId] ?? null;
   return {
     source: clinicalCase === "scenario" ? "Supplementary Table S8 (scenario)" : TABLE_S6_SOURCE,
     clinicalKey,
+    transitionKey,
     phases,
-    note: "induction=最初3か月の回数、year1/year2/year3plus=年間回数",
+    note: "induction=最初3か月の回数、year1/year2/year3plus=年間回数（病型×薬剤別）",
   };
 }
 
@@ -208,14 +201,7 @@ export function buildInjectionYearReference({
     for (let month = year * 12; month < Math.min((year + 1) * 12, maxMonths); month++) {
       if (!isOnTreatment(Math.floor(month / 3), 0.25, treatmentDurationYears)) continue;
       const phase = phaseForCycle(Math.floor(month / 3), 0.25);
-      const rate = getInjectionRate(
-        clinicalCase,
-        injections,
-        subtypeId,
-        drugId,
-        clinicalKey,
-        phase
-      );
+      const rate = getInjectionRate(clinicalCase, injections, subtypeId, drugId, phase);
       if (phase === "induction" && month < 3) {
         expected += rate / 3;
       } else if (phase !== "induction") {
@@ -236,28 +222,14 @@ export function buildInjectionYearReference({
 
 /** 月次の注射回数（Table S6 意味論・決定論的） */
 export function injectionsForMonth(monthIndex, context) {
-  const {
-    clinicalCase,
-    injections,
-    subtypeId,
-    drugId,
-    clinicalKey,
-    treatmentDurationYears,
-  } = context;
+  const { clinicalCase, injections, subtypeId, drugId, treatmentDurationYears } = context;
 
   if (!isOnTreatment(Math.floor(monthIndex / 3), 0.25, treatmentDurationYears)) {
     return 0;
   }
 
   const phase = phaseForCycle(Math.floor(monthIndex / 3), 0.25);
-  const rate = getInjectionRate(
-    clinicalCase,
-    injections,
-    subtypeId,
-    drugId,
-    clinicalKey,
-    phase
-  );
+  const rate = getInjectionRate(clinicalCase, injections, subtypeId, drugId, phase);
 
   if (phase === "induction" && monthIndex < 3) {
     return rate / 3;
@@ -279,7 +251,6 @@ export function injectionsForCycle(cycleIndex, context) {
     injections,
     subtypeId,
     drugId,
-    clinicalKey,
     treatmentDurationYears,
     cycleLengthYears = 0.25,
   } = context;
@@ -289,14 +260,7 @@ export function injectionsForCycle(cycleIndex, context) {
   }
 
   const phase = phaseForCycle(cycleIndex, cycleLengthYears);
-  const rate = getInjectionRate(
-    clinicalCase,
-    injections,
-    subtypeId,
-    drugId,
-    clinicalKey,
-    phase
-  );
+  const rate = getInjectionRate(clinicalCase, injections, subtypeId, drugId, phase);
 
   if (phase === "induction") {
     return rate;

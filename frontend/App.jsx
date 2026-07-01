@@ -19,7 +19,7 @@ import {
   getInjectionPhaseReference,
   DRUG_CATALOG,
   DRUG_IDS,
-  patientDrugIds,
+  PATIENT_DRUG_IDS,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,
@@ -217,10 +217,7 @@ export default function App() {
   const subtype = SUBTYPES[subtypeId];
   const costPaper = COST_PAPER_LIST.find((p) => p.id === costPaperId);
 
-  const patientCompareDrugIds = useMemo(
-    () => patientDrugIds(selectedDrugIds),
-    [selectedDrugIds]
-  );
+  const patientCompareDrugIds = DRUG_IDS;
 
   const patientAnalysis = useMemo(() => {
     const age = parseInt(patientAge, 10);
@@ -255,7 +252,6 @@ export default function App() {
     incomeBracket,
     patientSeed,
     modelParams,
-    patientCompareDrugIds,
   ]);
 
   const patientDetailDrug =
@@ -673,13 +669,13 @@ export default function App() {
             </label>
             <p style={hintStyle}>
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
-              ラニビズマブ BS・アフリベルセプト 2 mg・アフリベルセプト BS を常に表示（BS は
-              aflibercept 遷移・注射回数、薬価のみ BS）。同一 key 内（AFL 2 mg / AFL BS / ファリ等）は
-              経路・QALY 一致、コストのみ差。
+              個別患者タブは全7薬剤を表示。各薬剤は clinicalKey=drugId で独立し、
+              注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ、
+              視力遷移は transitionKey（rbz_bs / aflibercept）を使用。
               <br />
               <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、この1例の視力遷移・死亡・両眼発症に
               使う乱数列の番号です。同じ seed なら結果を再現でき、変えると別の確率経路（別患者1例）になります。
-              全薬剤で seed を共有するため、薬剤差は S5 遷移表の差のみです。
+              同一 transitionKey の薬剤は視力経路が一致、注射回数・薬価は薬剤ごとに異なります。
               {patientRemainingLife != null && (
                 <>
                   {" "}
@@ -899,7 +895,8 @@ export default function App() {
                     直接医療費に年齢別自己負担・月次高額療養費を適用。
                     余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
                     解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
-                    QALY・実生存・死亡は clinicalKey ごとの遷移表から算出。
+                    QALY・実生存・死亡は transitionKey ごとの S5 遷移表から算出。
+                    注射・コストは薬剤×病型別。
                   </p>
                   <div
                     style={{
@@ -916,8 +913,8 @@ export default function App() {
                     <strong>乱数シード {patientAnalysis.patientProfile.seed}</strong>
                     {" — "}
                     この1例の確率経路（視力遷移・死亡・両眼発症）を決める番号です。
-                    例: seed 42 なら常に同じ経路が再現されます。seed を変えると別の1例になります
-                    （Markov のコホート平均とは異なります）。全薬剤で同一 seed を共有しています。
+                    同一 transitionKey 内（例: RBZ/ RBZ BS）は視力・QALY 一致。
+                    注射回数は薬剤×病型別 Table S6、患者負担は薬価差を反映。
                   </div>
                   <table style={tableStyle}>
                     <thead>

@@ -2,7 +2,7 @@
  * 個別患者マイクロシミュレーション
  * — 年齢・性別・病型を指定し、月次で直接医療費・患者負担（高額療養費）・QALY を算出
  *
- * 薬剤比較時は clinicalKey ごとに臨床経路を共有し、同一患者像でコストのみ差し替える。
+ * 薬剤比較時は drugId ごとに臨床経路・注射回数を算出（遷移 S5 は transitionKey、注射 S6 は薬剤×病型）。
  */
 
 import { N_STATES } from "./constants.js";
@@ -17,7 +17,7 @@ import {
   getBscTransitionProbs,
   injectionsForMonth,
 } from "./clinical.js";
-import { getDrug, DRUG_CATALOG, DRUG_IDS } from "./drugs.js";
+import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 import { cycleDeathProbability, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
@@ -190,7 +190,7 @@ function simulateClinicalPath({
   entryAge,
   sex,
   subtypeId,
-  clinicalKey,
+  transitionKey,
   clinicalCase,
   timeHorizonYears,
   treatmentDurationYears,
@@ -206,7 +206,7 @@ function simulateClinicalPath({
   const fixedMort = modelParams.annualMortality ?? null;
   const secondEyeMonthly = modelParams.secondEyeMonthlyIncidence ?? 0.008;
 
-  if (!transitions[subtypeId]?.[clinicalKey]) return null;
+  if (!transitions[subtypeId]?.[transitionKey]) return null;
 
   let treatedState = sampleCategorical(subtype.treatedInitial, rng);
   let fellowState = sampleCategorical(subtype.fellowInitial, rng);
@@ -223,7 +223,7 @@ function simulateClinicalPath({
     const probs = getTransitionProbs(
       transitions,
       subtypeId,
-      clinicalKey,
+      transitionKey,
       phase,
       onTreatment
     );
@@ -282,7 +282,6 @@ function applyDrugCostsToPath({
   const drug = getDrug(drugId);
   const paper = getCostPaper(costPaperId);
   const { injections } = getClinicalTables(clinicalCase);
-  const clinicalKey = drug.clinicalKey;
   const injUnit = perInjectionCost(drugId, paper);
   const aePerInj = perInjectionAeCost(
     modelParams.adverseEvents,
@@ -311,7 +310,6 @@ function applyDrugCostsToPath({
     injections,
     subtypeId,
     drugId,
-    clinicalKey,
     treatmentDurationYears,
   };
 
@@ -450,7 +448,7 @@ export function runPatientSimulation(input) {
     entryAge,
     sex,
     subtypeId,
-    clinicalKey: drug.clinicalKey,
+    transitionKey: getDrugTransitionKey(drugId),
     clinicalCase,
     timeHorizonYears: effectiveHorizon,
     treatmentDurationYears,
@@ -587,7 +585,7 @@ export function buildPatientAnnualDrugComparison(
 
 /**
  * 同一患者プロファイルで全薬剤（または選択薬剤）を比較
- * — clinicalKey ごとに臨床経路（視力・死亡・QALY）を生成。同一 key 内はコストのみ差し替え
+ * — drugId ごとに臨床経路・注射回数・コストを算出
  */
 export function runPatientDrugComparison(input) {
   const drugIds = input.selectedDrugIds?.length ? input.selectedDrugIds : DRUG_IDS;
@@ -603,30 +601,29 @@ export function runPatientDrugComparison(input) {
 
   const pathCache = new Map();
   const qalyCache = new Map();
-  const getPath = (clinicalKey) => {
-    if (!pathCache.has(clinicalKey)) {
-      // 同一患者の乱数列を全 clinicalKey で共有 — 薬剤差は遷移表(S5)のみ
+  const getPath = (drugId) => {
+    if (!pathCache.has(drugId)) {
       const rng = createRng(baseSeed);
       const path = simulateClinicalPath({
         entryAge: input.entryAge,
         sex: input.sex,
         subtypeId: input.subtypeId,
-        clinicalKey,
+        transitionKey: getDrugTransitionKey(drugId),
         clinicalCase: input.clinicalCase ?? "base",
         timeHorizonYears: effectiveHorizon,
         treatmentDurationYears: input.treatmentDurationYears ?? null,
         modelParams: input.modelParams ?? {},
         rng,
       });
-      pathCache.set(clinicalKey, path);
+      pathCache.set(drugId, path);
     }
-    return pathCache.get(clinicalKey);
+    return pathCache.get(drugId);
   };
 
-  const getQaly = (clinicalKey, path) => {
-    if (!qalyCache.has(clinicalKey)) {
+  const getQaly = (drugId, path) => {
+    if (!qalyCache.has(drugId)) {
       qalyCache.set(
-        clinicalKey,
+        drugId,
         computePatientPathQaly(path, {
           entryAge: input.entryAge,
           sex: input.sex,
@@ -637,7 +634,7 @@ export function runPatientDrugComparison(input) {
         })
       );
     }
-    return qalyCache.get(clinicalKey);
+    return qalyCache.get(drugId);
   };
 
   const results = {};
@@ -645,7 +642,7 @@ export function runPatientDrugComparison(input) {
 
   for (const drugId of drugIds) {
     const drug = getDrug(drugId);
-    const path = getPath(drug.clinicalKey);
+    const path = getPath(drugId);
     if (!path) {
       results[drugId] = { drugId, incomplete: true, reason: "臨床データなし" };
       continue;
@@ -663,7 +660,7 @@ export function runPatientDrugComparison(input) {
       treatmentDurationYears: input.treatmentDurationYears ?? null,
     });
 
-    const qalyResult = getQaly(drug.clinicalKey, path);
+    const qalyResult = getQaly(drugId, path);
 
     const annualTrajectory = mergeCostTrajectoryWithQaly(
       costs.annualTrajectory,
@@ -680,6 +677,7 @@ export function runPatientDrugComparison(input) {
       sex: input.sex,
       subtypeId: input.subtypeId,
       clinicalKey: drug.clinicalKey,
+      transitionKey: getDrugTransitionKey(drugId),
       totalQALY: qalyResult.totalQALY,
       totalLifeYears: qalyResult.totalLifeYears,
       deathMonth: path.deathMonth,
@@ -699,6 +697,7 @@ export function runPatientDrugComparison(input) {
       drugId,
       name: DRUG_CATALOG[drugId].name,
       clinicalKey: drug.clinicalKey,
+      transitionKey: getDrugTransitionKey(drugId),
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
       totalInjections: costs.totalInjections,

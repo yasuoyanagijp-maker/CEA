@@ -6,7 +6,7 @@ import {
   isOnTreatment,
 } from "./utils.js";
 import { SUBTYPES, getClinicalTables, getBscTransitionProbs, injectionsForCycle } from "./clinical.js";
-import { getDrug } from "./drugs.js";
+import { getDrug, getDrugTransitionKey } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { cycleDeathProbability, DEFAULT_MALE_RATIO, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
@@ -189,7 +189,7 @@ export function runMarkov(input) {
   const subtype = SUBTYPES[subtypeId];
   const paper = getCostPaper(costPaperId);
   const { transitions, injections } = getClinicalTables(clinicalCase);
-  const clinicalKey = drug.clinicalKey;
+  const transitionKey = getDrugTransitionKey(drugId);
 
   const cycleLen = horizon.cycleLengthYears;
   const cpy = cyclesPerYear(cycleLen);
@@ -223,11 +223,11 @@ export function runMarkov(input) {
   if (clinicalCase === "2026_meta" && !getInjections2026MetaForDrug(drugId)) {
     warnings.push(`${drug.name}: 2026 meta 注射回数が未設定`);
   }
-  if (!transitions[subtypeId]?.[clinicalKey]) {
+  if (!transitions[subtypeId]?.[transitionKey]) {
     return {
       drugId,
       incomplete: true,
-      reason: `臨床データなし: ${subtypeId} × ${clinicalKey}`,
+      reason: `臨床データなし: ${subtypeId} × ${transitionKey}`,
       warnings,
     };
   }
@@ -267,7 +267,6 @@ export function runMarkov(input) {
     injections,
     subtypeId,
     drugId,
-    clinicalKey,
     treatmentDurationYears,
     cycleLengthYears: cycleLen,
   };
@@ -280,7 +279,7 @@ export function runMarkov(input) {
     );
     const phase = phaseForCycle(c, cycleLen);
     const onTreatment = isOnTreatment(c, cycleLen, treatmentDurationYears);
-    const treatedProbs = transitions[subtypeId][clinicalKey][phase];
+    const treatedProbs = transitions[subtypeId][transitionKey][phase];
     const probs = onTreatment
       ? normalizeTransitionProbs(treatedProbs)
       : getBscTransitionProbs(transitions, subtypeId, phase) ??

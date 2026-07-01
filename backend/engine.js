@@ -6,8 +6,9 @@ import {
 import {
   DRUG_CATALOG,
   DRUG_IDS,
-  PATIENT_CORE_DRUG_IDS,
+  PATIENT_DRUG_IDS,
   patientDrugIds,
+  getDrugTransitionKey,
 } from "./drugs.js";
 import { SUBTYPES } from "./clinical.js";
 import { COST_PAPER_LIST } from "./papers/index.js";
@@ -248,8 +249,9 @@ export {
 export {
   DRUG_CATALOG,
   DRUG_IDS,
-  PATIENT_CORE_DRUG_IDS,
+  PATIENT_DRUG_IDS,
   patientDrugIds,
+  getDrugTransitionKey,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,
