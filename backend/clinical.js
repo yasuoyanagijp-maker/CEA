@@ -269,6 +269,42 @@ export function injectionsForMonth(monthIndex, context) {
 }
 
 /**
+ * Markov サイクル（四半期）あたりの注射回数
+ * - induction: 最初の1サイクル（3か月）に phase 値を一括（年率×cycleLen ではない）
+ * - その他: 年間回数 × cycleLengthYears
+ */
+export function injectionsForCycle(cycleIndex, context) {
+  const {
+    clinicalCase,
+    injections,
+    subtypeId,
+    drugId,
+    clinicalKey,
+    treatmentDurationYears,
+    cycleLengthYears = 0.25,
+  } = context;
+
+  if (!isOnTreatment(cycleIndex, cycleLengthYears, treatmentDurationYears)) {
+    return 0;
+  }
+
+  const phase = phaseForCycle(cycleIndex, cycleLengthYears);
+  const rate = getInjectionRate(
+    clinicalCase,
+    injections,
+    subtypeId,
+    drugId,
+    clinicalKey,
+    phase
+  );
+
+  if (phase === "induction") {
+    return rate;
+  }
+  return rate * cycleLengthYears;
+}
+
+/**
  * 治療中止後の BSC 遷移（サブタイプ×フェーズ）
  * @param {object} transitions — TRANS_BASE または TRANS_SCENARIO
  * @param {string} subtypeId

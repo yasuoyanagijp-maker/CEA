@@ -39,3 +39,81 @@ export function expectedBetterEyeUtility(cohort, fellowDist, pSecond, qaly) {
 export function qalyForCycle(utilityStart, utilityEnd, cycleLen, discountFactor) {
   return ((utilityStart + utilityEnd) / 2) * cycleLen * discountFactor;
 }
+
+/** 個別患者 — 較好眼効用（両眼モデル） */
+export function patientBetterEyeUtility(treatedState, fellowState, secondEye, qaly) {
+  const { utilities: u, utilityNone: uNone } = qaly;
+  if (!secondEye) return Math.max(u[treatedState], uNone);
+  return Math.max(u[treatedState], u[fellowState]);
+}
+
+/**
+ * 臨床経路（個別患者）から QALY・生存年数を算出
+ * — 死亡月で打ち切り、3ヶ月半周期補正・割引（Markov と同一）
+ */
+export function computeQalyFromClinicalPath(
+  path,
+  { modelParams, discountRate, cycleLengthYears = 0.25 }
+) {
+  if (!modelParams?.utilities || modelParams.utilityNone == null) {
+    return { totalQALY: null, totalLifeYears: null, annualQaly: [] };
+  }
+
+  const qalyParams = {
+    utilities: modelParams.utilities,
+    utilityNone: modelParams.utilityNone,
+  };
+  const cycleMonths = Math.round(cycleLengthYears * 12);
+  const discPerCycle = discountRate * cycleLengthYears;
+  const months =
+    path.deathMonth != null ? path.months.slice(0, path.deathMonth + 1) : path.months;
+
+  if (!months.length) {
+    return { totalQALY: 0, totalLifeYears: 0, annualQaly: [] };
+  }
+
+  let totalQALY = 0;
+  let totalLifeYears = 0;
+  const annualQalyMap = new Map();
+
+  for (let c = 0; ; c++) {
+    const m0 = c * cycleMonths;
+    if (m0 >= months.length) break;
+
+    const mEnd = Math.min(m0 + cycleMonths - 1, months.length - 1);
+    const actualCycleLen = (mEnd - m0 + 1) / 12;
+    const start = months[m0];
+    const end = months[mEnd];
+
+    const uStart = patientBetterEyeUtility(
+      start.treatedState,
+      start.fellowState,
+      start.secondEye,
+      qalyParams
+    );
+    const uEnd = patientBetterEyeUtility(
+      end.endTreatedState ?? end.treatedState,
+      end.endFellowState ?? end.fellowState,
+      end.endSecondEye ?? end.secondEye,
+      qalyParams
+    );
+
+    const df = Math.pow(1 + discPerCycle, -c);
+    const cycleQaly = qalyForCycle(uStart, uEnd, actualCycleLen, df);
+    totalQALY += cycleQaly;
+    totalLifeYears += actualCycleLen;
+
+    const yearKey = Math.floor(mEnd / 12);
+    annualQalyMap.set(yearKey, (annualQalyMap.get(yearKey) ?? 0) + cycleQaly);
+  }
+
+  let cum = 0;
+  const annualQaly = [...annualQalyMap.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([year, qaly]) => {
+      cum += qaly;
+      return { year, qaly, cumQALY: cum };
+    });
+
+  return { totalQALY, totalLifeYears, annualQaly };
+}

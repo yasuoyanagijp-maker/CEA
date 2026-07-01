@@ -882,9 +882,9 @@ export default function App() {
                 <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                     直接医療費（薬剤+投与・モニタリング・有害事象）に対し、年齢別自己負担割合と月次の高額療養費限度額を適用。
-                    QALY・生存年数は生命表余命に基づく解析期間（
-                    {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1) ?? "—"} 年）の
-                    コホート Markov 参考値。費用・注射は個別患者経路。シード{" "}
+                    QALY・生存年数は同一臨床経路（視力遷移・死亡月で打ち切り）から算出。解析期間上限{" "}
+                    {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1) ?? "—"} 年（余命ベース）。
+                    費用・注射は個別患者経路。シード{" "}
                     {patientAnalysis.patientProfile.seed}。
                   </p>
                   <table style={tableStyle}>

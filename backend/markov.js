@@ -5,7 +5,7 @@ import {
   normalizeTransitionProbs,
   isOnTreatment,
 } from "./utils.js";
-import { SUBTYPES, getClinicalTables, getBscTransitionProbs, getInjectionRate } from "./clinical.js";
+import { SUBTYPES, getClinicalTables, getBscTransitionProbs, injectionsForCycle } from "./clinical.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
@@ -35,18 +35,87 @@ function monthlyIncidencePerCycle(cycleLengthYears, monthlyRate) {
   return 1 - Math.pow(1 - monthlyRate, cycleLengthYears * 12);
 }
 
-function monitoringCost(yearIndex, regimen, cycleLen, df, paper) {
+function monitoringCostPerYear(yearIndex, regimen, paper) {
   const mon = paper.monitoring;
   if (!mon) return 0;
   const table = regimen === "bsc" ? mon.bsc : mon.tae;
   const u = yearIndex === 0 ? table.year1 : table.year2plus;
   const unit = mon.unitCosts;
-  const perCycle =
+  return (
     u.physician * unit.physician +
     u.oct * unit.oct +
     u.slit * unit.slit +
-    u.fa * unit.fa;
-  return perCycle * cycleLen * df;
+    u.fa * unit.fa
+  );
+}
+
+function computeCycleCosts({
+  drugId,
+  drug,
+  paper,
+  societalPaper,
+  cohort,
+  aliveMass,
+  pSecond,
+  yearIndex,
+  onTreatment,
+  injThisCycle,
+  cycleLen,
+  df,
+  modelParams,
+}) {
+  const out = {
+    drugAdmin: 0,
+    monitoring: 0,
+    adverseEvents: 0,
+    societalCare: 0,
+    physicianVisit: 0,
+    total: 0,
+  };
+  if (aliveMass <= 0) return out;
+
+  if (onTreatment) {
+    const admin = drugAdminCost(drugId, injThisCycle, aliveMass, 1, paper);
+    if (!admin.missing) out.drugAdmin = admin.cost * df;
+
+    out.adverseEvents =
+      adverseEventCost(
+        injThisCycle * aliveMass,
+        1,
+        modelParams.adverseEvents,
+        modelParams.includeScenarioAe
+      ) * df;
+  }
+
+  const monAnnual = monitoringCostPerYear(
+    yearIndex,
+    onTreatment ? drug.monitoringRegimen : "bsc",
+    paper
+  );
+  out.monitoring = monAnnual * cycleLen * aliveMass * df;
+
+  const { care, visit } = societalCosts(cohort, pSecond, cycleLen, 1, {
+    societal: societalPaper,
+  });
+  out.societalCare = care * df;
+  out.physicianVisit = visit * df;
+
+  out.total =
+    out.drugAdmin +
+    out.monitoring +
+    out.adverseEvents +
+    out.societalCare +
+    out.physicianVisit;
+  return out;
+}
+
+function addHalfCycleCosts(target, start, end) {
+  target.drugAdmin += (start.drugAdmin + end.drugAdmin) / 2;
+  target.monitoring += (start.monitoring + end.monitoring) / 2;
+  target.adverseEvents += (start.adverseEvents + end.adverseEvents) / 2;
+  target.societalCare += (start.societalCare + end.societalCare) / 2;
+  target.physicianVisit += (start.physicianVisit + end.physicianVisit) / 2;
+  return (start.total + end.total) / 2;
 }
 
 function drugAdminCost(drugId, injCount, aliveMass, df, paper) {
@@ -192,6 +261,16 @@ export function runMarkov(input) {
     physicianVisit: 0,
   };
 
+  const injContext = {
+    clinicalCase,
+    injections,
+    subtypeId,
+    drugId,
+    clinicalKey,
+    treatmentDurationYears,
+    cycleLengthYears: cycleLen,
+  };
+
   for (let c = 0; c < cycles; c++) {
     const df = Math.pow(1 + disc, -c);
     const yearIndex = Math.min(
@@ -206,60 +285,30 @@ export function runMarkov(input) {
       : getBscTransitionProbs(transitions, subtypeId, phase) ??
         normalizeTransitionProbs(treatedProbs);
 
-    const annualInj = onTreatment
-      ? getInjectionRate(
-          clinicalCase,
-          injections,
-          subtypeId,
-          drugId,
-          clinicalKey,
-          phase
-        )
+    const injThisCycle = onTreatment
+      ? injectionsForCycle(c, injContext)
       : 0;
-    const injThisCycle = annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);
     const utilityStart = qaly
       ? expectedBetterEyeUtility(cohort, fellowDist, pSecond, qaly)
       : 0;
     const aliveStart = aliveMass;
 
-    if (onTreatment) {
-      const admin = drugAdminCost(drugId, injThisCycle, aliveMass, df, paper);
-      if (!admin.missing) {
-        costBreakdown.drugAdmin += admin.cost;
-        totalCost += admin.cost;
-      }
-
-      const ae = adverseEventCost(
-        injThisCycle * aliveMass,
-        df,
-        modelParams.adverseEvents,
-        modelParams.includeScenarioAe
-      );
-      costBreakdown.adverseEvents += ae;
-      totalCost += ae;
-    }
-
-    const mon = monitoringCost(
-      yearIndex,
-      onTreatment ? drug.monitoringRegimen : "bsc",
-      cycleLen,
-      df,
-      paper
-    );
-    costBreakdown.monitoring += mon * aliveMass;
-    totalCost += mon * aliveMass;
-
-    const { care, visit } = societalCosts(
+    const costStart = computeCycleCosts({
+      drugId,
+      drug,
+      paper,
+      societalPaper,
       cohort,
+      aliveMass: aliveStart,
       pSecond,
+      yearIndex,
+      onTreatment,
+      injThisCycle,
       cycleLen,
       df,
-      { societal: societalPaper }
-    );
-    costBreakdown.societalCare += care;
-    costBreakdown.physicianVisit += visit;
-    totalCost += care + visit;
+      modelParams,
+    });
 
     const pNew =
       (1 - pSecond) *
@@ -288,10 +337,28 @@ export function runMarkov(input) {
     fellowDist = applyTransition(fellowDist, probs);
 
     const aliveEnd = aliveMass;
+    const cohortEnd = dist.map((s) => s * aliveMass);
+
+    const costEnd = computeCycleCosts({
+      drugId,
+      drug,
+      paper,
+      societalPaper,
+      cohort: cohortEnd,
+      aliveMass: aliveEnd,
+      pSecond,
+      yearIndex,
+      onTreatment,
+      injThisCycle,
+      cycleLen,
+      df,
+      modelParams,
+    });
+
+    totalCost += addHalfCycleCosts(costBreakdown, costStart, costEnd);
     totalLifeYears += ((aliveStart + aliveEnd) / 2) * cycleLen;
 
     if (qaly) {
-      const cohortEnd = dist.map((s) => s * aliveMass);
       const utilityEnd = expectedBetterEyeUtility(
         cohortEnd,
         fellowDist,
@@ -303,7 +370,6 @@ export function runMarkov(input) {
 
     const yearComplete = (c + 1) % cpy === 0;
     if (yearComplete || c === cycles - 1) {
-      const cohortEnd = dist.map((s) => s * aliveMass);
       trajectory.push({
         year: (c + 1) * cycleLen,
         none: ((cohortEnd[0] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),

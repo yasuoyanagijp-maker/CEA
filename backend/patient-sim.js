@@ -21,7 +21,7 @@ import { getDrug, DRUG_CATALOG, DRUG_IDS } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 import { cycleDeathProbability, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
-import { runMarkov } from "./markov.js";
+import { computeQalyFromClinicalPath } from "./qaly.js";
 import { DEFAULT_HORIZON } from "./constants.js";
 
 /** Mulberry32 決定論的 RNG */
@@ -90,54 +90,25 @@ function patientEffectiveHorizon(entryAge, sex, configuredHorizonYears) {
   });
 }
 
-/** QALY はコホート Markov（markov.js）と同一ロジック — 割引・四半期遷移 */
-function computePatientMarkovQaly({
-  drugId,
-  subtypeId,
-  costPaperId,
-  clinicalCase,
-  timeHorizonYears,
-  treatmentDurationYears,
-  discountRate,
-  cycleLengthYears,
-  entryAge,
-  sex,
-  modelParams,
-}) {
-  const effectiveHorizon = patientEffectiveHorizon(entryAge, sex, timeHorizonYears);
-  const markov = runMarkov({
-    drugId,
-    subtypeId,
-    costPaperId,
-    clinicalCase,
-    horizon: {
-      timeHorizonYears: effectiveHorizon,
-      cycleLengthYears: cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
-      discountRate: discountRate ?? DEFAULT_HORIZON.discountRate,
-    },
-    treatmentDurationYears,
-    modelParams: {
-      ...modelParams,
-      entryAge,
-      maleRatio: sex === "female" ? 0 : 1,
-    },
-  });
-
-  const traj = markov.trajectory ?? [];
-  let prevCum = 0;
-  const annualQaly = traj.map((t) => {
-    const cum = t.cumQALY != null ? parseFloat(t.cumQALY) : null;
-    const qaly = cum != null ? cum - prevCum : null;
-    if (cum != null) prevCum = cum;
-    return { year: t.year, qaly, cumQALY: cum };
+/** 個別患者 QALY — 臨床経路（死亡打ち切り）と整合 */
+function computePatientPathQaly(path, input) {
+  const effectiveHorizon = patientEffectiveHorizon(
+    input.entryAge,
+    input.sex,
+    input.timeHorizonYears ?? DEFAULT_HORIZON.timeHorizonYears
+  );
+  const qalyResult = computeQalyFromClinicalPath(path, {
+    modelParams: input.modelParams ?? {},
+    discountRate: input.discountRate ?? DEFAULT_HORIZON.discountRate,
+    cycleLengthYears: input.cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
   });
 
   return {
-    totalQALY: markov.totalQALY,
-    totalLifeYears: markov.totalLifeYears,
+    ...qalyResult,
     effectiveHorizonYears: effectiveHorizon,
-    remainingLifeExpectancy: remainingLifeExpectancy(entryAge, { sex }),
-    annualQaly,
+    remainingLifeExpectancy: remainingLifeExpectancy(input.entryAge, {
+      sex: input.sex,
+    }),
   };
 }
 
@@ -257,15 +228,19 @@ function simulateClinicalPath({
       onTreatment
     );
 
+    const startTreated = treatedState;
+    const startFellow = fellowState;
+    const startSecondEye = secondEye;
+
     months.push({
       month,
       yearIndex,
       age,
       phase,
       onTreatment,
-      treatedState,
-      fellowState,
-      secondEye,
+      treatedState: startTreated,
+      fellowState: startFellow,
+      secondEye: startSecondEye,
     });
 
     if (!secondEye && secondEyeMonthly > 0 && rng() < secondEyeMonthly) {
@@ -275,6 +250,10 @@ function simulateClinicalPath({
 
     treatedState = sampleTransition(treatedState, probs, rng);
     fellowState = sampleTransition(fellowState, probs, rng);
+
+    months[months.length - 1].endTreatedState = treatedState;
+    months[months.length - 1].endFellowState = fellowState;
+    months[months.length - 1].endSecondEye = secondEye;
 
     const blind = treatedState === N_STATES - 1;
     const m = monthlyMortality(age, sex, blind, blindHr, useLifeTable, fixedMort);
@@ -500,17 +479,12 @@ export function runPatientSimulation(input) {
     treatmentDurationYears,
   });
 
-  const qalyResult = computePatientMarkovQaly({
-    drugId,
-    subtypeId,
-    costPaperId,
-    clinicalCase,
-    timeHorizonYears,
-    treatmentDurationYears,
-    discountRate,
-    cycleLengthYears,
+  const qalyResult = computePatientPathQaly(path, {
     entryAge,
     sex,
+    timeHorizonYears,
+    discountRate,
+    cycleLengthYears,
     modelParams,
   });
 
@@ -566,6 +540,7 @@ export function runPatientDrugComparison(input) {
   const remainingYears = remainingLifeExpectancy(input.entryAge, { sex: input.sex });
 
   const pathCache = new Map();
+  const qalyCache = new Map();
   const getPath = (clinicalKey) => {
     if (!pathCache.has(clinicalKey)) {
       const rng = createRng(baseSeed + hashString(clinicalKey));
@@ -583,6 +558,23 @@ export function runPatientDrugComparison(input) {
       pathCache.set(clinicalKey, path);
     }
     return pathCache.get(clinicalKey);
+  };
+
+  const getQaly = (clinicalKey, path) => {
+    if (!qalyCache.has(clinicalKey)) {
+      qalyCache.set(
+        clinicalKey,
+        computePatientPathQaly(path, {
+          entryAge: input.entryAge,
+          sex: input.sex,
+          timeHorizonYears: configuredHorizon,
+          discountRate: input.discountRate ?? DEFAULT_HORIZON.discountRate,
+          cycleLengthYears: input.cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
+          modelParams: input.modelParams ?? {},
+        })
+      );
+    }
+    return qalyCache.get(clinicalKey);
   };
 
   const results = {};
@@ -608,19 +600,7 @@ export function runPatientDrugComparison(input) {
       treatmentDurationYears: input.treatmentDurationYears ?? null,
     });
 
-    const qalyResult = computePatientMarkovQaly({
-      drugId,
-      subtypeId: input.subtypeId,
-      costPaperId: input.costPaperId ?? "paper2_rbz",
-      clinicalCase: input.clinicalCase ?? "base",
-      timeHorizonYears: input.timeHorizonYears ?? DEFAULT_HORIZON.timeHorizonYears,
-      treatmentDurationYears: input.treatmentDurationYears ?? null,
-      discountRate: input.discountRate ?? DEFAULT_HORIZON.discountRate,
-      cycleLengthYears: input.cycleLengthYears ?? DEFAULT_HORIZON.cycleLengthYears,
-      entryAge: input.entryAge,
-      sex: input.sex,
-      modelParams: input.modelParams ?? {},
-    });
+    const qalyResult = getQaly(drug.clinicalKey, path);
 
     const annualTrajectory = mergeCostTrajectoryWithQaly(
       costs.annualTrajectory,
@@ -639,6 +619,8 @@ export function runPatientDrugComparison(input) {
       clinicalKey: drug.clinicalKey,
       totalQALY: qalyResult.totalQALY,
       totalLifeYears: qalyResult.totalLifeYears,
+      deathMonth: path.deathMonth,
+      alive: path.alive,
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,
       totalInjections: costs.totalInjections,
@@ -646,7 +628,6 @@ export function runPatientDrugComparison(input) {
       annualTrajectory,
       monthlyTrajectory:
         input.includeTrajectory !== false ? costs.monthlyTrajectory : undefined,
-      alive: path.alive,
       incomplete: qalyResult.totalQALY == null || costs.injUnitMissing,
       warnings,
     };
@@ -659,6 +640,9 @@ export function runPatientDrugComparison(input) {
       totalPatientOop: costs.totalPatientOop,
       totalInjections: costs.totalInjections,
       totalQALY: qalyResult.totalQALY,
+      totalLifeYears: qalyResult.totalLifeYears,
+      deathMonth: path.deathMonth,
+      alive: path.alive,
       costBreakdown: costs.costBreakdown,
     });
   }
