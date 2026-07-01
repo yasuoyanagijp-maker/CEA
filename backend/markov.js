@@ -9,7 +9,7 @@ import { SUBTYPES, getClinicalTables, getBscTransitionProbs, injectionsForCycle 
 import { getDrug, getDrugTransitionKey } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
-import { cycleDeathProbability, DEFAULT_MALE_RATIO, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
+import { cycleDeathProbability, DEFAULT_MALE_RATIO } from "./config/mortality.js";
 import { getInjections2026MetaForDrug } from "./config/injections-2026-meta.js";
 import {
   expectedBetterEyeUtility,
@@ -164,6 +164,15 @@ function societalCosts(cohort, pBoth, cycleLen, df, paper) {
   return { care, visit };
 }
 
+function computeTableExpectedInjections(cycles, cycleLen, injContext) {
+  let sum = 0;
+  for (let c = 0; c < cycles; c++) {
+    if (!isOnTreatment(c, cycleLen, injContext.treatmentDurationYears)) continue;
+    sum += injectionsForCycle(c, injContext);
+  }
+  return sum;
+}
+
 /**
  * @param {object} input
  * @param {string} input.drugId
@@ -275,6 +284,11 @@ export function runMarkov(input) {
     treatmentDurationYears,
     cycleLengthYears: cycleLen,
   };
+  const tableExpectedInjections = computeTableExpectedInjections(
+    cycles,
+    cycleLen,
+    injContext
+  );
 
   for (let c = 0; c < cycles; c++) {
     const df = Math.pow(1 + disc, -c);
@@ -399,6 +413,7 @@ export function runMarkov(input) {
     totalQALY: qaly ? totalQALY : null,
     totalLifeYears: mort ? totalLifeYears : null,
     totalInjections,
+    tableExpectedInjections,
     totalCost,
     trajectory,
     costBreakdown,

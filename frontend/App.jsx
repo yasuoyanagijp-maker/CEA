@@ -763,6 +763,14 @@ export default function App() {
                   ?.label ?? ""
               }`}
             >
+              <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                コストは社会的視点（薬剤+投与・モニタリング・有害事象・介護/通院 Table S11）を
+                3か月サイクル半周期補正・2%割引で集計。
+                注射回数は {clinicalCaseHint} × 薬剤×病型別
+                {clinicalCase !== "2026_meta" &&
+                  "（AFL 8 mg/ファリ/ブロルは induction 薬剤別、year1以降 AFL 2 mg × 0.8）"}
+                を Markov コホート生存で加味した期待値。括弧内は Table 期待（死亡率未加味）。
+              </p>
               <table style={tableStyle}>
                 <thead>
                   <tr style={{ background: "#0F172A", color: "#fff" }}>
@@ -799,6 +807,12 @@ export default function App() {
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           {r?.totalInjections != null ? `${r.totalInjections.toFixed(1)}回` : "—"}
+                          {r?.tableExpectedInjections != null &&
+                            Math.abs(r.totalInjections - r.tableExpectedInjections) > 0.05 && (
+                              <div style={{ fontSize: 10, color: "#64748B" }}>
+                                (Table {r.tableExpectedInjections.toFixed(1)})
+                              </div>
+                            )}
                           {DRUG_CATALOG[id].injectionReference && (
                             <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
                           )}
