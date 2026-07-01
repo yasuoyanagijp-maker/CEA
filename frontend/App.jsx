@@ -957,6 +957,9 @@ export default function App() {
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             {row.totalInjections ?? "—"}回
+                            {row.injectionReference && (
+                              <div style={{ fontSize: 10, color: "#B45309" }}>参考(AFL×0.8)</div>
+                            )}
                           </td>
                           <td style={{ ...tdStyle, textAlign: "right" }}>
                             {patientAnalysis.results[row.drugId]?.totalLifeYears != null
@@ -986,6 +989,10 @@ export default function App() {
                       <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                         同一患者（seed {patientAnalysis.patientProfile.seed}）で、薬剤ごとの
                         年齢・注射・直接医療費・患者負担を経過年ごとに並べて比較します。
+                        <br />
+                        <span style={{ color: "#B45309" }}>
+                          ※ AFL 8 mg / ファリ / ブロルの注射は参考値（同一病型 AFL 2 mg Table S6 × 0.8）。
+                        </span>
                       </p>
 
                       <div style={{ overflowX: "auto", marginBottom: 20 }}>
@@ -1001,6 +1008,9 @@ export default function App() {
                                   style={{ ...thStyle, textAlign: "center", color: d.color }}
                                 >
                                   {d.name}
+                                  {d.injectionReference && (
+                                    <span style={{ fontSize: 9, fontWeight: 400 }}> ※参考</span>
+                                  )}
                                 </th>
                               ))}
                             </tr>
@@ -1076,7 +1086,11 @@ export default function App() {
                                 <span style={{ fontWeight: 600, color: row.color }}>{row.name}</span>
                               </td>
                               <td style={tdStyle}>{row.age}</td>
-                              <td style={{ ...tdStyle, textAlign: "right" }}>{row.injections}回</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>{row.injections}回
+                                {row.injectionReference && (
+                                  <span style={{ fontSize: 9, color: "#B45309" }}> ※</span>
+                                )}
+                              </td>
                               <td style={{ ...tdStyle, textAlign: "right" }}>
                                 ¥{fmtJpy(row.directMedical)}
                               </td>
@@ -1125,6 +1139,20 @@ export default function App() {
                       <strong>注射回数パラメータ（{injectionPhaseRef.source}）</strong>
                       <br />
                       clinicalKey: {injectionPhaseRef.clinicalKey} — {injectionPhaseRef.note}
+                      {injectionPhaseRef.isInjectionReference && (
+                        <div
+                          style={{
+                            marginTop: 8,
+                            padding: "8px 10px",
+                            background: "#FEF3C7",
+                            border: "1px solid #FCD34D",
+                            borderRadius: 6,
+                            color: "#92400E",
+                          }}
+                        >
+                          {injectionPhaseRef.injectionReferenceNote}
+                        </div>
+                      )}
                       <table style={{ ...tableStyle, marginTop: 8, fontSize: 11 }}>
                         <thead>
                           <tr style={{ background: "#64748B", color: "#fff" }}>

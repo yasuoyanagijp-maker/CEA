@@ -547,6 +547,7 @@ export function buildPatientAnnualDrugComparison(
     name: drugCatalog[id]?.name ?? id,
     color: drugCatalog[id]?.color,
     clinicalKey: drugCatalog[id]?.clinicalKey,
+    injectionReference: drugCatalog[id]?.injectionReference ?? false,
   }));
 
   const flatRows = [];
@@ -574,6 +575,7 @@ export function buildPatientAnnualDrugComparison(
         name: drugCatalog[drugId]?.name ?? drugId,
         color: drugCatalog[drugId]?.color,
         clinicalKey: drugCatalog[drugId]?.clinicalKey,
+        injectionReference: drugCatalog[drugId]?.injectionReference ?? false,
         ...metrics,
       });
     }
@@ -669,6 +671,9 @@ export function runPatientDrugComparison(input) {
 
     const warnings = [];
     if (drug.clinicalNote) warnings.push(drug.clinicalNote);
+    if (drug.injectionReference) {
+      warnings.push(`注射回数は参考値（AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`);
+    }
     if (costs.injUnitMissing) warnings.push(`薬価未設定: ${drug.name}`);
 
     results[drugId] = {
@@ -690,6 +695,7 @@ export function runPatientDrugComparison(input) {
       monthlyTrajectory:
         input.includeTrajectory !== false ? costs.monthlyTrajectory : undefined,
       incomplete: qalyResult.totalQALY == null || costs.injUnitMissing,
+      injectionReference: drug.injectionReference ?? false,
       warnings,
     };
 
@@ -697,6 +703,7 @@ export function runPatientDrugComparison(input) {
       drugId,
       name: DRUG_CATALOG[drugId].name,
       clinicalKey: drug.clinicalKey,
+      injectionReference: drug.injectionReference ?? false,
       transitionKey: getDrugTransitionKey(drugId),
       totalDirectMedical: costs.totalDirectMedical,
       totalPatientOop: costs.totalPatientOop,

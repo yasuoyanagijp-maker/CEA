@@ -37,7 +37,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept_8mg",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列。注射: 2026 meta × 病型比",
+    clinicalNote: "遷移 S5: aflibercept 列。注射: 参考値（AFL 2 mg × 0.8、病型別 S6）",
+    injectionReference: true,
   },
   faricimab: {
     id: "faricimab",
@@ -47,7 +48,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "faricimab",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列（暫定）。注射: 2026 meta × 病型比",
+    clinicalNote: "遷移 S5: aflibercept 列（暫定）。注射: 参考値（AFL 2 mg × 0.8、病型別 S6）",
+    injectionReference: true,
   },
   brolucizumab: {
     id: "brolucizumab",
@@ -57,7 +59,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "brolucizumab",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列（暫定）。注射: 2026 meta × 病型比",
+    clinicalNote: "遷移 S5: aflibercept 列（暫定）。注射: 参考値（AFL 2 mg × 0.8、病型別 S6）",
+    injectionReference: true,
   },
   ranibizumab_bs: {
     id: "ranibizumab_bs",

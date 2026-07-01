@@ -7,7 +7,6 @@
 
 import { DRUG_IDS } from "../drugs.js";
 import { TABLE_S6_RAW } from "./table-s6-injections.js";
-import { getInjections2026MetaForDrug } from "./injections-2026-meta.js";
 
 /** Table S5 遷移列 — 論文2は rbz_bs / aflibercept の2列 */
 export const DRUG_TRANSITION_KEY = {
@@ -19,6 +18,12 @@ export const DRUG_TRANSITION_KEY = {
   faricimab: "aflibercept",
   brolucizumab: "aflibercept",
 };
+
+/** S6 未掲載 — 同一病型 AFL 2 mg (aflibercept 列) × 係数 */
+export const AFL2MG_DERIVED_DRUG_IDS = ["aflibercept_8mg", "faricimab", "brolucizumab"];
+export const AFL2MG_DERIVED_INJECTION_FACTOR = 0.8;
+export const AFL2MG_DERIVED_INJECTION_NOTE =
+  "参考値: 同一病型の AFL 2 mg（Table S6 aflibercept 列）× 0.8。S6 未掲載のため暫定。";
 
 /** Supplementary Table S8 — scenario 注射回数（clinical.js 由来） */
 const S8_SCENARIO_RAW = {
@@ -38,8 +43,6 @@ const S8_SCENARIO_RAW = {
 
 const RBZ_FAMILY = ["ranibizumab", "ranibizumab_bs"];
 const AFL_FAMILY = ["aflibercept", "aflibercept_bs"];
-/** S6 未掲載 — 2026 meta year1 を typical 基準に病型比でスケール */
-const META_DERIVED = ["aflibercept_8mg", "faricimab", "brolucizumab"];
 
 const SUBTYPE_IDS = ["typical", "pcv", "rap"];
 
@@ -52,17 +55,18 @@ export function getTransitionKey(drugId) {
   return DRUG_TRANSITION_KEY[drugId] ?? drugId;
 }
 
-function scalePhasesToSubtype(basePhases, subtypeId, referenceKey = "aflibercept") {
-  if (subtypeId === "typical") {
-    return { ...basePhases };
-  }
-  const typ = TABLE_S6_RAW.typical[referenceKey];
-  const sub = TABLE_S6_RAW[subtypeId][referenceKey];
+/** @param {string} drugId */
+export function isAfl2mgDerivedInjection(drugId) {
+  return AFL2MG_DERIVED_DRUG_IDS.includes(drugId);
+}
+
+/** AFL 2 mg フェーズ別注射 × 係数 */
+export function deriveInjectionFromAfl2mg(afl2mgPhases, factor = AFL2MG_DERIVED_INJECTION_FACTOR) {
   return {
-    induction: basePhases.induction,
-    year1: round3(basePhases.year1 * (sub.year1 / typ.year1)),
-    year2: round3(basePhases.year2 * (sub.year2 / typ.year2)),
-    year3plus: round3(basePhases.year3plus * (sub.year3plus / typ.year3plus)),
+    induction: round3(afl2mgPhases.induction * factor),
+    year1: round3(afl2mgPhases.year1 * factor),
+    year2: round3(afl2mgPhases.year2 * factor),
+    year3plus: round3(afl2mgPhases.year3plus * factor),
   };
 }
 
@@ -76,11 +80,8 @@ function expandSubtypeInjections(subtypeId, sourceTable) {
   for (const drugId of AFL_FAMILY) {
     out[drugId] = { ...s6Row.aflibercept };
   }
-  for (const drugId of META_DERIVED) {
-    const meta = getInjections2026MetaForDrug(drugId);
-    if (meta) {
-      out[drugId] = scalePhasesToSubtype(meta, subtypeId);
-    }
+  for (const drugId of AFL2MG_DERIVED_DRUG_IDS) {
+    out[drugId] = deriveInjectionFromAfl2mg(s6Row.aflibercept);
   }
 
   return out;

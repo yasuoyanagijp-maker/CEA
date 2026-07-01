@@ -14,6 +14,9 @@ import {
 import {
   buildInjectionsByDrugSubtype,
   getTransitionKey,
+  isAfl2mgDerivedInjection,
+  AFL2MG_DERIVED_INJECTION_FACTOR,
+  AFL2MG_DERIVED_INJECTION_NOTE,
 } from "./config/drug-clinical-profile.js";
 import { DEFAULT_HORIZON } from "./constants.js";
 
@@ -166,12 +169,18 @@ export function getInjectionPhaseReference(
   }
 
   const phases = injections?.[subtypeId]?.[drugId] ?? null;
+  const isReference = isAfl2mgDerivedInjection(drugId);
   return {
     source: clinicalCase === "scenario" ? "Supplementary Table S8 (scenario)" : TABLE_S6_SOURCE,
     clinicalKey,
     transitionKey,
     phases,
-    note: "induction=最初3か月の回数、year1/year2/year3plus=年間回数（病型×薬剤別）",
+    isInjectionReference: isReference,
+    injectionReferenceFactor: isReference ? AFL2MG_DERIVED_INJECTION_FACTOR : null,
+    injectionReferenceNote: isReference ? AFL2MG_DERIVED_INJECTION_NOTE : null,
+    note: isReference
+      ? `参考値 — 同一病型 AFL 2 mg (aflibercept 列) × ${AFL2MG_DERIVED_INJECTION_FACTOR}。induction=最初3か月、year1/year2/year3plus=年間回数`
+      : "induction=最初3か月の回数、year1/year2/year3plus=年間回数（病型×薬剤別）",
   };
 }
 
