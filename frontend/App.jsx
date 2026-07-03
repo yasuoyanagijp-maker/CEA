@@ -1074,7 +1074,10 @@ export default function App() {
                                               ? "#DBEAFE"
                                               : row.evidence.trialEvidenceTier === "modeled"
                                                 ? "#FEF3C7"
-                                                : "#E2E8F0",
+                                                : row.evidence.trialEvidenceTier ===
+                                                    "reference-derived"
+                                                  ? "#FCE7F3"
+                                                  : "#E2E8F0",
                                           color: "#334155",
                                         }}
                                       >

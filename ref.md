@@ -90,12 +90,30 @@
 T&E 運用下の到達率であり、スイッチ集団の直接到達ではない点に注意（naïve T&E の上限参照）。
 
 - **Ohji M, et al.** (2020). ALTAIR — aflibercept 2mg T&E（96週 ≥12週 56.9/60.2%・≥16週 42–46%、PCV 51.1%）.
-- **Mitchell P, et al.** (2021). ARIES — aflibercept 2mg T&E（104週 ≥12週 47.2/51.9%）.
+- **Mitchell P, et al.** (2021). ARIES — aflibercept 2mg T&E（104週 ≥12週 47.2/51.9%）. *Retina, 41, 1911–1920.* https://doi.org/10.1097/iae.0000000000003128
+- **Chaikitmongkol V, et al.** (2021). Treat-and-Extend Regimens for nAMD and PCV: Consensus and Recommendations From the Asia-Pacific Vitreo-retina Society（ALTAIR 由来 16週到達 46%、96.3% が week96 まで維持）. *Asia-Pacific Journal of Ophthalmology, 10, 507–518.* https://doi.org/10.1097/apo.0000000000000445
+- **Kodjikian L, et al.** (2024). AZURE — aflibercept for nAMD Beyond One Year: RCT of Treat-and-Extend vs. Fixed Dosing（既治療集団 week76 で ≥12週 37.0%、表ベース 53.3%、≥16週 16.4%）. *Advances in Therapy, 41, 1010–1024.* https://doi.org/10.1007/s12325-023-02719-3
 - **Okada M, et al.** (2022). Aflibercept T&E 到達率補助文献.
 
-> アフリベルセプト BS（`aflibercept_bs`）は先行 2mg と同一分子とみなし、ARIES/ALTAIR 到達率を流用（間隔不変・薬価差のみ）。
+### 3.5 アフリベルセプト BS（trialReach 借用: ≥Q12W 57% / ≥Q16W 44%、tier = reference-derived）
 
-### 3.5 ラニビズマブ / ラニビズマブ BS（trialReach 未収載 = unknown）
+**重要な限界**: アフリベルセプト BS の非劣性エビデンスは、ほぼすべて **3回ローディング後 q8 週固定** で得られており、
+**延長耐久性（T&E での長間隔到達）そのものは直接検証されていない**。したがって本ツールは BS の到達率を
+先行品 2mg（ARIES/ALTAIR）から**借用（reference-derived）**として扱い、「BS で実証」ではなく
+「**先行品 2mg 由来の推定**」であることを明示する。BS に「Q13.0 到達可能」を BS 固有の確定判定として表示しない。
+
+- **Woo SJ, et al.** (2023). Efficacy and Safety of the Aflibercept Biosimilar SB15 in Neovascular AMD（q8 固定で先行品に非劣性）. *JAMA Ophthalmology, 141, 668–676.* https://doi.org/10.1001/jamaophthalmol.2023.2260
+- **Karkhaneh R, et al.** (2024). Evaluating the Efficacy and Safety of Aflibercept Biosimilar (P041) Compared to Originator in nAMD（q8 固定）. *Ophthalmology Retina.* https://doi.org/10.1016/j.oret.2024.02.012
+- **Friedman S, et al.** (2025). Randomized Trial of Biosimilar ABP 938 Compared with Reference Aflibercept in nAMD（week16 切替でも有効性・安全性・免疫原性が同様、延長耐久性ではない）. *Ophthalmology Retina.* https://doi.org/10.1016/j.oret.2025.07.015
+- **Zhang C, et al.** (2026). Clinical efficacy and safety of aflibercept biosimilars in nAMD: a systematic review and meta-analysis of RCTs（延長耐久性は未検証と明言）. *British Journal of Ophthalmology.* https://doi.org/10.1136/bjo-2025-328196
+- **Sawires K, Nithianandan H, Somani S.** (2025). Comparative outcomes of aflibercept biosimilars and reference aflibercept in nAMD: a systematic review and meta-analysis（追跡最大52–56週、延長運用は今後の課題）. *BMJ Open Ophthalmology, 10.* https://doi.org/10.1136/bmjophth-2025-002509
+- **Aljuhani H, et al.** (2025). Efficacy and Safety of Aflibercept Biosimilars Relative to Reference Aflibercept Therapy for nAMD: A Systematic Review and Meta-Analysis. *Clinical Ophthalmology, 19, 1911–1918.* https://doi.org/10.2147/opth.s524395
+- **Rashid M, et al.** (2025). Efficacy and safety of aflibercept biosimilars compared to reference aflibercept for retinal diseases: A systematic review and meta-analysis. *Survey of Ophthalmology.* https://doi.org/10.1016/j.survophthal.2025.11.007
+- **Al-Shammari YM, et al.** (2026). Clinical efficacy and safety of anti-VEGF biosimilars compared to reference anti-VEGF agents for nAMD: a systematic review, meta-analysis, and meta-regression. *International Ophthalmology, 46(1).* https://doi.org/10.1007/s10792-026-04043-5
+
+> 借用元は第3.4節 ARIES/ALTAIR。tier は `t&e-derived`（先行品自体の T&E 由来）ではなく `reference-derived`（BS が先行品から借用）として区別する。
+
+### 3.6 ラニビズマブ / ラニビズマブ BS（trialReach 未収載 = unknown）
 
 ARIES/ALTAIR に相当する ≥Q12/16W T&E 到達率が本エビデンスセットに未収載。一般に他剤より間隔が短く、延長による損益分岐到達は限定的。
 

@@ -7,16 +7,25 @@
  *   trialReach [{weeks, fraction}]    — RCT/延長期の絶対到達率（理論上限・段階判定用）
  *                                       fraction = その週数「以上」に到達した割合
  *   trialEvidenceTier                 — trialReach の証拠階層（試験デザイン差の管理）
- *                                       "direct"      = 固定割付/延長期で直接実測
- *                                       "modeled"     = post hoc で固定割付を模擬
- *                                       "t&e-derived" = T&E 運用下の到達間隔から導出
+ *                                       "direct"           = 固定割付/延長期で直接実測
+ *                                       "modeled"          = post hoc で固定割付を模擬
+ *                                       "t&e-derived"      = T&E 運用下の到達間隔から導出
+ *                                       "reference-derived"= 先行品の trialReach を借用
+ *                                                            （BS 自体の延長耐久性は未実証）
  * これらを損益分岐間隔に照らし「到達可能／境界／困難」を自動分類する。
  * intervalExtensionWeeks は後方互換（realisticExtensionWeeks の別名として残す）。
+ *
+ * 注意（BS の延長耐久性）: アフリベルセプト/ラニビズマブ BS の非劣性エビデンスは
+ * ほぼ全て「3回ローディング後 q8 週固定」で得られており、延長耐久性そのものは
+ * 直接検証されていない（Zhang 2026; Sawires 2025; Aljuhani 2025）。よって BS の
+ * trialReach は先行品由来の借用（reference-derived）として扱い、BS 固有の到達判定
+ * として確定表示しない。
  */
 export const EVIDENCE_TIER_LABELS = {
   direct: "直接実測",
   modeled: "post hoc 推定",
   "t&e-derived": "T&E 運用由来",
+  "reference-derived": "先行品由来（BS延長未実証）",
 };
 
 export const SWITCH_INTERVAL_EVIDENCE = {
@@ -72,14 +81,16 @@ export const SWITCH_INTERVAL_EVIDENCE = {
   },
   aflibercept_bs: {
     realisticExtensionWeeks: [0, 0],
-    // 先行 2mg と同一分子 → ARIES/ALTAIR 到達率を流用
+    // BS の非劣性は q8 固定で実証（SB15/P041/ABP938）。延長耐久性は未検証のため、
+    // trialReach は先行 2mg（ARIES/ALTAIR）からの「借用」であり BS 固有の実証ではない。
     trialReach: [
       { weeks: 12, fraction: 0.57 },
       { weeks: 16, fraction: 0.44 },
     ],
-    trialEvidenceTier: "t&e-derived",
-    note: "先行 2mg と同一分子。到達率は ARIES/ALTAIR を流用（≥12週 ~57%/≥16週 ~44%）。先行品からのスイッチは間隔不変・薬価差のみ",
-    sources: "Ohji 2020; Mitchell 2021; 同一分子仮定",
+    trialEvidenceTier: "reference-derived",
+    reachIsBorrowed: true,
+    note: "BS の非劣性は q8 固定投与で実証（SB15/P041/ABP938）だが延長耐久性は未検証。到達率は先行 2mg（ARIES/ALTAIR ≥12週 ~57%/≥16週 ~44%）の借用で、BS 固有の到達判定ではない。先行品からのスイッチは間隔不変・薬価差のみ",
+    sources: "Woo 2023 (SB15); Karkhaneh 2024 (P041); Friedman 2025 (ABP938); Ohji 2020/Mitchell 2021 (借用元); Zhang 2026; Sawires 2025; Aljuhani 2025",
   },
   ranibizumab: {
     realisticExtensionWeeks: null,

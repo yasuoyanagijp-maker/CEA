@@ -48,6 +48,20 @@ describe("computeBreakEvenTable", () => {
     expect(row.breakEvenWeeks).toBeCloseTo(8 * (73959 / 119912), 2);
   });
 
+  it("aflibercept BS の trialReach は先行品借用（reference-derived）で BS 実証ではない", () => {
+    const t = computeBreakEvenTable({
+      currentDrugId: "aflibercept",
+      currentIntervalWeeks: 8,
+      costPaperId: "paper2_rbz",
+    });
+    const row = t.rows.find((r) => r.drugId === "aflibercept_bs");
+    // 先行 2mg の ARIES/ALTAIR 到達率を借用しているが tier は t&e-derived ではない
+    expect(row.evidence.trialEvidenceTier).toBe("reference-derived");
+    expect(row.evidence.trialEvidenceTier).not.toBe("t&e-derived");
+    expect(row.evidence.reachIsBorrowed).toBe(true);
+    expect(row.evidence.trialReach).toContainEqual({ weeks: 12, fraction: 0.57 });
+  });
+
   it("BS Q8 → faricimab は実臨床では不足だが試験到達率(Q16W 63%)で reachable", () => {
     const t = computeBreakEvenTable({
       currentDrugId: "aflibercept_bs",
