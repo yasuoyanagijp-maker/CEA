@@ -8,7 +8,7 @@ export const STATE_LABELS = ["視力障害無し", "軽度", "中度", "重度",
 export const BLINDNESS_SOCIETAL_COST_WEIGHT = [1, 1, 1, 0.5, 1];
 
 export const DEFAULT_HORIZON = {
-  timeHorizonYears: 25,
+  timeHorizonYears: 20,
   cycleLengthYears: 0.25,
   discountRate: 0.02,
   wtpPerQaly: 5_000_000,

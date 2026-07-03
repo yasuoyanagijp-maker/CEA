@@ -58,6 +58,23 @@ function meanBcvaOfDistribution(dist) {
   return dist.reduce((s, p, i) => s + p * STATE_BCVA_CENTROIDS[i], 0);
 }
 
+export function getMarkovBaselineBcva(subtypeId) {
+  const row = YONEDA_BASELINE[subtypeId] ?? YONEDA_BASELINE.typical;
+  return {
+    baselineBcvaAffected: row.baselineBcvaAffected,
+    baselineBcvaFellow: row.baselineBcvaFellow,
+  };
+}
+
+/** Markov ベースケース（Yoneda）の BCVA と一致するか */
+export function isMarkovDefaultBcva(subtypeId, baselineBcvaAffected, baselineBcvaFellow) {
+  const d = getMarkovBaselineBcva(subtypeId);
+  return (
+    Math.abs(baselineBcvaAffected - d.baselineBcvaAffected) < 1e-9 &&
+    Math.abs(baselineBcvaFellow - d.baselineBcvaFellow) < 1e-9
+  );
+}
+
 /**
  * @param {keyof typeof YONEDA_BASELINE} subtypeId
  */

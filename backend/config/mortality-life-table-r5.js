@@ -44,6 +44,102 @@ export const R5_FEMALE_NQX = [
 /** Table S1 — 男性比率 61.4%（論文2 補足） */
 export const DEFAULT_MALE_RATIO = 0.614;
 
+function buildLxFromNqx(nqx) {
+  const lx = new Array(nqx.length);
+  lx[0] = 1;
+  for (let x = 0; x < nqx.length - 1; x++) {
+    lx[x + 1] = lx[x] * (1 - nqx[x]);
+  }
+  return lx;
+}
+
+const R5_MALE_LX = buildLxFromNqx(R5_MALE_NQX);
+const R5_FEMALE_LX = buildLxFromNqx(R5_FEMALE_NQX);
+
+function maleRatioFromOpts({ maleRatio = DEFAULT_MALE_RATIO, sex = null } = {}) {
+  if (sex === "male") return 1;
+  if (sex === "female") return 0;
+  return maleRatio;
+}
+
+function lxTablesForRatio(maleRatio) {
+  if (maleRatio >= 1) return { lx: R5_MALE_LX, nqx: R5_MALE_NQX };
+  if (maleRatio <= 0) return { lx: R5_FEMALE_LX, nqx: R5_FEMALE_NQX };
+  return null;
+}
+
+/** 非整数年齢の lx — 男女別またはブレンド */
+export function lxAtAge(age, opts = {}) {
+  const maleRatio = maleRatioFromOpts(opts);
+  const a = Math.max(0, Math.min(105, age));
+  const tables = lxTablesForRatio(maleRatio);
+  if (tables) {
+    const a0 = Math.floor(a);
+    const a1 = Math.min(105, a0 + 1);
+    if (a0 === a1) return tables.lx[a0];
+    const t = a - a0;
+    return tables.lx[a0] * (1 - t) + tables.lx[a1] * t;
+  }
+  return (
+    maleRatio * lxAtAge(a, { maleRatio: 1 }) +
+    (1 - maleRatio) * lxAtAge(a, { maleRatio: 0 })
+  );
+}
+
+/**
+ * 区間 [age, age + intervalYears) の生存確率 — 生命表 lx 比
+ * 固定死亡率指定時は (1 − q)^t
+ */
+export function survivalProbability(
+  age,
+  intervalYears,
+  { maleRatio = DEFAULT_MALE_RATIO, sex = null, fixedRate = null } = {}
+) {
+  if (intervalYears <= 0) return 1;
+  const ratio = maleRatioFromOpts({ maleRatio, sex });
+  if (fixedRate != null) {
+    return Math.pow(1 - fixedRate, intervalYears);
+  }
+  const lx0 = lxAtAge(age, { maleRatio: ratio });
+  const lx1 = lxAtAge(age + intervalYears, { maleRatio: ratio });
+  if (lx0 <= 0) return 0;
+  return Math.max(0, Math.min(1, lx1 / lx0));
+}
+
+/** 年齢 x の平均余命 e_x（年）— 生命表 lx から person-years / lx(age) */
+export function remainingLifeExpectancy(
+  age,
+  { maleRatio = DEFAULT_MALE_RATIO, sex = null } = {}
+) {
+  const ratio = maleRatioFromOpts({ maleRatio, sex });
+  const lxStart = lxAtAge(age, { maleRatio: ratio });
+  if (lxStart <= 0) return 0;
+
+  const endAge = 105;
+  const span = endAge - age;
+  if (span <= 0) return 0;
+
+  let personYears = 0;
+  const steps = 200;
+  const dt = span / steps;
+  for (let i = 0; i < steps; i++) {
+    const t0 = age + i * dt;
+    const t1 = age + (i + 1) * dt;
+    personYears +=
+      ((lxAtAge(t0, { maleRatio: ratio }) + lxAtAge(t1, { maleRatio: ratio })) / 2) * dt;
+  }
+  return personYears / lxStart;
+}
+
+/** サイクル死亡確率（生命表または固定 q） */
+export function cycleDeathProbability(
+  age,
+  cycleLenYears,
+  { maleRatio = DEFAULT_MALE_RATIO, sex = null, fixedRate = null } = {}
+) {
+  return 1 - survivalProbability(age, cycleLenYears, { maleRatio, sex, fixedRate });
+}
+
 export function nqxAtAge(age, maleRatio = DEFAULT_MALE_RATIO) {
   const a = Math.max(0, Math.min(105, Math.floor(age)));
   const qm = R5_MALE_NQX[a];

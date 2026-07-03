@@ -3,7 +3,15 @@ import {
   DEFAULT_TREATMENT_DURATION_YEARS,
   TREATMENT_DURATION_OPTIONS,
 } from "./constants.js";
-import { DRUG_CATALOG, DRUG_IDS } from "./drugs.js";
+import {
+  DRUG_CATALOG,
+  DRUG_IDS,
+  PATIENT_DRUG_IDS,
+  PATIENT_DISPLAY_ORDER,
+  patientDrugIds,
+  getDrugTransitionKey,
+  sortByDrugDisplayOrder,
+} from "./drugs.js";
 import { SUBTYPES } from "./clinical.js";
 import { COST_PAPER_LIST } from "./papers/index.js";
 import { runMarkov } from "./markov.js";
@@ -12,6 +20,10 @@ import {
   DEFAULT_UTILITIES,
   DEFAULT_UTILITY_NONE,
 } from "./config/default-model-params.js";
+import {
+  buildS12ModelParams,
+  PAPER_S12_ENTRY_AGE,
+} from "./config/paper-reference.js";
 
 /**
  * フロントエンド → バックエンド入力スキーマ
@@ -218,22 +230,65 @@ export function runMortalitySensitivity(
 
 export { runMarkov } from "./markov.js";
 export {
+  expectedBetterEyeUtility,
+  qalyForCycle,
+  patientBetterEyeUtility,
+  computeQalyFromClinicalPath,
+} from "./qaly.js";
+export {
+  runPatientSimulation,
+  runPatientDrugComparison,
+  buildPatientAnnualDrugComparison,
+  createRng,
+  resolvePatientVisionBaseline,
+} from "./patient-sim.js";
+export {
+  INCOME_BRACKETS,
+  INCOME_BRACKET_LIST,
+  getCopayRate,
+  getMonthlyOutpatientLimit,
+  computeMonthlyPatientOop,
+} from "./config/japan-nhi.js";
+export {
   CLINICAL_DATASETS,
   CLINICAL_CASE_OPTIONS,
   getClinicalDataset,
   getEffectiveAnnualInjectionRate,
+  getInjectionRate,
+  getInjectionPhaseReference,
+  buildInjectionYearReference,
+  injectionsForMonth,
+  injectionsForCycle,
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";
 export {
+  buildS12ModelParams,
+  PAPER_S12_ENTRY_AGE,
+  PAPER_INCREMENTAL_RBZ_VS_AFL,
+} from "./config/paper-reference.js";
+export {
   MORTALITY_DEFAULTS,
   annualMortalityForAge,
   entryMortalityForSubtype,
+  remainingLifeExpectancy,
+  analysisHorizonYears,
+  survivalProbability,
+  cycleDeathProbability,
   LIFE_TABLE_SOURCE,
 } from "./config/mortality.js";
 export {
+  getMarkovBaselineBcva,
+  isMarkovDefaultBcva,
+} from "./config/baseline-characteristics.js";
+export {
   DRUG_CATALOG,
   DRUG_IDS,
+  PATIENT_DRUG_IDS,
+  patientDrugIds,
+  getDrugTransitionKey,
+  sortByDrugDisplayOrder,
+  PATIENT_DISPLAY_ORDER,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,
