@@ -17,6 +17,8 @@ import {
   getInjections2026MetaForDrug,
   INJECTIONS_2026_META_SOURCE,
 } from "./config/injections-2026-meta.js";
+import { annualInjectionsFromIntervalWeeks } from "./config/treatment-intervals.js";
+import { getDrug } from "./drugs.js";
 
 /** BSC 自然経過 — Table S5 に BSC 列がないため rbz_bs 治療遷移から導出（論文1 簡略モデルと同趣旨） */
 export const BSC_PROGRESSION_MULTIPLIER = 1.35;
@@ -141,6 +143,32 @@ export const CLINICAL_CASE_OPTIONS = Object.values(CLINICAL_DATASETS).map(
 /** @returns {ClinicalDataset} */
 export function getClinicalDataset(clinicalCase) {
   return CLINICAL_DATASETS[clinicalCase] ?? BASE_DATASET;
+}
+
+/**
+ * 選択間隔を反映した年間注射回数 — Markov とスイッチタブで共通
+ * 間隔指定あり: 52 ÷ 間隔（週）— 薬剤共通
+ * 間隔指定なし: 臨床データセット（Table S6 / 2026 meta）の文献値
+ */
+export function getEffectiveAnnualInjectionRate({
+  clinicalCase,
+  subtypeId,
+  drugId,
+  intervalWeeks = null,
+  phase = "year1",
+}) {
+  if (intervalWeeks != null && intervalWeeks > 0) {
+    return annualInjectionsFromIntervalWeeks(intervalWeeks);
+  }
+  const drug = getDrug(drugId);
+  if (!drug) return null;
+  const dataset = getClinicalDataset(clinicalCase);
+  return dataset.getAnnualInjections({
+    subtypeId,
+    drugId,
+    clinicalKey: drug.clinicalKey,
+    phase,
+  });
 }
 
 /**

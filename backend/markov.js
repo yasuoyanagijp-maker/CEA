@@ -5,7 +5,7 @@ import {
   normalizeTransitionProbs,
   isOnTreatment,
 } from "./utils.js";
-import { SUBTYPES, getClinicalDataset } from "./clinical.js";
+import { SUBTYPES, getClinicalDataset, getEffectiveAnnualInjectionRate } from "./clinical.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
@@ -119,6 +119,7 @@ function resolveRunInputs(input) {
     costPaperId,
     clinicalCase = "base",
     modelParams = {},
+    intervalWeeks = null,
   } = input;
 
   const drug = getDrug(drugId);
@@ -172,6 +173,11 @@ function resolveRunInputs(input) {
   if (drugPrice == null) {
     warnings.push(`コスト論文に ${drug.name} の薬価がありません`);
   }
+  if (intervalWeeks != null && intervalWeeks > 0) {
+    warnings.push(
+      `治療間隔 Q${intervalWeeks}: 年間注射 = 52÷${intervalWeeks} = ${(52 / intervalWeeks).toFixed(2)} 回/年（薬剤共通）`
+    );
+  }
   const societalPaper = paper.societal ?? getCostPaper("paper2_rbz").societal;
   if (!paper.societal && costPaperId === "paper1_faricimab") {
     warnings.push(
@@ -209,7 +215,13 @@ function resolveRunInputs(input) {
  *   cohort: number[], fellowDist: number[], pSecond: number, aliveMass: number,
  * }>}
  */
-function simulateCohort(resolved, horizon, treatmentDurationYears, modelParams) {
+function simulateCohort(
+  resolved,
+  horizon,
+  treatmentDurationYears,
+  modelParams,
+  { clinicalCase, intervalWeeks }
+) {
   const { subtype, subtypeId, drugId, clinicalKey, dataset, mort } = resolved;
 
   const cycleLen = horizon.cycleLengthYears;
@@ -239,7 +251,13 @@ function simulateCohort(resolved, horizon, treatmentDurationYears, modelParams) 
         normalizeTransitionProbs(treatedProbs);
 
     const annualInj = onTreatment
-      ? dataset.getAnnualInjections({ subtypeId, drugId, clinicalKey, phase })
+      ? getEffectiveAnnualInjectionRate({
+          clinicalCase,
+          subtypeId,
+          drugId,
+          intervalWeeks,
+          phase,
+        })
       : 0;
     const injThisCycle = annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);
@@ -415,6 +433,7 @@ function buildTrajectory(series, qalyPerCycle, costPerCycle, cycleLen) {
  * @param {{timeHorizonYears,cycleLengthYears,discountRate}} input.horizon
  * @param {number|null} [input.treatmentDurationYears] — null=生涯治療、2/5=その年数後にBSC
  * @param {object|null} input.modelParams — utilities, mortality, etc.
+ * @param {number|null} [input.intervalWeeks] — 治療間隔（週）。指定時は 52÷週
  */
 export function runMarkov(input) {
   const {
@@ -423,6 +442,7 @@ export function runMarkov(input) {
     clinicalCase = "base",
     treatmentDurationYears = null,
     modelParams = {},
+    intervalWeeks = null,
   } = input;
 
   const resolved = resolveRunInputs(input);
@@ -433,7 +453,8 @@ export function runMarkov(input) {
     resolved,
     horizon,
     treatmentDurationYears,
-    modelParams
+    modelParams,
+    { clinicalCase, intervalWeeks }
   );
 
   const qalyResult = resolved.qaly

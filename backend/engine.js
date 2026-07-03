@@ -221,6 +221,7 @@ export {
   CLINICAL_DATASETS,
   CLINICAL_CASE_OPTIONS,
   getClinicalDataset,
+  getEffectiveAnnualInjectionRate,
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";
@@ -242,3 +243,11 @@ export {
   DEFAULT_UTILITIES,
   DEFAULT_UTILITY_NONE,
 };
+export {
+  runSwitchCostMinimization,
+  TREATMENT_INTERVAL_OPTIONS,
+  REFERENCE_INTERVAL_WEEKS,
+  formatIntervalLabel,
+  cmaQalyTolerance,
+  annualDrugAdminCostFromModel,
+} from "./switch-analysis.js";

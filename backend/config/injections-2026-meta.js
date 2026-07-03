@@ -7,7 +7,10 @@
 export const INJECTIONS_2026_META_SOURCE =
   "2026 meta-analysis regimen (year 1); year ≥2 = year1 − 3";
 
-/** @type {Record<string, number>} drugId → year 1 mean injections */
+/**
+ * drugId → year 1 平均注射回数 + その値が報告されたレジメンの参考間隔（週）
+ * UI で Q8 等を選んだときは meta 値 × (referenceIntervalWeeks / 選択間隔) でスケール
+ */
 export const INJECTIONS_2026_META_YEAR1 = {
   faricimab: 6.45,
   aflibercept_8mg: 5.5,
@@ -17,6 +20,29 @@ export const INJECTIONS_2026_META_YEAR1 = {
   ranibizumab_bs: 9.85,
   brolucizumab: 6.3,
 };
+
+/** @type {Record<string, { referenceIntervalWeeks: number, regimenLabel: string }>} */
+export const INJECTIONS_2026_META_REGIMEN = {
+  aflibercept: { referenceIntervalWeeks: 8, regimenLabel: "Q8 T&E" },
+  aflibercept_bs: { referenceIntervalWeeks: 8, regimenLabel: "Q8 T&E" },
+  aflibercept_8mg: { referenceIntervalWeeks: 12, regimenLabel: "Q12–Q16" },
+  faricimab: { referenceIntervalWeeks: 8, regimenLabel: "T&E / extended" },
+  ranibizumab: { referenceIntervalWeeks: 6, regimenLabel: "Q4–Q6 PRN/T&E" },
+  ranibizumab_bs: { referenceIntervalWeeks: 6, regimenLabel: "Q4–Q6 PRN/T&E" },
+  brolucizumab: { referenceIntervalWeeks: 8, regimenLabel: "Q8 TAE 相当" },
+};
+
+/** @param {string} drugId */
+export function getMetaReferenceIntervalWeeks(drugId) {
+  return (
+    INJECTIONS_2026_META_REGIMEN[drugId]?.referenceIntervalWeeks ?? 8
+  );
+}
+
+/** @param {string} drugId */
+export function getMetaRegimenLabel(drugId) {
+  return INJECTIONS_2026_META_REGIMEN[drugId]?.regimenLabel ?? "Q8 相当";
+}
 
 export const INJECTIONS_2026_META_INDUCTION = 3.0;
 export const INJECTIONS_2026_META_YEAR2_OFFSET = 3;
