@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import {
   LineChart,
   Line,
@@ -18,8 +18,12 @@ import {
   runSwitchCostMinimization,
   computeBreakEvenTable,
   buildAnnualCostCurve,
+  runPatientDrugComparison,
+  buildInjectionYearReference,
+  getInjectionPhaseReference,
   DRUG_CATALOG,
   DRUG_IDS,
+  PATIENT_DRUG_IDS,
   SUBTYPES,
   COST_PAPER_LIST,
   DEFAULT_HORIZON,
@@ -30,15 +34,18 @@ import {
   TREATMENT_INTERVAL_OPTIONS,
   CLINICAL_CASE_OPTIONS,
   EVIDENCE_TIER_LABELS,
+  INCOME_BRACKET_LIST,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
+  getMarkovBaselineBcva,
 } from "../backend/engine.js";
 import { TREATMENT_DURATION_MODES } from "../backend/constants.js";
-import { PAPER_INCREMENTAL_RBZ_VS_AFL } from "../backend/config/paper-reference.js";
+import { PAPER_INCREMENTAL_RBZ_VS_AFL, buildS12ModelParams, PAPER_S12_ENTRY_AGE } from "../backend/config/paper-reference.js";
 import {
   MORTALITY_DEFAULTS,
   entryMortalityForSubtype,
   LIFE_TABLE_SOURCE,
+  remainingLifeExpectancy,
 } from "../backend/config/mortality.js";
 import { fmtJpy } from "../backend/utils.js";
 import { STATE_LABELS } from "../backend/constants.js";
@@ -81,13 +88,17 @@ export default function App() {
   const [costPaperId, setCostPaperId] = useState("paper2_rbz");
   const [clinicalCase, setClinicalCase] = useState("base");
   const [selectedDrugIds, setSelectedDrugIds] = useState([
+    "ranibizumab",
     "ranibizumab_bs",
     "aflibercept",
+    "aflibercept_bs",
     "faricimab",
   ]);
   const [referenceDrugId, setReferenceDrugId] = useState("aflibercept");
   const [treatmentDurationMode, setTreatmentDurationMode] = useState("years_5");
-  const [timeHorizonYears, setTimeHorizonYears] = useState(25);
+  const [timeHorizonYears, setTimeHorizonYears] = useState(
+    DEFAULT_HORIZON.timeHorizonYears
+  );
   const [cycleLengthYears, setCycleLengthYears] = useState(0.25);
   const [discountRate, setDiscountRate] = useState(2);
   const [activeTab, setActiveTab] = useState("summary");
@@ -111,6 +122,24 @@ export default function App() {
   const switchCurrentIntervalWeeks = parseFloat(switchIntervalInput);
   const switchIntervalValid =
     Number.isFinite(switchCurrentIntervalWeeks) && switchCurrentIntervalWeeks >= 2;
+  const [patientAge, setPatientAge] = useState("75");
+  const [patientSex, setPatientSex] = useState("male");
+  const [incomeBracket, setIncomeBracket] = useState("standard");
+  const [patientSeed, setPatientSeed] = useState("42");
+  const markovBcvaTypical = getMarkovBaselineBcva("typical");
+  const [patientBaselineBcvaAffected, setPatientBaselineBcvaAffected] = useState(
+    () => String(markovBcvaTypical.baselineBcvaAffected)
+  );
+  const [patientBaselineBcvaFellow, setPatientBaselineBcvaFellow] = useState(
+    () => String(markovBcvaTypical.baselineBcvaFellow)
+  );
+  const [patientDetailDrugId, setPatientDetailDrugId] = useState("ranibizumab_bs");
+
+  useEffect(() => {
+    const bcva = getMarkovBaselineBcva(subtypeId);
+    setPatientBaselineBcvaAffected(String(bcva.baselineBcvaAffected));
+    setPatientBaselineBcvaFellow(String(bcva.baselineBcvaFellow));
+  }, [subtypeId]);
 
   const modelParams = useMemo(() => {
     const utilities = utilityInputs.map((v) => parseFloat(v));
@@ -141,6 +170,12 @@ export default function App() {
     secondEyeMonthly,
     includeScenarioAe,
   ]);
+
+  const patientRemainingLife = useMemo(() => {
+    const age = parseFloat(patientAge);
+    if (Number.isNaN(age)) return null;
+    return remainingLifeExpectancy(age, { sex: patientSex });
+  }, [patientAge, patientSex]);
 
   const treatmentDurationYears = TREATMENT_DURATION_MODES[treatmentDurationMode];
 
@@ -303,29 +338,140 @@ export default function App() {
   const subtype = SUBTYPES[subtypeId];
   const costPaper = COST_PAPER_LIST.find((p) => p.id === costPaperId);
 
+  const patientCompareDrugIds = DRUG_IDS;
+
+  const patientAnalysis = useMemo(() => {
+    const age = parseInt(patientAge, 10);
+    const seed = parseInt(patientSeed, 10);
+    if (Number.isNaN(age) || age < 40 || age > 100) return null;
+    const bcvaAffected = parseFloat(patientBaselineBcvaAffected);
+    const bcvaFellow = parseFloat(patientBaselineBcvaFellow);
+    const patientBaseline = {};
+    if (Number.isFinite(bcvaAffected)) patientBaseline.baselineBcvaAffected = bcvaAffected;
+    if (Number.isFinite(bcvaFellow)) patientBaseline.baselineBcvaFellow = bcvaFellow;
+    return runPatientDrugComparison({
+      entryAge: age,
+      sex: patientSex,
+      subtypeId,
+      costPaperId,
+      clinicalCase,
+      timeHorizonYears: Number(timeHorizonYears),
+      treatmentDurationYears,
+      discountRate: Number(discountRate) / 100,
+      cycleLengthYears: Number(cycleLengthYears),
+      incomeBracket,
+      seed: Number.isNaN(seed) ? 42 : seed,
+      modelParams,
+      patientBaseline,
+      selectedDrugIds: patientCompareDrugIds,
+      includeTrajectory: true,
+    });
+  }, [
+    patientAge,
+    patientSex,
+    subtypeId,
+    costPaperId,
+    clinicalCase,
+    timeHorizonYears,
+    treatmentDurationYears,
+    discountRate,
+    cycleLengthYears,
+    incomeBracket,
+    patientSeed,
+    patientBaselineBcvaAffected,
+    patientBaselineBcvaFellow,
+    modelParams,
+  ]);
+
+  const patientDetailDrug =
+    patientAnalysis?.results[patientDetailDrugId] ??
+    patientAnalysis?.results[selectedDrugIds[0]];
+
+  const patientAnnualData =
+    patientDetailDrug?.annualTrajectory?.map((row) => ({
+      year: row.year,
+      age: row.age,
+      patientOop: Math.round(row.patientOop / 1000),
+      directMedical: Math.round(row.directMedical / 1000),
+      cumPatientOop: Math.round(row.cumPatientOop / 1000),
+    })) ?? [];
+
+  const injectionReference = useMemo(() => {
+    if (!patientDetailDrugId) return null;
+    return buildInjectionYearReference({
+      subtypeId,
+      drugId: patientDetailDrugId,
+      clinicalCase,
+      timeHorizonYears: Number(timeHorizonYears),
+      treatmentDurationYears,
+      drugCatalog: DRUG_CATALOG,
+    });
+  }, [
+    patientDetailDrugId,
+    subtypeId,
+    clinicalCase,
+    timeHorizonYears,
+    treatmentDurationYears,
+  ]);
+
+  const injectionPhaseRef = useMemo(() => {
+    if (!patientDetailDrugId) return null;
+    return getInjectionPhaseReference(
+      clinicalCase,
+      subtypeId,
+      patientDetailDrugId,
+      DRUG_CATALOG
+    );
+  }, [patientDetailDrugId, subtypeId, clinicalCase]);
+
   const toggleDrug = (id) => {
     setSelectedDrugIds((prev) =>
       prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
     );
   };
 
-  const costChartData = selectedDrugIds
+  const costBreakdownData = selectedDrugIds
     .filter((id) => results[id]?.totalCost != null)
-    .map((id) => ({
-      name: DRUG_CATALOG[id].name,
-      total: Math.round(results[id].totalCost / 1_000_000),
-      drug: results[id].costBreakdown?.drugAdmin
-        ? Math.round(results[id].costBreakdown.drugAdmin / 1_000_000)
-        : 0,
-      societal: results[id].costBreakdown
-        ? Math.round(
-            (results[id].costBreakdown.societalCare +
-              results[id].costBreakdown.physicianVisit) /
-              1_000_000
-          )
-        : 0,
-      color: DRUG_CATALOG[id].color,
-    }));
+    .map((id) => {
+      const bd = results[id].costBreakdown ?? {};
+      const drugAdmin = bd.drugAdmin ?? 0;
+      const monitoring = bd.monitoring ?? 0;
+      const adverseEvents = bd.adverseEvents ?? 0;
+      const societalCare = bd.societalCare ?? 0;
+      const physicianVisit = bd.physicianVisit ?? 0;
+      const societal = societalCare + physicianVisit;
+      const total = results[id].totalCost;
+      const toM = (v) => Math.round(v / 1_000_000);
+      return {
+        drugId: id,
+        name: DRUG_CATALOG[id].name,
+        color: DRUG_CATALOG[id].color,
+        total,
+        drugAdmin,
+        monitoring,
+        adverseEvents,
+        societalCare,
+        physicianVisit,
+        societal,
+        drugM: toM(drugAdmin),
+        monitoringM: toM(monitoring),
+        adverseEventsM: toM(adverseEvents),
+        societalM: toM(societal),
+        societalCareM: toM(societalCare),
+        physicianVisitM: toM(physicianVisit),
+        totalM: toM(total),
+        chartStackM: toM(drugAdmin + societal),
+      };
+    });
+
+  const costChartData = costBreakdownData.map(
+    ({ name, drugM, societalM, color }) => ({
+      name,
+      drug: drugM,
+      societal: societalM,
+      color,
+    })
+  );
 
   const trajectoryDrugs = selectedDrugIds.filter((id) =>
     results[id]?.trajectory?.some((t) => t.cumQALY != null)
@@ -348,6 +494,31 @@ export default function App() {
     trajectoryDrugs.forEach((id) => {
       const t = results[id]?.trajectory?.[i];
       if (t?.cumQALY != null) row[id] = parseFloat(t.cumQALY);
+    });
+    return row;
+  });
+
+  const visionTrajectoryDrugs = selectedDrugIds.filter(
+    (id) => results[id]?.trajectory?.some((t) => t.meanBcva != null)
+  );
+
+  const hasVisionTrajectory = visionTrajectoryDrugs.length > 0;
+
+  const visionTrajectoryLength = Math.max(
+    0,
+    ...visionTrajectoryDrugs.map((id) => results[id].trajectory.length)
+  );
+
+  const visionTrajectoryData = Array.from({ length: visionTrajectoryLength }, (_, i) => {
+    const row = {
+      year:
+        visionTrajectoryDrugs
+          .map((id) => results[id]?.trajectory?.[i]?.year)
+          .find((y) => y != null) ?? i,
+    };
+    visionTrajectoryDrugs.forEach((id) => {
+      const t = results[id]?.trajectory?.[i];
+      if (t?.meanBcva != null) row[id] = parseFloat(t.meanBcva);
     });
     return row;
   });
@@ -572,7 +743,7 @@ export default function App() {
 
           <Section title="QALY パラメータ">
             <p style={hintStyle}>
-              補足表に未掲載。出典を確認のうえ入力（空欄のままでは QALY は算出されません）。
+              Markov 5状態（BCVA）の遷移から較好眼効用を算出。3ヶ月サイクル・半周期補正・2%割引（論文準拠）。
             </p>
             {STATE_LABELS.map((lbl, i) => (
               <label key={lbl} style={labelStyle}>
@@ -615,10 +786,12 @@ export default function App() {
               />
             </label>
             <p style={{ fontSize: 11, color: "#64748B", margin: "4px 0 0" }}>
-              {LIFE_TABLE_SOURCE}。男性比率 {((DEFAULT_MODEL_PARAMS.maleRatio ?? 0.614) * 100).toFixed(1)}%。
-              本サブタイプ平均年齢 {SUBTYPES[subtypeId].meanAge} 歳の qx ≈{" "}
-              {entryMortalityForSubtype(SUBTYPES[subtypeId].meanAge).toFixed(4)}（コホートはサイクルごとに加齢）。
-              感度分析では固定値 0.02–0.04 を上書き入力。
+              {LIFE_TABLE_SOURCE}。空欄時は lx 比から区間生存率を算出（余命表準拠）。男性比率{" "}
+              {((DEFAULT_MODEL_PARAMS.maleRatio ?? 0.614) * 100).toFixed(1)}%。
+              平均年齢 {SUBTYPES[subtypeId].meanAge} 歳: qx ≈{" "}
+              {entryMortalityForSubtype(SUBTYPES[subtypeId].meanAge).toFixed(4)}、余命 ≈{" "}
+              {remainingLifeExpectancy(SUBTYPES[subtypeId].meanAge).toFixed(1)} 年。
+              感度分析では固定 qx 0.02–0.04 を上書き。
             </p>
             <label style={labelStyle}>
               失明時死亡 HR（文献目安 1.3–1.5、既定 {MORTALITY_DEFAULTS.blindMortalityHr}）
@@ -648,6 +821,100 @@ export default function App() {
               />
               網膜動脈閉塞（シナリオ AE 0.072%）を含める
             </label>
+          </Section>
+
+          <Section title="個別患者（保険負担）">
+            <label style={labelStyle}>
+              参入年齢
+              <input
+                type="number"
+                min={40}
+                max={100}
+                value={patientAge}
+                onChange={(e) => setPatientAge(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+            <label style={labelStyle}>
+              性別
+              <select
+                value={patientSex}
+                onChange={(e) => setPatientSex(e.target.value)}
+                style={selectStyle}
+              >
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+              </select>
+            </label>
+            <label style={labelStyle}>
+              所得区分（高額療養費）
+              <select
+                value={incomeBracket}
+                onChange={(e) => setIncomeBracket(e.target.value)}
+                style={selectStyle}
+              >
+                {INCOME_BRACKET_LIST.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={labelStyle}>
+              ベースライン視力 — 患眼 BCVA（Markov ベースケース既定: {subtype.baselineBcvaAffected}）
+              <input
+                type="number"
+                step={0.01}
+                min={0}
+                max={2}
+                value={patientBaselineBcvaAffected}
+                onChange={(e) => setPatientBaselineBcvaAffected(e.target.value)}
+                style={inputStyle}
+                placeholder={String(subtype.baselineBcvaAffected)}
+              />
+            </label>
+            <label style={labelStyle}>
+              ベースライン視力 — 対側眼 BCVA（Markov 既定: {subtype.baselineBcvaFellow}）
+              <input
+                type="number"
+                step={0.01}
+                min={0}
+                max={2}
+                value={patientBaselineBcvaFellow}
+                onChange={(e) => setPatientBaselineBcvaFellow(e.target.value)}
+                style={inputStyle}
+                placeholder={String(subtype.baselineBcvaFellow)}
+              />
+            </label>
+            <p style={{ ...hintStyle, marginTop: -4 }}>
+              病型切替で Markov ベースケース（Yoneda [1]）の BCVA に自動リセット。
+              既定値のとき初期分布は Table S2（Markov と同一）、変更時は BCVA から導出。
+            </p>
+            <label style={labelStyle}>
+              乱数シード（仮想患者 ID）
+              <input
+                type="number"
+                value={patientSeed}
+                onChange={(e) => setPatientSeed(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+            <p style={hintStyle}>
+              月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
+              個別患者タブは全7薬剤を表示。各薬剤は clinicalKey=drugId で独立し、
+              注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ、
+              視力遷移は transitionKey（rbz_bs / aflibercept）を使用。
+              <br />
+              <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、フォロー期間（最長生存タイムライン）の
+              視力遷移・両眼発症に使う乱数列の番号です。同じ seed なら結果を再現でき、変えると別の経路になります。
+              注射回数・薬価は薬剤ごとに異なります。
+              {patientRemainingLife != null && (
+                <>
+                  {" "}
+                  余命（生命表）≈ {patientRemainingLife.toFixed(1)} 年。
+                </>
+              )}
+            </p>
           </Section>
 
           <Section title="薬剤選択（比較）">
@@ -706,6 +973,8 @@ export default function App() {
               ["costs", "コスト内訳"],
               ["switch", "スイッチ・CMA"],
               ["qaly", "QALY推移"],
+              ["patient", "個別患者負担"],
+              ["vision", "視力推移"],
               ...(showIssuesTab
                 ? [["missing", `要確認 (${missingParams.length + (hasIncompleteResults ? 1 : 0)})`]]
                 : []),
@@ -736,6 +1005,7 @@ export default function App() {
                     <th style={thStyle}>薬剤</th>
                     <th style={thStyle}>QALY</th>
                     <th style={thStyle}>総コスト</th>
+                    <th style={thStyle}>注射回数</th>
                     <th style={thStyle}>ΔQALY</th>
                     <th style={thStyle}>Δコスト</th>
                     <th style={thStyle}>ICER</th>
@@ -764,6 +1034,18 @@ export default function App() {
                           {r?.totalCost != null ? `¥${fmtJpy(r.totalCost)}` : "—"}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
+                          {r?.totalInjections != null ? `${r.totalInjections.toFixed(1)}回` : "—"}
+                          {r?.tableExpectedInjections != null &&
+                            Math.abs(r.totalInjections - r.tableExpectedInjections) > 0.05 && (
+                              <div style={{ fontSize: 10, color: "#64748B" }}>
+                                (Table {r.tableExpectedInjections.toFixed(1)})
+                              </div>
+                            )}
+                          {DRUG_CATALOG[id].injectionReference && (
+                            <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
+                          )}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
                           {ic?.deltaQaly != null
                             ? (ic.deltaQaly > 0 ? "+" : "") + ic.deltaQaly.toFixed(3)
                             : "—"}
@@ -780,6 +1062,80 @@ export default function App() {
                 </tbody>
               </table>
               </ScrollTable>
+
+              {costBreakdownData.length > 0 && (
+                <div style={{ marginTop: 28 }}>
+                  <h3 style={{ fontSize: 15, margin: "0 0 8px", color: "#0F172A" }}>
+                    コスト内訳
+                  </h3>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                    積み上げ棒グラフは薬剤+投与（青）と社会的費用＝介護+通院（灰）を百万円単位で表示。
+                    下表にグラフの元データ（円・百万円）とモニタリング・有害事象を併記。
+                  </p>
+                  <ResponsiveContainer width="100%" height={360}>
+                    <BarChart data={costChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis label={{ value: "百万円", angle: -90, position: "insideLeft" }} />
+                      <Tooltip formatter={(v) => `${v} 百万円`} />
+                      <Legend />
+                      <Bar dataKey="drug" name="薬剤+投与" stackId="a" fill="#3B82F6" />
+                      <Bar dataKey="societal" name="社会的費用" stackId="a" fill="#94A3B8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <table style={{ ...tableStyle, marginTop: 16 }}>
+                    <thead>
+                      <tr style={{ background: "#334155", color: "#fff" }}>
+                        <th style={thStyle}>薬剤</th>
+                        <th style={thStyle}>薬剤+投与</th>
+                        <th style={thStyle}>社会的費用</th>
+                        <th style={thStyle}>グラフ合計</th>
+                        <th style={thStyle}>モニタリング</th>
+                        <th style={thStyle}>有害事象</th>
+                        <th style={thStyle}>総コスト</th>
+                      </tr>
+                      <tr style={{ background: "#475569", color: "#fff", fontSize: 10 }}>
+                        <th style={thStyle} />
+                        <th style={thStyle} colSpan={6}>
+                          上段＝円 / 下段＝百万円（グラフは薬剤+投与・社会的費用のみ積上げ）
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {costBreakdownData.map((row, i) => (
+                        <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                          <td style={tdStyle}>
+                            <span style={{ fontWeight: 600, color: row.color }}>{row.name}</span>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.drugAdmin)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.drugM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.societal)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.societalM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                            {row.chartStackM} M¥
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.monitoring)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.monitoringM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.adverseEvents)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.adverseEventsM} M¥</div>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                            ¥{fmtJpy(row.total)}
+                            <div style={{ fontSize: 10, color: "#64748B" }}>{row.totalM} M¥</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {paperIncrementalRows && (
                 <div style={{ marginTop: 20 }}>
@@ -853,19 +1209,399 @@ export default function App() {
             </Panel>
           )}
 
-          {activeTab === "costs" && (
-            <Panel title="コスト内訳（百万円）">
-              <ResponsiveContainer width="100%" height={360}>
-                <BarChart data={costChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="drug" name="薬剤+投与" stackId="a" fill="#3B82F6" />
-                  <Bar dataKey="societal" name="社会的費用" stackId="a" fill="#94A3B8" />
-                </BarChart>
-              </ResponsiveContainer>
+          {activeTab === "patient" && (
+            <Panel
+              title={`個別患者 — ${patientSex === "male" ? "男性" : "女性"} ${patientAge}歳 • ${subtype.label} • 高額療養費（月次）`}
+            >
+              {!patientAnalysis ? (
+                <p style={{ color: "#B45309" }}>参入年齢（40–100）を入力してください。</p>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                    直接医療費に年齢別自己負担・月次高額療養費を適用。
+                    余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
+                    解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
+                    注射・コストは薬剤×病型別。フォロー期間は全 transitionKey 中最長生存タイムライン（同一 seed）。
+                  </p>
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: "10px 12px",
+                      background: "#EFF6FF",
+                      border: "1px solid #BFDBFE",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      lineHeight: 1.6,
+                      color: "#1E3A5F",
+                    }}
+                  >
+                    <strong>乱数シード {patientAnalysis.patientProfile.seed}</strong>
+                    {" · "}
+                    患眼 BCVA {patientAnalysis.patientProfile.baselineBcvaAffected} /
+                    対側眼 {patientAnalysis.patientProfile.baselineBcvaFellow}
+                    {patientAnalysis.patientProfile.initialDistributionSource && (
+                      <> — 初期分布: {patientAnalysis.patientProfile.initialDistributionSource}</>
+                    )}
+                    <br />
+                    フォロー期間（{patientAnalysis.patientProfile.costTimelineMonths} か月）を決める乱数列です。
+                    QALY は transitionKey 別、コスト・注射は最長生存タイムライン共通。
+                  </div>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 10, lineHeight: 1.6 }}>
+                    全7薬剤（ラニビズマブ先発・BS、アフリベルセプト 2 mg/BS/8 mg、ファリ、ブロル）を表示。
+                    RBZ 先発と RBZ BS は注射回数同一、患者負担は薬価差。
+                  </p>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr style={{ background: "#0F172A", color: "#fff" }}>
+                        <th style={thStyle}>薬剤</th>
+                        <th style={thStyle}>生涯直接医療費</th>
+                        <th style={thStyle}>生涯患者負担</th>
+                        <th style={thStyle}>薬剤+投与</th>
+                        <th style={thStyle}>モニタリング</th>
+                        <th style={thStyle}>生涯注射</th>
+                        <th style={thStyle}>QALY</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientAnalysis.summary.map((row, i) => {
+                        const showRbzHeader = row.drugId === "ranibizumab";
+                        const showAflHeader = row.drugId === "aflibercept";
+                        return (
+                          <>
+                            {showRbzHeader && (
+                              <tr key="hdr-rbz" style={{ background: "#ECFDF5" }}>
+                                <td colSpan={7} style={{ ...tdStyle, fontWeight: 700, color: "#065F46" }}>
+                                  ラニビズマブ系（transitionKey: rbz_bs）
+                                </td>
+                              </tr>
+                            )}
+                            {showAflHeader && (
+                              <tr key="hdr-afl" style={{ background: "#EFF6FF" }}>
+                                <td colSpan={7} style={{ ...tdStyle, fontWeight: 700, color: "#1E40AF" }}>
+                                  アフリベルセプト系（transitionKey: aflibercept）
+                                </td>
+                              </tr>
+                            )}
+                            <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                          <td style={tdStyle}>
+                            <span style={{ fontWeight: 600, color: DRUG_CATALOG[row.drugId].color }}>
+                              {row.name}
+                            </span>
+                            {DRUG_CATALOG[row.drugId].clinicalNote && (
+                              <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>
+                                {DRUG_CATALOG[row.drugId].clinicalNote}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.totalDirectMedical)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                            ¥{fmtJpy(row.totalPatientOop)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.costBreakdown.drugAdmin)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            ¥{fmtJpy(row.costBreakdown.monitoring)}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {row.totalInjections ?? "—"}回
+                            {row.injectionReference && (
+                              <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
+                            )}
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "right" }}>
+                            {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
+                          </td>
+                            </tr>
+                          </>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {patientAnalysis.annualComparison?.flatRows?.length > 0 && (
+                    <div style={{ marginTop: 24 }}>
+                      <h3 style={{ fontSize: 15, margin: "0 0 8px", color: "#0F172A" }}>
+                        薬剤別 年度比較
+                      </h3>
+                      <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                        同一患者（seed {patientAnalysis.patientProfile.seed}）で、薬剤ごとの
+                        年齢・注射・直接医療費・患者負担を経過年ごとに並べて比較します。
+                        <br />
+                        <span style={{ color: "#B45309" }}>
+                          ※ AFL 8 mg / ファリ / ブロルの注射は参考値（induction 薬剤別、year1以降 AFL 2 mg Table S6 × 0.8）。
+                        </span>
+                      </p>
+
+                      <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                        <table style={{ ...tableStyle, fontSize: 11, minWidth: 720 }}>
+                          <thead>
+                            <tr style={{ background: "#334155", color: "#fff" }}>
+                              <th style={thStyle}>経過年</th>
+                              <th style={thStyle}>年齢</th>
+                              {patientAnalysis.annualComparison.drugs.map((d) => (
+                                <th
+                                  key={d.drugId}
+                                  colSpan={3}
+                                  style={{ ...thStyle, textAlign: "center", color: d.color }}
+                                >
+                                  {d.name}
+                                  {d.injectionReference && (
+                                    <span style={{ fontSize: 9, fontWeight: 400 }}> ※参考</span>
+                                  )}
+                                </th>
+                              ))}
+                            </tr>
+                            <tr style={{ background: "#475569", color: "#fff" }}>
+                              <th style={thStyle} />
+                              <th style={thStyle} />
+                              {patientAnalysis.annualComparison.drugs.map((d) => (
+                                <Fragment key={d.drugId}>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>注射</th>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>直接医療</th>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>患者負担</th>
+                                </Fragment>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {patientAnalysis.annualComparison.byYear.map((yearRow, i) => (
+                              <tr key={yearRow.year} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                                <td style={tdStyle}>{yearRow.year}</td>
+                                <td style={tdStyle}>{yearRow.age}</td>
+                                {patientAnalysis.annualComparison.drugs.map((d) => {
+                                  const m = yearRow.drugs[d.drugId];
+                                  return (
+                                    <Fragment key={d.drugId}>
+                                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                                        {m ? `${m.injections}回` : "—"}
+                                      </td>
+                                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                                        {m ? `¥${fmtJpy(m.directMedical)}` : "—"}
+                                      </td>
+                                      <td
+                                        style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}
+                                      >
+                                        {m ? `¥${fmtJpy(m.patientOop)}` : "—"}
+                                      </td>
+                                    </Fragment>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <table style={{ ...tableStyle, fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: "#0F172A", color: "#fff" }}>
+                            <th style={thStyle}>経過年</th>
+                            <th style={thStyle}>薬剤</th>
+                            <th style={thStyle}>年齢</th>
+                            <th style={thStyle}>注射</th>
+                            <th style={thStyle}>直接医療費</th>
+                            <th style={thStyle}>患者負担</th>
+                            <th style={thStyle}>累積注射</th>
+                            <th style={thStyle}>累積患者負担</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {patientAnalysis.annualComparison.flatRows.map((row, i) => (
+                            <tr
+                              key={`${row.year}-${row.drugId}`}
+                              style={{
+                                background:
+                                  i % 2 === 0
+                                    ? "#fff"
+                                    : row.drugId === patientAnalysis.annualComparison.drugs[0]?.drugId
+                                      ? "#F1F5F9"
+                                      : "#F8FAFC",
+                              }}
+                            >
+                              <td style={tdStyle}>{row.year}</td>
+                              <td style={tdStyle}>
+                                <span style={{ fontWeight: 600, color: row.color }}>{row.name}</span>
+                              </td>
+                              <td style={tdStyle}>{row.age}</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>{row.injections}回
+                                {row.injectionReference && (
+                                  <span style={{ fontSize: 9, color: "#B45309" }}> ※</span>
+                                )}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.directMedical)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                                ¥{fmtJpy(row.patientOop)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>{row.cumInjections}回</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.cumPatientOop)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 20 }}>
+                    <label style={{ ...labelStyle, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      年度別詳細 — 薬剤
+                      <select
+                        value={patientDetailDrugId}
+                        onChange={(e) => setPatientDetailDrugId(e.target.value)}
+                        style={{ ...selectStyle, width: 220 }}
+                      >
+                        {patientCompareDrugIds.map((id) => (
+                          <option key={id} value={id}>
+                            {DRUG_CATALOG[id].name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {injectionPhaseRef?.phases && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        background: "#F8FAFC",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      <strong>注射回数パラメータ（{injectionPhaseRef.source}）</strong>
+                      <br />
+                      clinicalKey: {injectionPhaseRef.clinicalKey} — {injectionPhaseRef.note}
+                      {injectionPhaseRef.isInjectionReference && (
+                        <div
+                          style={{
+                            marginTop: 8,
+                            padding: "8px 10px",
+                            background: "#FEF3C7",
+                            border: "1px solid #FCD34D",
+                            borderRadius: 6,
+                            color: "#92400E",
+                          }}
+                        >
+                          {injectionPhaseRef.injectionReferenceNote}
+                        </div>
+                      )}
+                      <table style={{ ...tableStyle, marginTop: 8, fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: "#64748B", color: "#fff" }}>
+                            <th style={thStyle}>フェーズ</th>
+                            <th style={thStyle}>Table 値</th>
+                            <th style={thStyle}>意味</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            ["induction", "最初3か月の合計回数"],
+                            ["year1", "2年目の年間回数（導入後1年目）"],
+                            ["year2", "3年目の年間回数"],
+                            ["year3plus", "4年目以降の年間回数"],
+                          ].map(([phase, meaning]) => (
+                            <tr key={phase}>
+                              <td style={tdStyle}>{phase}</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                {injectionPhaseRef.phases[phase] ?? "—"}
+                              </td>
+                              <td style={tdStyle}>{meaning}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {injectionReference && (
+                        <p style={{ margin: "8px 0 0", color: "#64748B" }}>
+                          カレンダー年換算の期待注射（生涯 {injectionReference.lifetime} 回）—
+                          下表「Table期待」と照合
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {patientDetailDrug?.annualTrajectory?.length > 0 && (
+                    <>
+                      <table style={{ ...tableStyle, marginTop: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#1E3A5F", color: "#fff" }}>
+                            <th style={thStyle}>年</th>
+                            <th style={thStyle}>年齢</th>
+                            <th style={thStyle}>注射回数</th>
+                            <th style={thStyle}>Table期待</th>
+                            <th style={thStyle}>累積注射</th>
+                            <th style={thStyle}>直接医療費</th>
+                            <th style={thStyle}>患者負担</th>
+                            <th style={thStyle}>累積患者負担</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {patientDetailDrug.annualTrajectory.map((row, i) => (
+                            <tr key={row.year} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
+                              <td style={tdStyle}>{row.year}</td>
+                              <td style={tdStyle}>{row.age}</td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                {row.injections ?? 0}回
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right", color: "#64748B" }}>
+                                {injectionReference?.rows[row.year]?.expected ?? "—"}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                {row.cumInjections ?? 0}回
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.directMedical)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.patientOop)}
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "right" }}>
+                                ¥{fmtJpy(row.cumPatientOop)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div style={{ marginTop: 20 }}>
+                        <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>患者負担の年次推移（千円）</h3>
+                        <ResponsiveContainer width="100%" height={280}>
+                          <LineChart data={patientAnnualData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="year" label={{ value: "経過年", position: "insideBottom", offset: -4 }} />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line
+                              type="monotone"
+                              dataKey="patientOop"
+                              name="年間患者負担"
+                              stroke="#DC2626"
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="cumPatientOop"
+                              name="累積患者負担"
+                              stroke="#1E40AF"
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </Panel>
           )}
 
@@ -1302,11 +2038,57 @@ export default function App() {
             </Panel>
           )}
 
+          {activeTab === "vision" && (
+            <Panel title="視力推移 — 期待 BCVA（選択薬剤・Markov コホート平均）">
+              {!hasVisionTrajectory ? (
+                <p style={{ color: "#B45309" }}>
+                  解析結果がありません。薬剤を選択し、左サイドバーの設定を確認してください。
+                </p>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
+                    各薬剤の Markov コホートにおける治療眼の期待 BCVA（5状態中央値の加重平均）。
+                    生存者の状態分布（{STATE_LABELS.join(" / ")}）から算出。初期分布は Table S2、遷移は Table S5
+                    （typical/PCV: Yoneda Y1 → Jin Y≥2；RAP: Yoneda Y1 → Hoshino Y2 → Kertes Y≥3；導入期は Yanagi 前研究仮定）。
+                  </p>
+                  <ResponsiveContainer width="100%" height={360}>
+                    <LineChart data={visionTrajectoryData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="year"
+                        domain={[0, "auto"]}
+                        label={{ value: "経過年", position: "insideBottom", offset: -4 }}
+                      />
+                      <YAxis
+                        domain={[0, "auto"]}
+                        label={{ value: "期待 BCVA", angle: -90, position: "insideLeft" }}
+                      />
+                      <Tooltip formatter={(v) => Number(v).toFixed(3)} />
+                      <Legend />
+                      {visionTrajectoryDrugs.map((id) => (
+                        <Line
+                          key={id}
+                          type="monotone"
+                          dataKey={id}
+                          name={DRUG_CATALOG[id].name}
+                          stroke={DRUG_CATALOG[id].color}
+                          strokeWidth={2}
+                          dot={false}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </>
+              )}
+            </Panel>
+          )}
+
           {activeTab === "validate" && costPaperId === "paper2_rbz" && (
             <Panel title={`Table S12 照合（${subtype.label}・シナリオ）`}>
               <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
-                臨床=シナリオ（S7–S8）で再計算した値と論文記載値の比較。
-                遷移確率は合計100%に正規化（PCVシナリオの丸め誤差対策）。
+                臨床=シナリオ（S7–S8）。参入年齢={PAPER_S12_ENTRY_AGE[subtypeId] ?? subtype.meanAge}歳（S12 論文設定）、
+                20年・半周期補正・令和5年生命表。
               </p>
               <ScrollTable>
               <table style={{ ...tableStyle, minWidth: 480 }}>
@@ -1316,30 +2098,77 @@ export default function App() {
                     <th style={thStyle}>指標</th>
                     <th style={thStyle}>論文 S12</th>
                     <th style={thStyle}>本ツール</th>
+                    <th style={thStyle}>差</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(s12ValidationRows ?? []).flatMap(({ id, refv, scen }) => {
-                    return ["QALY", "Cost"].map((metric, idx) => (
+                  {["ranibizumab_bs", "aflibercept"].flatMap((id) => {
+                    const refv = subtype.referenceS12?.[id === "ranibizumab_bs" ? "rbz_bs" : "aflibercept"];
+                    if (!refv) return [];
+                    const scen = runAnalysisCached({
+                      selectedDrugIds: [id],
+                      subtypeId,
+                      costPaperId: "paper2_rbz",
+                      clinicalCase: "scenario",
+                      horizon,
+                      modelParams: buildS12ModelParams(subtypeId, modelParams),
+                    }).results[id];
+                    return ["QALY", "Cost", "注射"].map((metric, idx) => {
+                      const toolVal =
+                        metric === "QALY"
+                          ? scen?.totalQALY
+                          : metric === "Cost"
+                            ? scen?.totalCost
+                            : scen?.totalInjections;
+                      const paperVal =
+                        metric === "QALY"
+                          ? refv.qaly
+                          : metric === "Cost"
+                            ? refv.cost
+                            : null;
+                      let delta = "—";
+                      if (toolVal != null && paperVal != null) {
+                        const d = toolVal - paperVal;
+                        delta =
+                          metric === "QALY"
+                            ? d.toFixed(3)
+                            : metric === "Cost"
+                              ? `¥${fmtJpy(d)}`
+                              : d.toFixed(1);
+                      }
+                      return (
                       <tr key={`${id}-${metric}`} style={{ background: idx % 2 ? "#fff" : "#F8FAFC" }}>
                         <td style={tdStyle}>{DRUG_CATALOG[id].name}</td>
                         <td style={tdStyle}>{metric}</td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
-                          {metric === "QALY" ? refv.qaly.toFixed(3) : `¥${fmtJpy(refv.cost)}`}
+                          {metric === "QALY"
+                            ? refv.qaly.toFixed(3)
+                            : metric === "Cost"
+                              ? `¥${fmtJpy(refv.cost)}`
+                              : "—"}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           {metric === "QALY"
                             ? scen?.totalQALY?.toFixed(3) ?? "—"
-                            : scen?.totalCost != null
-                              ? `¥${fmtJpy(scen.totalCost)}`
-                              : "—"}
+                            : metric === "Cost"
+                              ? scen?.totalCost != null
+                                ? `¥${fmtJpy(scen.totalCost)}`
+                                : "—"
+                              : scen?.totalInjections != null
+                                ? scen.totalInjections.toFixed(1)
+                                : "—"}
                         </td>
+                        <td style={{ ...tdStyle, textAlign: "right", color: "#64748B" }}>{delta}</td>
                       </tr>
-                    ));
+                      );
+                    });
                   })}
                 </tbody>
               </table>
               </ScrollTable>
+              <p style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+                typical の Cost は参入74歳で論文に近接。PCV/RAP は社会的費用（視力経路・余命）の差が大きい。
+              </p>
 
               {mortalitySensitivity?.rows?.length > 0 && (
                 <>

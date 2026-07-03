@@ -14,3 +14,19 @@ export const PAPER_PATIENT_PERSPECTIVE_NOTE = {
   vsAflSwitch: { deltaQaly: 0.009, deltaCost: -391_428 },
   vsBsc: { deltaQaly: 0.307, deltaCost: -6_377_345 },
 };
+
+/**
+ * Table S12 再現用参入年齢 — 論文2 補足（Yanagi et al. 2024）
+ * @see 本文「mean age 74 years [27]」— typical/PCV、RAP は Table S1
+ */
+export const PAPER_S12_ENTRY_AGE = {
+  typical: 74,
+  pcv: 74,
+  rap: 83,
+};
+
+/** S12 照合用 modelParams（参入年齢を論文値で上書き） */
+export function buildS12ModelParams(subtypeId, modelParams = {}) {
+  const entryAge = PAPER_S12_ENTRY_AGE[subtypeId] ?? modelParams.entryAge;
+  return { ...modelParams, entryAge };
+}

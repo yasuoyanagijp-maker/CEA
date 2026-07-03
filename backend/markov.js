@@ -10,6 +10,13 @@ import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
+import { STATE_BCVA_CENTROIDS } from "./config/baseline-characteristics.js";
+
+/** 生存コホートの期待 BCVA（5状態中央値の加重平均）— 視力推移チャート用 */
+function expectedBcvaFromCohort(cohort, aliveMass) {
+  if (aliveMass <= 1e-9) return 0;
+  return cohort.reduce((s, m, i) => s + m * STATE_BCVA_CENTROIDS[i], 0) / aliveMass;
+}
 
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
@@ -126,7 +133,9 @@ function resolveRunInputs(input) {
   const subtype = SUBTYPES[subtypeId];
   const paper = getCostPaper(costPaperId);
   const dataset = getClinicalDataset(clinicalCase);
-  const clinicalKey = drug.clinicalKey;
+  // サマリー/スイッチの Markov は S5/S6 列（rbz_bs / aflibercept）で集約するため
+  // transitionKey を用いる（個別患者タブは薬剤別 drugId を別途使用）。
+  const clinicalKey = drug.transitionKey ?? drug.clinicalKey;
 
   const qaly =
     modelParams.utilities && modelParams.utilityNone != null
@@ -412,6 +421,7 @@ function buildTrajectory(series, qalyPerCycle, costPerCycle, cycleLen) {
       blind: ((s.cohort[4] / alive) * 100).toFixed(1),
       bothEyes: (s.pSecond * 100).toFixed(1),
       alive: (s.aliveMass * 100).toFixed(1),
+      meanBcva: expectedBcvaFromCohort(s.cohort, alive).toFixed(3),
       cumQALY: qalyPerCycle ? cumQALY.toFixed(3) : null,
       cumCost: Math.round(cumCost),
     });

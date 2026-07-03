@@ -1,9 +1,16 @@
 /**
  * Supplementary Table S5 — Transition probabilities (base case)
- * Yoneda et al. [1]; Jin et al. [2] (typical Y1/Y≥2); Hoshino [3], Kertes [4] (RAP)
  *
  * 行順: Improving 2 HS, Improving 1 HS, Remaining, Worsening 1 HS, Worsening 2 HS
  * → tp(imp2, imp1, remain, wors1, wors2)
+ *
+ * Table S5 脚注（論文 Supplement 表記 ↔ 本文 ref）:
+ *   a — typical nAMD / PCV: Year 1 = Yoneda [1] ([9]); Year ≥2 = Jin [2] ([21])
+ *   b — RAP: Year 1 = Yoneda [1]; Year 2 = Hoshino [3] ([22]); Year ≥3 = Kertes [4] ([23])
+ *   c — typical / PCV year3plus: Jin [2] の 3・4 年目 mean BCVA・SD の平均から算出
+ *   d — induction（全病型）: Yanagi et al. [5] ([8]) 前研究と同 mean BCVA を仮定、SD は Maint. Year 3 と同一
+ *
+ * フェーズ対応: induction → d / year1 → a,b / year2 → a,b / year3plus → b,c
  */
 
 import { tp } from "../utils.js";
