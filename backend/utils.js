@@ -45,9 +45,9 @@ export function phaseForCycle(cycleIndex, cycleLengthYears) {
 /**
  * 治療終了後の BSC（自然経過）遷移 — 無治療時は改善↓・悪化↑
  * @param {object} treated — normalize 済みの治療 arm 遷移
- * @param {number} [multiplier=1.35] — 悪化方向の倍率（Yanagi 2025 簡略モデルと同趣旨）
+ * @param {number} multiplier — 悪化方向の倍率（clinical.js の BSC_PROGRESSION_MULTIPLIER を明示的に渡す）
  */
-export function deriveBscTransitionProbs(treated, multiplier = 1.35) {
+export function deriveBscTransitionProbs(treated, multiplier) {
   return normalizeTransitionProbs({
     imp2: Math.min(0.5, treated.imp2 * multiplier),
     imp1: Math.min(0.5, treated.imp1 * multiplier),
