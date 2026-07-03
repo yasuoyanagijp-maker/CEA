@@ -1000,13 +1000,13 @@ export default function App() {
                             );
                           }
                           const verdictColor =
-                            row.verdict.kind === "cheaper"
-                              ? "#059669"
-                              : row.verdict.kind === "reachable"
-                                ? "#0369A1"
-                                : row.verdict.kind === "unreachable"
-                                  ? "#B45309"
-                                  : "#64748B";
+                            {
+                              cheaper: "#059669",
+                              reachable: "#0369A1",
+                              borderline: "#B45309",
+                              difficult: "#DC2626",
+                              unreachable: "#DC2626",
+                            }[row.verdict.kind] ?? "#64748B";
                           return (
                             <tr
                               key={row.drugId}
@@ -1051,10 +1051,18 @@ export default function App() {
                                   ? `+${row.qalyPerYear.toFixed(3)} 必要`
                                   : `↓${row.qalyPerYear.toFixed(3)} まで許容`}
                               </td>
-                              <td style={{ ...tdStyle, fontSize: 11, maxWidth: 220 }}>
-                                {row.evidence?.intervalExtensionWeeks
-                                  ? `延長 +${row.evidence.intervalExtensionWeeks[0]}〜${row.evidence.intervalExtensionWeeks[1]}週`
-                                  : "延長データ未登録"}
+                              <td style={{ ...tdStyle, fontSize: 11, maxWidth: 240 }}>
+                                {row.evidence?.realisticExtensionWeeks
+                                  ? `実臨床 +${row.evidence.realisticExtensionWeeks[0]}〜${row.evidence.realisticExtensionWeeks[1]}週`
+                                  : "実臨床データ未登録"}
+                                {row.evidence?.trialReach && (
+                                  <div style={{ color: "#0369A1", marginTop: 2 }}>
+                                    試験上限:{" "}
+                                    {row.evidence.trialReach
+                                      .map((t) => `Q${t.weeks}≥${Math.round(t.fraction * 100)}%`)
+                                      .join(" / ")}
+                                  </div>
+                                )}
                                 {row.evidence?.note && (
                                   <div style={{ color: "#94A3B8", marginTop: 2 }}>
                                     {row.evidence.note}（{row.evidence.sources}）

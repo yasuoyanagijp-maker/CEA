@@ -8,7 +8,10 @@ import {
   REFERENCE_INTERVAL_WEEKS,
   formatIntervalLabel,
 } from "./config/treatment-intervals.js";
-import { getSwitchEvidence } from "./config/switch-interval-evidence.js";
+import {
+  getSwitchEvidence,
+  trialReachFractionAt,
+} from "./config/switch-interval-evidence.js";
 
 function perInjectionCost(drugId, paper) {
   const price = paper.drugPrices[drugId];
@@ -76,6 +79,96 @@ export function analyticBreakEvenIntervalWeeks(
   };
 }
 
+/** 実臨床スイッチ集団で「12週以上到達」が現実的とみなせる下限割合 */
+const SWITCH_REACH_FLOOR = 0.15;
+
+/**
+ * 損益分岐間隔に対する到達可能性を段階分類する。
+ * 二層エビデンス（実臨床の平均延長／RCT の絶対到達率）を組み合わせ、
+ * cheaper / reachable / borderline / difficult / unknown を返す。
+ */
+function classifyReachability({
+  priceRatio,
+  breakEvenWeeks,
+  currentIntervalWeeks,
+  requiredExtensionWeeks,
+  evidence,
+}) {
+  if (priceRatio <= 1) {
+    return {
+      kind: "cheaper",
+      label: "同一間隔でも削減",
+      detail: `間隔が Q${breakEvenWeeks.toFixed(1)} まで短縮しても現行と同等以下`,
+    };
+  }
+
+  const realistic = evidence?.realisticExtensionWeeks ?? null;
+  const trialReach = evidence?.trialReach ?? null;
+  const req = requiredExtensionWeeks;
+
+  // 現実到達（実臨床平均延長）で損益分岐に届くか
+  if (realistic) {
+    const maxExt = realistic[1];
+    if (currentIntervalWeeks + maxExt >= breakEvenWeeks) {
+      return {
+        kind: "reachable",
+        label: "実臨床の延長で到達可能",
+        detail: `必要 +${req.toFixed(1)}週 ≤ 実臨床平均 +${realistic[0]}〜${maxExt}週`,
+      };
+    }
+  }
+
+  // 実臨床では届かないが、RCT/延長期の到達率で境界〜困難を段階化
+  if (trialReach) {
+    const maxTrialWeeks = Math.max(...trialReach.map((t) => t.weeks));
+    // 試験で観測された最長間隔を超える損益分岐は外挿せず「到達困難」
+    if (breakEvenWeeks > maxTrialWeeks) {
+      return {
+        kind: "difficult",
+        label: "到達困難",
+        detail: `必要 Q${breakEvenWeeks.toFixed(1)} は延長試験の観測上限（Q${maxTrialWeeks}）を超える`,
+      };
+    }
+    const frac = trialReachFractionAt(trialReach, breakEvenWeeks);
+    if (frac != null) {
+      if (frac >= 0.5) {
+        return {
+          kind: "reachable",
+          label: "延長試験では過半数が到達",
+          detail: `Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}%（試験上限）。実臨床平均は下回るため要経過観察`,
+        };
+      }
+      if (frac >= SWITCH_REACH_FLOOR) {
+        return {
+          kind: "borderline",
+          label: "境界（一部症例で到達）",
+          detail: `Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}%。乾燥・前治療歴で反応差が大きい`,
+        };
+      }
+      return {
+        kind: "difficult",
+        label: "到達困難",
+        detail: `必要 +${req.toFixed(1)}週。Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}% にとどまる`,
+      };
+    }
+  }
+
+  // 実臨床データはあるが延長量が不足（RCT 到達率なし）
+  if (realistic) {
+    return {
+      kind: "difficult",
+      label: "到達困難",
+      detail: `必要 +${req.toFixed(1)}週 > 実臨床平均 +${realistic[1]}週`,
+    };
+  }
+
+  return {
+    kind: "unknown",
+    label: `+${req.toFixed(1)}週の延長が必要`,
+    detail: "スイッチ集団の間隔延長エビデンス未登録 — 個別判断",
+  };
+}
+
 /**
  * 損益分岐間隔テーブル — 現行レジメン（薬剤＋間隔）に対し、全スイッチ先候補の
  * コスト同等となる治療間隔を解析的に算出する（CMA の中核）。
@@ -115,34 +208,13 @@ export function computeBreakEvenTable({
     // 同一間隔でスイッチした場合、WTP 内に収まる年あたり QALY 差の目安
     const qalyPerYear = Math.abs(sameIntervalAnnualDelta) / wtpPerQaly;
 
-    let verdict;
-    if (priceRatio <= 1) {
-      verdict = {
-        kind: "cheaper",
-        label: "同一間隔でも削減",
-        detail: `間隔が Q${breakEvenWeeks.toFixed(1)} まで短縮しても現行と同等以下`,
-      };
-    } else if (evidence?.intervalExtensionWeeks) {
-      const maxExt = evidence.intervalExtensionWeeks[1];
-      const reachable = currentIntervalWeeks + maxExt >= breakEvenWeeks;
-      verdict = reachable
-        ? {
-            kind: "reachable",
-            label: "文献の延長で到達可能圏",
-            detail: `必要 +${requiredExtensionWeeks.toFixed(1)}週 ≤ 文献 +${maxExt}週`,
-          }
-        : {
-            kind: "unreachable",
-            label: "文献の延長では到達困難",
-            detail: `必要 +${requiredExtensionWeeks.toFixed(1)}週 > 文献 +${maxExt}週`,
-          };
-    } else {
-      verdict = {
-        kind: "unknown",
-        label: `+${requiredExtensionWeeks.toFixed(1)}週の延長が必要`,
-        detail: "スイッチ集団の間隔延長エビデンス未登録 — 個別判断",
-      };
-    }
+    const verdict = classifyReachability({
+      priceRatio,
+      breakEvenWeeks,
+      currentIntervalWeeks,
+      requiredExtensionWeeks,
+      evidence,
+    });
 
     return {
       drugId,
