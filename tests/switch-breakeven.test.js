@@ -144,6 +144,31 @@ describe("computeBreakEvenTable", () => {
     expect(row.breakEvenWeeks).toBeCloseTo(8 * ((103163 + 6000) / 73959), 2);
   });
 
+  it("aflibercept 2mg は ARIES/ALTAIR 由来の t&e-derived trialReach を持つ", () => {
+    const t = computeBreakEvenTable({
+      currentDrugId: "aflibercept_bs",
+      currentIntervalWeeks: 8,
+      costPaperId: "paper2_rbz",
+    });
+    const row = t.rows.find((r) => r.drugId === "aflibercept");
+    expect(row.evidence.trialEvidenceTier).toBe("t&e-derived");
+    expect(row.evidence.trialReach).toContainEqual({ weeks: 12, fraction: 0.57 });
+    // BS Q8 → 2mg 分岐 Q13.0（≥12週 57% 圏）→ reachable、tier 伝播
+    expect(row.verdict.kind).toBe("reachable");
+    expect(row.verdict.evidenceTier).toBe("t&e-derived");
+  });
+
+  it("ranibizumab は trialReach 未収載で unknown のまま（延長しにくい）", () => {
+    const t = computeBreakEvenTable({
+      currentDrugId: "aflibercept_bs",
+      currentIntervalWeeks: 8,
+      costPaperId: "paper2_rbz",
+    });
+    const row = t.rows.find((r) => r.drugId === "ranibizumab");
+    expect(row.evidence.trialReach).toBeNull();
+    expect(row.verdict.kind).toBe("unknown");
+  });
+
   it("無効な間隔では null", () => {
     expect(
       computeBreakEvenTable({

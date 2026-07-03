@@ -61,30 +61,38 @@ export const SWITCH_INTERVAL_EVIDENCE = {
   },
   aflibercept: {
     realisticExtensionWeeks: null,
-    trialReach: null,
-    trialEvidenceTier: null,
-    note: "Q8 T&E 基準薬（year1 最大 7.67 回/年）",
-    sources: "Wojciechowski 2025",
+    // ARIES/ALTAIR 2mg T&E（treatment-naive 上限参照）: ≥12週 ~57%, ≥16週 ~44%
+    trialReach: [
+      { weeks: 12, fraction: 0.57 },
+      { weeks: 16, fraction: 0.44 },
+    ],
+    trialEvidenceTier: "t&e-derived",
+    note: "Q8 T&E 基準薬。ALTAIR 96週 ≥12週 56.9/60.2%・≥16週 42–46%（PCV 51.1%）、ARIES 104週 ≥12週 47.2/51.9%（naive T&E の上限参照）。スイッチ集団の直接到達ではない点に注意",
+    sources: "Ohji 2020 (ALTAIR); Mitchell 2021 (ARIES); Okada 2022",
   },
   aflibercept_bs: {
     realisticExtensionWeeks: [0, 0],
-    trialReach: null,
-    trialEvidenceTier: null,
-    note: "先行品と同一分子 — スイッチで間隔は不変と仮定（薬価差のみ）",
-    sources: "同一分子仮定",
+    // 先行 2mg と同一分子 → ARIES/ALTAIR 到達率を流用
+    trialReach: [
+      { weeks: 12, fraction: 0.57 },
+      { weeks: 16, fraction: 0.44 },
+    ],
+    trialEvidenceTier: "t&e-derived",
+    note: "先行 2mg と同一分子。到達率は ARIES/ALTAIR を流用（≥12週 ~57%/≥16週 ~44%）。先行品からのスイッチは間隔不変・薬価差のみ",
+    sources: "Ohji 2020; Mitchell 2021; 同一分子仮定",
   },
   ranibizumab: {
     realisticExtensionWeeks: null,
     trialReach: null,
     trialEvidenceTier: null,
-    note: "Q4〜PRN/T&E 7.6〜12.1 回/年 — 一般に他剤より間隔が短い",
+    note: "Q4〜PRN/T&E 7.6〜12.1 回/年 — 一般に他剤より間隔が短く、ARIES/ALTAIR に相当する ≥Q12/16W T&E 到達率は本エビデンスセットに未収載。長間隔化しにくいため延長による損益分岐到達は限定的",
     sources: "Wojciechowski 2025; Butler 2025",
   },
   ranibizumab_bs: {
     realisticExtensionWeeks: [0, 0],
     trialReach: null,
     trialEvidenceTier: null,
-    note: "先行 RBZ と同一分子 — スイッチで間隔は不変と仮定（薬価差のみ）",
+    note: "先行 RBZ と同一分子 — スイッチで間隔は不変と仮定（薬価差のみ）。RBZ の ≥Q12/16W T&E 到達率は未収載",
     sources: "同一分子仮定",
   },
 };
