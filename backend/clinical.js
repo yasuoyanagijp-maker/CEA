@@ -1,4 +1,4 @@
-import { deriveBscTransitionProbs, tp } from "./utils.js";
+import { deriveBscTransitionProbs } from "./utils.js";
 import { buildSubtypeBaseline } from "./config/baseline-characteristics.js";
 import {
   TRANS_BASE_TABLE_S5,
@@ -9,12 +9,15 @@ import {
   TABLE_S6_SOURCE,
 } from "./config/table-s6-injections.js";
 import {
+  TRANS_SCENARIO_TABLE_S7_S8,
+  INJ_SCENARIO_TABLE_S8,
+  TABLE_S7_S8_SOURCE,
+} from "./config/table-s7-s8-scenario.js";
+import {
   getInjections2026MetaForDrug,
-  getMetaReferenceIntervalWeeks,
-  getMetaRegimenLabel,
   INJECTIONS_2026_META_SOURCE,
 } from "./config/injections-2026-meta.js";
-import { REFERENCE_INTERVAL_WEEKS, annualInjectionsFromIntervalWeeks } from "./config/treatment-intervals.js";
+import { annualInjectionsFromIntervalWeeks } from "./config/treatment-intervals.js";
 import { getDrug } from "./drugs.js";
 
 /** BSC 自然経過 — Table S5 に BSC 列がないため rbz_bs 治療遷移から導出（論文1 簡略モデルと同趣旨） */
@@ -50,124 +53,102 @@ export const SUBTYPES = {
   },
 };
 
-/** ベースケース遷移 — Supplementary Table S5 */
 export const TRANS_BASE = TRANS_BASE_TABLE_S5;
-
-export { TABLE_S5_SOURCE };
-
-export const TRANS_SCENARIO = {
-  typical: {
-    rbz_bs: {
-      induction: tp(11.5, 23.1, 54.2, 2.2, 9.1),
-      year1: tp(2.5, 10.1, 55.8, 9.9, 21.8),
-      year2: tp(5.0, 10.4, 43.7, 19.7, 21.3),
-      year3plus: tp(8.1, 14.2, 47.6, 12.4, 17.9),
-    },
-    aflibercept: {
-      induction: tp(10.7, 20.3, 53.0, 4.1, 11.9),
-      year1: tp(6.7, 12.1, 44.6, 17.1, 19.7),
-      year2: tp(6.7, 13.4, 48.2, 12.8, 18.8),
-      year3plus: tp(8.5, 14.0, 46.2, 13.6, 17.9),
-    },
-  },
-  pcv: {
-    rbz_bs: {
-      induction: tp(6.4, 33.3, 59.0, 0.0, 1.2),
-      year1: tp(2.3, 13.7, 68.3, 2.2, 13.5),
-      year2: tp(2.7, 13.3, 64.5, 3.7, 15.8),
-      year3plus: tp(1.6, 9.6, 64.3, 5.7, 20.2),
-    },
-    aflibercept: {
-      induction: tp(13.9, 30.0, 51.7, 0.4, 4.0),
-      year1: tp(7.4, 13.3, 46.2, 14.2, 18.8),
-      year2: tp(4.9, 14.1, 56.0, 7.3, 17.7),
-      year3plus: tp(10.3, 14.1, 43.0, 15.5, 17.3),
-    },
-  },
-  rap: {
-    rbz_bs: {
-      induction: tp(14.9, 20.4, 47.6, 5.3, 11.8),
-      year1: tp(10.2, 18.4, 51.5, 6.1, 13.8),
-      year2: tp(8.9, 16.1, 50.0, 8.9, 16.1),
-      year3plus: tp(8.2, 15.4, 49.8, 9.7, 16.9),
-    },
-    aflibercept: {
-      induction: tp(11.3, 21.2, 53.0, 3.5, 11.0),
-      year1: tp(7.6, 16.1, 52.6, 7.6, 16.1),
-      year2: tp(5.5, 15.7, 57.6, 5.5, 15.7),
-      year3plus: tp(4.9, 14.7, 57.4, 6.2, 16.8),
-    },
-  },
-};
-
-/** ベースケース注射回数 — Supplementary Table S6 */
+export const TRANS_SCENARIO = TRANS_SCENARIO_TABLE_S7_S8;
 export const INJ_BASE = INJ_BASE_TABLE_S6;
+export const INJ_SCENARIO = INJ_SCENARIO_TABLE_S8;
 
-export { TABLE_S6_SOURCE };
+export { TABLE_S5_SOURCE, TABLE_S6_SOURCE, TABLE_S7_S8_SOURCE, INJECTIONS_2026_META_SOURCE };
 
-export const INJ_SCENARIO = {
-  typical: {
-    rbz_bs: { induction: 3.0, year1: 1.2, year2: 2.0, year3plus: 1.6 },
-    aflibercept: { induction: 3.0, year1: 1.5, year2: 1.9, year3plus: 1.3 },
-  },
-  pcv: {
-    rbz_bs: { induction: 3.0, year1: 1.1, year2: 2.0, year3plus: 1.4 },
-    aflibercept: { induction: 3.0, year1: 1.5, year2: 1.8, year3plus: 1.7 },
-  },
-  rap: {
-    rbz_bs: { induction: 3.0, year1: 4.2, year2: 4.7, year3plus: 4.7 },
-    aflibercept: { induction: 3.0, year1: 4.7, year2: 4.9, year3plus: 4.9 },
-  },
+/**
+ * 臨床データセット — 遷移・注射回数の3系統（base / scenario / 2026_meta）を
+ * 同一インターフェースで提供する。呼び出し側（markov.js）は clinicalCase の
+ * 分岐を持たず、datasets のメソッドのみを使う。
+ *
+ * @typedef {object} ClinicalDataset
+ * @property {string} id
+ * @property {string} label — UI 表示名
+ * @property {string} hint — UI 補足（出典）
+ * @property {(subtypeId: string, clinicalKey: string) => boolean} hasTransitions
+ * @property {(subtypeId: string, clinicalKey: string, phase: string) => object|null} getTransitions
+ * @property {(subtypeId: string, phase: string) => object|null} getBscTransitions
+ * @property {(q: {subtypeId: string, drugId: string, clinicalKey: string, phase: string}) => number} getAnnualInjections
+ * @property {(drugId: string, subtypeId: string, clinicalKey: string) => boolean} hasInjections
+ */
+
+/** @returns {ClinicalDataset} */
+function makeTableDataset({ id, label, hint, transitions, injections }) {
+  return {
+    id,
+    label,
+    hint,
+    hasTransitions: (subtypeId, clinicalKey) =>
+      transitions[subtypeId]?.[clinicalKey] != null,
+    getTransitions: (subtypeId, clinicalKey, phase) =>
+      transitions[subtypeId]?.[clinicalKey]?.[phase] ?? null,
+    getBscTransitions: (subtypeId, phase) => {
+      const treated = transitions[subtypeId]?.[BSC_REFERENCE_KEY]?.[phase];
+      if (!treated) return null;
+      return deriveBscTransitionProbs(treated, BSC_PROGRESSION_MULTIPLIER);
+    },
+    getAnnualInjections: ({ subtypeId, clinicalKey, phase }) =>
+      injections[subtypeId]?.[clinicalKey]?.[phase] ?? 0,
+    hasInjections: (drugId, subtypeId, clinicalKey) =>
+      injections[subtypeId]?.[clinicalKey] != null,
+  };
+}
+
+const BASE_DATASET = makeTableDataset({
+  id: "base",
+  label: "ベースケース（Table S5 遷移・S6 注射）",
+  hint: "遷移: Table S5 / 注射: Table S6",
+  transitions: TRANS_BASE,
+  injections: INJ_BASE,
+});
+
+const SCENARIO_DATASET = makeTableDataset({
+  id: "scenario",
+  label: "シナリオ（Table S7–S8）",
+  hint: "遷移: Table S7–S8 / 注射: Table S8",
+  transitions: TRANS_SCENARIO,
+  injections: INJ_SCENARIO,
+});
+
+/** 2026 meta — 遷移は Table S5、注射回数のみ薬剤別メタ解析値 */
+const META_2026_DATASET = {
+  ...makeTableDataset({
+    id: "2026_meta",
+    label: "2026 meta（注射回数のみ更新）",
+    hint: "遷移: Table S5 / 注射: 2026 meta（year1 固定、year≥2 = year1−3）",
+    transitions: TRANS_BASE,
+    injections: {},
+  }),
+  getAnnualInjections: ({ drugId, phase }) =>
+    getInjections2026MetaForDrug(drugId)?.[phase] ?? 0,
+  hasInjections: (drugId) => getInjections2026MetaForDrug(drugId) != null,
+  missingInjectionsWarning: (drugName) =>
+    `${drugName}: 2026 meta 注射回数が未設定`,
 };
 
-export function getClinicalTables(clinicalCase) {
-  if (clinicalCase === "scenario") {
-    return { transitions: TRANS_SCENARIO, injections: INJ_SCENARIO };
-  }
-  if (clinicalCase === "2026_meta") {
-    return { transitions: TRANS_BASE, injections: null };
-  }
-  return { transitions: TRANS_BASE, injections: INJ_BASE };
-}
+export const CLINICAL_DATASETS = {
+  base: BASE_DATASET,
+  scenario: SCENARIO_DATASET,
+  "2026_meta": META_2026_DATASET,
+};
 
-export { INJECTIONS_2026_META_SOURCE };
+export const CLINICAL_CASE_OPTIONS = Object.values(CLINICAL_DATASETS).map(
+  ({ id, label, hint }) => ({ id, label, hint })
+);
 
-/**
- * フェーズあたり年間注射回数
- * @param {'base'|'scenario'|'2026_meta'} clinicalCase
- */
-export function getInjectionRate(
-  clinicalCase,
-  injections,
-  subtypeId,
-  drugId,
-  clinicalKey,
-  phase
-) {
-  if (clinicalCase === "2026_meta") {
-    const schedule = getInjections2026MetaForDrug(drugId);
-    if (!schedule) return 0;
-    return schedule[phase] ?? 0;
-  }
-  return injections?.[subtypeId]?.[clinicalKey]?.[phase] ?? 0;
-}
-
-/**
- * 間隔スケールの基準週 — Markov とスイッチタブで共通
- * @param {'base'|'scenario'|'2026_meta'} clinicalCase
- * @param {string} drugId
- */
-export function getInjectionReferenceIntervalWeeks(clinicalCase, drugId) {
-  if (clinicalCase === "2026_meta") {
-    return getMetaReferenceIntervalWeeks(drugId);
-  }
-  return REFERENCE_INTERVAL_WEEKS;
+/** @returns {ClinicalDataset} */
+export function getClinicalDataset(clinicalCase) {
+  return CLINICAL_DATASETS[clinicalCase] ?? BASE_DATASET;
 }
 
 /**
  * 選択間隔を反映した年間注射回数 — Markov とスイッチタブで共通
  * 間隔指定あり: 52 ÷ 間隔（週）— 薬剤共通
- * 間隔指定なし: Table S6 / 2026 meta の文献値
+ * 間隔指定なし: 臨床データセット（Table S6 / 2026 meta）の文献値
  */
 export function getEffectiveAnnualInjectionRate({
   clinicalCase,
@@ -181,24 +162,18 @@ export function getEffectiveAnnualInjectionRate({
   }
   const drug = getDrug(drugId);
   if (!drug) return null;
-  const { injections } = getClinicalTables(clinicalCase);
-  return getInjectionRate(
-    clinicalCase,
-    injections,
+  const dataset = getClinicalDataset(clinicalCase);
+  return dataset.getAnnualInjections({
     subtypeId,
     drugId,
-    drug.clinicalKey,
-    phase
-  );
+    clinicalKey: drug.clinicalKey,
+    phase,
+  });
 }
 
-export { getMetaRegimenLabel };
-
 /**
- * 治療中止後の BSC 遷移（サブタイプ×フェーズ）
+ * 治療中止後の BSC 遷移（サブタイプ×フェーズ）— テスト・外部利用向け
  * @param {object} transitions — TRANS_BASE または TRANS_SCENARIO
- * @param {string} subtypeId
- * @param {string} phase
  */
 export function getBscTransitionProbs(transitions, subtypeId, phase) {
   const treated = transitions[subtypeId]?.[BSC_REFERENCE_KEY]?.[phase];

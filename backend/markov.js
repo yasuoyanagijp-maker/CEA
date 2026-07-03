@@ -5,17 +5,11 @@ import {
   normalizeTransitionProbs,
   isOnTreatment,
 } from "./utils.js";
-import {
-  SUBTYPES,
-  getClinicalTables,
-  getBscTransitionProbs,
-  getEffectiveAnnualInjectionRate,
-} from "./clinical.js";
+import { SUBTYPES, getClinicalDataset, getEffectiveAnnualInjectionRate } from "./clinical.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
-import { getInjections2026MetaForDrug } from "./config/injections-2026-meta.js";
 
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
@@ -109,25 +103,21 @@ function societalCosts(cohort, pBoth, cycleLen, df, paper) {
   return { care, visit };
 }
 
+/* ------------------------------------------------------------------ */
+/* 1. 入力解決層 — カタログ・論文・データセット・フォールバックの解決 */
+/* ------------------------------------------------------------------ */
+
 /**
- * @param {object} input
- * @param {string} input.drugId
- * @param {string} input.subtypeId
- * @param {string} input.costPaperId
- * @param {'base'|'scenario'|'2026_meta'} input.clinicalCase
- * @param {{timeHorizonYears,cycleLengthYears,discountRate}} input.horizon
- * @param {number|null} [input.treatmentDurationYears] — null=生涯治療、2/5=その年数後にBSC
- * @param {object|null} input.modelParams — utilities, mortality, etc.
- * @param {number|null} [input.intervalWeeks] — 治療間隔（週）。Q8 基準の注射回数を比例スケール
+ * runMarkov の入力を計算可能なパラメータ一式に解決する。
+ * フォールバック(論文1 → 論文2 社会的費用)と警告の確定もここで行い、
+ * シミュレーション・集計層には解決済みの値のみを渡す。
  */
-export function runMarkov(input) {
+function resolveRunInputs(input) {
   const {
     drugId,
     subtypeId,
     costPaperId,
     clinicalCase = "base",
-    horizon,
-    treatmentDurationYears = null,
     modelParams = {},
     intervalWeeks = null,
   } = input;
@@ -135,13 +125,8 @@ export function runMarkov(input) {
   const drug = getDrug(drugId);
   const subtype = SUBTYPES[subtypeId];
   const paper = getCostPaper(costPaperId);
-  const { transitions, injections } = getClinicalTables(clinicalCase);
+  const dataset = getClinicalDataset(clinicalCase);
   const clinicalKey = drug.clinicalKey;
-
-  const cycleLen = horizon.cycleLengthYears;
-  const cpy = cyclesPerYear(cycleLen);
-  const cycles = Math.round(horizon.timeHorizonYears / cycleLen);
-  const disc = horizon.discountRate * cycleLen;
 
   const qaly =
     modelParams.utilities && modelParams.utilityNone != null
@@ -167,15 +152,20 @@ export function runMarkov(input) {
 
   const warnings = [];
   if (drug.clinicalNote) warnings.push(drug.clinicalNote);
-  if (clinicalCase === "2026_meta" && !getInjections2026MetaForDrug(drugId)) {
-    warnings.push(`${drug.name}: 2026 meta 注射回数が未設定`);
+  if (
+    dataset.missingInjectionsWarning &&
+    !dataset.hasInjections(drugId, subtypeId, clinicalKey)
+  ) {
+    warnings.push(dataset.missingInjectionsWarning(drug.name));
   }
-  if (!transitions[subtypeId]?.[clinicalKey]) {
+  if (!dataset.hasTransitions(subtypeId, clinicalKey)) {
     return {
-      drugId,
-      incomplete: true,
-      reason: `臨床データなし: ${subtypeId} × ${clinicalKey}`,
-      warnings,
+      error: {
+        drugId,
+        incomplete: true,
+        reason: `臨床データなし: ${subtypeId} × ${clinicalKey}`,
+        warnings,
+      },
     };
   }
 
@@ -188,29 +178,63 @@ export function runMarkov(input) {
       `治療間隔 Q${intervalWeeks}: 年間注射 = 52÷${intervalWeeks} = ${(52 / intervalWeeks).toFixed(2)} 回/年（薬剤共通）`
     );
   }
-  const societalPaper =
-    paper.societal ?? getCostPaper("paper2_rbz").societal;
+  const societalPaper = paper.societal ?? getCostPaper("paper2_rbz").societal;
   if (!paper.societal && costPaperId === "paper1_faricimab") {
     warnings.push(
       "論文1: 社会的費用は論文2 Table S11 を暫定適用（介護・訪問）"
     );
   }
 
+  return {
+    drug,
+    drugId,
+    subtype,
+    subtypeId,
+    paper,
+    dataset,
+    clinicalKey,
+    qaly,
+    mort,
+    drugPrice,
+    societalPaper,
+    warnings,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. コホートシミュレーション層 — 純粋な状態遷移(コストと無関係)     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Markov コホートを走らせ、サイクルごとの状態スナップショットを返す。
+ * QALY・コストの計算は行わない。
+ *
+ * @returns {Array<{
+ *   cycle: number, df: number, yearIndex: number, phase: string,
+ *   onTreatment: boolean, annualInj: number, injThisCycle: number,
+ *   cohort: number[], fellowDist: number[], pSecond: number, aliveMass: number,
+ * }>}
+ */
+function simulateCohort(
+  resolved,
+  horizon,
+  treatmentDurationYears,
+  modelParams,
+  { clinicalCase, intervalWeeks }
+) {
+  const { subtype, subtypeId, drugId, clinicalKey, dataset, mort } = resolved;
+
+  const cycleLen = horizon.cycleLengthYears;
+  const cpy = cyclesPerYear(cycleLen);
+  const cycles = Math.round(horizon.timeHorizonYears / cycleLen);
+  const disc = horizon.discountRate * cycleLen;
+
   let aliveMass = 1;
   let dist = [...subtype.treatedInitial];
   let fellowDist = [...subtype.fellowInitial];
   let pSecond = subtype.bothEyesBaseline;
 
-  let totalQALY = 0;
-  let totalCost = 0;
-  const trajectory = [];
-  const costBreakdown = {
-    drugAdmin: 0,
-    monitoring: 0,
-    adverseEvents: 0,
-    societalCare: 0,
-    physicianVisit: 0,
-  };
+  const series = [];
 
   for (let c = 0; c < cycles; c++) {
     const df = Math.pow(1 + disc, -c);
@@ -220,10 +244,10 @@ export function runMarkov(input) {
     );
     const phase = phaseForCycle(c, cycleLen);
     const onTreatment = isOnTreatment(c, cycleLen, treatmentDurationYears);
-    const treatedProbs = transitions[subtypeId][clinicalKey][phase];
+    const treatedProbs = dataset.getTransitions(subtypeId, clinicalKey, phase);
     const probs = onTreatment
       ? normalizeTransitionProbs(treatedProbs)
-      : getBscTransitionProbs(transitions, subtypeId, phase) ??
+      : dataset.getBscTransitions(subtypeId, phase) ??
         normalizeTransitionProbs(treatedProbs);
 
     const annualInj = onTreatment
@@ -238,65 +262,19 @@ export function runMarkov(input) {
     const injThisCycle = annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);
 
-    if (qaly) {
-      totalQALY +=
-        expectedBetterEyeUtility(cohort, fellowDist, pSecond, qaly) *
-        cycleLen *
-        df;
-    }
-
-    if (onTreatment) {
-      const admin = drugAdminCost(drugId, injThisCycle, aliveMass, df, paper);
-      if (!admin.missing) {
-        costBreakdown.drugAdmin += admin.cost;
-        totalCost += admin.cost;
-      }
-
-      const ae = adverseEventCost(
-        injThisCycle * aliveMass,
-        df,
-        modelParams.adverseEvents,
-        modelParams.includeScenarioAe
-      );
-      costBreakdown.adverseEvents += ae;
-      totalCost += ae;
-    }
-
-    const mon = monitoringCost(
+    series.push({
+      cycle: c,
+      df,
       yearIndex,
-      onTreatment ? drug.monitoringRegimen : "bsc",
-      cycleLen,
-      df,
-      paper
-    );
-    costBreakdown.monitoring += mon * aliveMass;
-    totalCost += mon * aliveMass;
-
-    const { care, visit } = societalCosts(
+      phase,
+      onTreatment,
+      annualInj,
+      injThisCycle,
       cohort,
+      fellowDist: [...fellowDist],
       pSecond,
-      cycleLen,
-      df,
-      { societal: societalPaper }
-    );
-    costBreakdown.societalCare += care;
-    costBreakdown.physicianVisit += visit;
-    totalCost += care + visit;
-
-    if (c % cpy === 0) {
-      trajectory.push({
-        year: c * cycleLen,
-        none: ((cohort[0] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        mild: ((cohort[1] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        moderate: ((cohort[2] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        severe: ((cohort[3] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        blind: ((cohort[4] / Math.max(aliveMass, 1e-9)) * 100).toFixed(1),
-        bothEyes: (pSecond * 100).toFixed(1),
-        alive: (aliveMass * 100).toFixed(1),
-        cumQALY: qaly ? totalQALY.toFixed(3) : null,
-        cumCost: Math.round(totalCost),
-      });
-    }
+      aliveMass,
+    });
 
     const pNew =
       (1 - pSecond) *
@@ -327,22 +305,185 @@ export function runMarkov(input) {
     fellowDist = applyTransition(fellowDist, probs);
   }
 
+  return series;
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. 集計層 — シミュレーション系列に QALY・コストを適用              */
+/* ------------------------------------------------------------------ */
+
+/** @returns {{ total: number, perCycle: number[] }} 割引済み QALY */
+function accumulateQaly(series, qaly, cycleLen) {
+  const perCycle = series.map((s) =>
+    expectedBetterEyeUtility(s.cohort, s.fellowDist, s.pSecond, qaly) *
+    cycleLen *
+    s.df
+  );
+  return { total: perCycle.reduce((a, b) => a + b, 0), perCycle };
+}
+
+/**
+ * @returns {{
+ *   total: number, perCycle: number[],
+ *   breakdown: { drugAdmin, monitoring, adverseEvents, societalCare, physicianVisit },
+ * }} 割引済みコスト(円)
+ */
+function accumulateCosts(series, resolved, modelParams, cycleLen) {
+  const { drug, drugId, paper, societalPaper } = resolved;
+  const breakdown = {
+    drugAdmin: 0,
+    monitoring: 0,
+    adverseEvents: 0,
+    societalCare: 0,
+    physicianVisit: 0,
+  };
+  const perCycle = [];
+
+  for (const s of series) {
+    let cost = 0;
+
+    if (s.onTreatment) {
+      const admin = drugAdminCost(drugId, s.injThisCycle, s.aliveMass, s.df, paper);
+      if (!admin.missing) {
+        breakdown.drugAdmin += admin.cost;
+        cost += admin.cost;
+      }
+
+      const ae = adverseEventCost(
+        s.injThisCycle * s.aliveMass,
+        s.df,
+        modelParams.adverseEvents,
+        modelParams.includeScenarioAe
+      );
+      breakdown.adverseEvents += ae;
+      cost += ae;
+    }
+
+    const mon =
+      monitoringCost(
+        s.yearIndex,
+        s.onTreatment ? drug.monitoringRegimen : "bsc",
+        cycleLen,
+        s.df,
+        paper
+      ) * s.aliveMass;
+    breakdown.monitoring += mon;
+    cost += mon;
+
+    const { care, visit } = societalCosts(
+      s.cohort,
+      s.pSecond,
+      cycleLen,
+      s.df,
+      { societal: societalPaper }
+    );
+    breakdown.societalCare += care;
+    breakdown.physicianVisit += visit;
+    cost += care + visit;
+
+    perCycle.push(cost);
+  }
+
+  return {
+    total: perCycle.reduce((a, b) => a + b, 0),
+    perCycle,
+    breakdown,
+  };
+}
+
+/** 年次スナップショット(UI の推移チャート用) */
+function buildTrajectory(series, qalyPerCycle, costPerCycle, cycleLen) {
+  const cpy = cyclesPerYear(cycleLen);
+  const trajectory = [];
+  let cumQALY = 0;
+  let cumCost = 0;
+
+  series.forEach((s, i) => {
+    if (qalyPerCycle) cumQALY += qalyPerCycle[i];
+    cumCost += costPerCycle[i];
+    if (s.cycle % cpy !== 0) return;
+    const alive = Math.max(s.aliveMass, 1e-9);
+    trajectory.push({
+      year: s.cycle * cycleLen,
+      none: ((s.cohort[0] / alive) * 100).toFixed(1),
+      mild: ((s.cohort[1] / alive) * 100).toFixed(1),
+      moderate: ((s.cohort[2] / alive) * 100).toFixed(1),
+      severe: ((s.cohort[3] / alive) * 100).toFixed(1),
+      blind: ((s.cohort[4] / alive) * 100).toFixed(1),
+      bothEyes: (s.pSecond * 100).toFixed(1),
+      alive: (s.aliveMass * 100).toFixed(1),
+      cumQALY: qalyPerCycle ? cumQALY.toFixed(3) : null,
+      cumCost: Math.round(cumCost),
+    });
+  });
+
+  return trajectory;
+}
+
+/* ------------------------------------------------------------------ */
+/* 合成 — runMarkov                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @param {object} input
+ * @param {string} input.drugId
+ * @param {string} input.subtypeId
+ * @param {string} input.costPaperId
+ * @param {'base'|'scenario'|'2026_meta'} input.clinicalCase
+ * @param {{timeHorizonYears,cycleLengthYears,discountRate}} input.horizon
+ * @param {number|null} [input.treatmentDurationYears] — null=生涯治療、2/5=その年数後にBSC
+ * @param {object|null} input.modelParams — utilities, mortality, etc.
+ * @param {number|null} [input.intervalWeeks] — 治療間隔（週）。指定時は 52÷週
+ */
+export function runMarkov(input) {
+  const {
+    drugId,
+    horizon,
+    clinicalCase = "base",
+    treatmentDurationYears = null,
+    modelParams = {},
+    intervalWeeks = null,
+  } = input;
+
+  const resolved = resolveRunInputs(input);
+  if (resolved.error) return resolved.error;
+
+  const cycleLen = horizon.cycleLengthYears;
+  const series = simulateCohort(
+    resolved,
+    horizon,
+    treatmentDurationYears,
+    modelParams,
+    { clinicalCase, intervalWeeks }
+  );
+
+  const qalyResult = resolved.qaly
+    ? accumulateQaly(series, resolved.qaly, cycleLen)
+    : null;
+  const costResult = accumulateCosts(series, resolved, modelParams, cycleLen);
+  const trajectory = buildTrajectory(
+    series,
+    qalyResult?.perCycle ?? null,
+    costResult.perCycle,
+    cycleLen
+  );
+
   return {
     drugId,
-    totalQALY: qaly ? totalQALY : null,
-    totalCost,
+    totalQALY: qalyResult ? qalyResult.total : null,
+    totalCost: costResult.total,
     trajectory,
-    costBreakdown,
-    incomplete: !qaly || drugPrice == null,
-    reason: !qaly
+    costBreakdown: costResult.breakdown,
+    incomplete: !resolved.qaly || resolved.drugPrice == null,
+    reason: !resolved.qaly
       ? "効用パラメータ未設定"
-      : drugPrice == null
+      : resolved.drugPrice == null
         ? "薬価未設定"
         : null,
-    warnings,
-    costPaperId,
+    warnings: resolved.warnings,
+    costPaperId: input.costPaperId,
     clinicalCase,
-    subtypeId,
+    subtypeId: input.subtypeId,
     treatmentDurationYears,
   };
 }

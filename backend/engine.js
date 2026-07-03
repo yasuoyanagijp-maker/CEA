@@ -142,6 +142,30 @@ export function runAnalysis(input) {
   };
 }
 
+/**
+ * runAnalysis のメモ化ラッパー — UI がタブ切替・照合表示などで同一入力の
+ * 解析を繰り返し要求するため、直近の結果をキャッシュする。
+ * 入力はプレーンなデータ(JSON 化可能)であることが前提。
+ */
+const ANALYSIS_CACHE_LIMIT = 100;
+const analysisCache = new Map();
+
+export function runAnalysisCached(input) {
+  const key = JSON.stringify(input);
+  const hit = analysisCache.get(key);
+  if (hit) {
+    analysisCache.delete(key);
+    analysisCache.set(key, hit); // LRU: 直近利用を末尾へ
+    return hit;
+  }
+  const result = runAnalysis(input);
+  analysisCache.set(key, result);
+  if (analysisCache.size > ANALYSIS_CACHE_LIMIT) {
+    analysisCache.delete(analysisCache.keys().next().value);
+  }
+  return result;
+}
+
 const DEFAULT_MORTALITY_SENSITIVITY_RATES = [0.02, 0.03, 0.035, 0.04];
 
 /**
@@ -168,7 +192,7 @@ export function runMortalitySensitivity(
       annualMortality: rate,
       useAgeSpecificMortality: false,
     };
-    const analysis = runAnalysis({
+    const analysis = runAnalysisCached({
       ...input,
       subtypeId,
       clinicalCase: "scenario",
@@ -194,10 +218,10 @@ export function runMortalitySensitivity(
 
 export { runMarkov } from "./markov.js";
 export {
-  getInjectionRate,
+  CLINICAL_DATASETS,
+  CLINICAL_CASE_OPTIONS,
+  getClinicalDataset,
   getEffectiveAnnualInjectionRate,
-  getInjectionReferenceIntervalWeeks,
-  getMetaRegimenLabel,
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";
