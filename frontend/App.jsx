@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -43,7 +43,34 @@ const CYCLE_OPTIONS = [
   { value: 1, label: "1年" },
 ];
 
+const NARROW_QUERY = "(max-width: 760px)";
+
+/** スマホ縦画面などの狭幅判定（リサイズ・回転に追従） */
+function useIsNarrow() {
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(NARROW_QUERY).matches
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(NARROW_QUERY);
+    const onChange = (e) => setIsNarrow(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return isNarrow;
+}
+
+/** 幅の広いテーブルを画面外にはみ出させず横スクロールさせる */
+function ScrollTable({ children }) {
+  return (
+    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      {children}
+    </div>
+  );
+}
+
 export default function App() {
+  const isNarrow = useIsNarrow();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [subtypeId, setSubtypeId] = useState("typical");
   const [costPaperId, setCostPaperId] = useState("paper2_rbz");
   const [clinicalCase, setClinicalCase] = useState("base");
@@ -278,13 +305,13 @@ export default function App() {
         style={{
           background: "linear-gradient(135deg, #0F172A 0%, #1E40AF 100%)",
           color: "#fff",
-          padding: "20px 28px",
+          padding: isNarrow ? "14px 16px" : "20px 28px",
         }}
       >
         <div style={{ fontSize: 11, letterSpacing: 2, opacity: 0.75 }}>
           nAMD CEA • 5状態 Markov • 両眼モデル
         </div>
-        <h1 style={{ margin: "6px 0 4px", fontSize: 22 }}>抗VEGF 薬剤 費用対効果計算機</h1>
+        <h1 style={{ margin: "6px 0 4px", fontSize: isNarrow ? 17 : 22 }}>抗VEGF 薬剤 費用対効果計算機</h1>
         <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
           QALY・Cost — ラニビズマブ / アフリベルセプト / ファリシマブ / ブロルシズマブ / BS 製剤
         </p>
@@ -293,7 +320,7 @@ export default function App() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(300px, 340px) 1fr",
+          gridTemplateColumns: isNarrow ? "1fr" : "minmax(300px, 340px) 1fr",
           gap: 0,
           maxWidth: 1280,
           margin: "0 auto",
@@ -302,11 +329,33 @@ export default function App() {
         <aside
           style={{
             background: "#fff",
-            borderRight: "1px solid #E2E8F0",
-            padding: 20,
+            borderRight: isNarrow ? "none" : "1px solid #E2E8F0",
+            borderBottom: isNarrow ? "1px solid #E2E8F0" : "none",
+            padding: isNarrow ? "12px 16px" : 20,
             fontSize: 13,
           }}
         >
+          {isNarrow && (
+            <button
+              type="button"
+              onClick={() => setSettingsOpen((v) => !v)}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                border: "1px solid #CBD5E1",
+                borderRadius: 8,
+                background: settingsOpen ? "#1E40AF" : "#fff",
+                color: settingsOpen ? "#fff" : "#1E293B",
+                cursor: "pointer",
+                marginBottom: settingsOpen ? 16 : 0,
+              }}
+            >
+              モデル設定（薬剤・パラメータ）{settingsOpen ? "を閉じる ▲" : "を開く ▼"}
+            </button>
+          )}
+          <div style={{ display: isNarrow && !settingsOpen ? "none" : "block" }}>
           <Section title="コストの出典（論文）">
             <select
               value={costPaperId}
@@ -586,9 +635,10 @@ export default function App() {
               </select>
             </label>
           </Section>
+          </div>
         </aside>
 
-        <main style={{ padding: 20 }}>
+        <main style={{ padding: isNarrow ? 12 : 20 }}>
           <nav style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
             {[
               ["summary", "サマリー"],
@@ -617,7 +667,8 @@ export default function App() {
                   ?.label ?? ""
               }`}
             >
-              <table style={tableStyle}>
+              <ScrollTable>
+              <table style={{ ...tableStyle, minWidth: 560 }}>
                 <thead>
                   <tr style={{ background: "#0F172A", color: "#fff" }}>
                     <th style={thStyle}>薬剤</th>
@@ -666,6 +717,7 @@ export default function App() {
                   })}
                 </tbody>
               </table>
+              </ScrollTable>
 
               {paperIncrementalRows && (
                 <div style={{ marginTop: 20 }}>
@@ -676,7 +728,8 @@ export default function App() {
                     論文: 社会的視点のサブタイプ解析における増分（Δ = RBZ BS − AFL）。
                     患者視点・BSC 比較・先製 RBZ 比較はコスト構造が異なるため未実装です。
                   </p>
-                  <table style={tableStyle}>
+                  <ScrollTable>
+                  <table style={{ ...tableStyle, minWidth: 640 }}>
                     <thead>
                       <tr style={{ background: "#1E3A5F", color: "#fff" }}>
                         <th style={thStyle}>サブタイプ</th>
@@ -729,6 +782,7 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
+                  </ScrollTable>
                   <p style={{ fontSize: 11, color: "#B45309", marginTop: 8 }}>
                     本ツールの QALY 水準は Table S12（7–8 QALY）より高く、絶対値の一致より増分の方向性を確認してください。
                   </p>
@@ -792,7 +846,8 @@ export default function App() {
                 臨床=シナリオ（S7–S8）で再計算した値と論文記載値の比較。
                 遷移確率は合計100%に正規化（PCVシナリオの丸め誤差対策）。
               </p>
-              <table style={tableStyle}>
+              <ScrollTable>
+              <table style={{ ...tableStyle, minWidth: 480 }}>
                 <thead>
                   <tr style={{ background: "#334155", color: "#fff" }}>
                     <th style={thStyle}>薬剤</th>
@@ -822,13 +877,15 @@ export default function App() {
                   })}
                 </tbody>
               </table>
+              </ScrollTable>
 
               {mortalitySensitivity?.rows?.length > 0 && (
                 <>
                   <h3 style={{ fontSize: 14, margin: "20px 0 8px" }}>
                     年間死亡率の感度（QALY・典型/PCV/RAP は左サイドバーのサブタイプ）
                   </h3>
-                  <table style={tableStyle}>
+                  <ScrollTable>
+                  <table style={{ ...tableStyle, minWidth: 520 }}>
                     <thead>
                       <tr style={{ background: "#475569", color: "#fff" }}>
                         <th style={thStyle}>年間死亡率</th>
@@ -861,6 +918,7 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
+                  </ScrollTable>
                   <p style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
                     固定年間死亡率（0.02–0.04）での感度。通常は左欄を空欄にし令和5年簡易生命表（年齢別）を使用します。
                   </p>
