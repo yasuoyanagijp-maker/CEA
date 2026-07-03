@@ -9,7 +9,12 @@ import {
   phaseForCycle,
   isOnTreatment,
 } from "../backend/utils.js";
-import { TRANS_BASE, TRANS_SCENARIO, getBscTransitionProbs } from "../backend/clinical.js";
+import {
+  TRANS_BASE,
+  TRANS_SCENARIO,
+  getBscTransitionProbs,
+  BSC_PROGRESSION_MULTIPLIER,
+} from "../backend/clinical.js";
 import {
   runAnalysis,
   runMarkov,
@@ -61,7 +66,7 @@ describe("遷移確率の質量保存", () => {
 
   it("BSC 派生は治療遷移より悪化方向(改善確率が下がらないことはない)", () => {
     const treated = tp(15, 15, 40, 15, 15);
-    const bsc = deriveBscTransitionProbs(treated, 1.35);
+    const bsc = deriveBscTransitionProbs(treated, BSC_PROGRESSION_MULTIPLIER);
     // deriveBscTransitionProbs の「悪化」は改善確率の増幅ではなく
     // wors の縮小と改善の増幅…実装は imp を増やし wors を減らす形なので
     // ここでは合計1と非負のみ検証する(実装仕様のドキュメント代わり)。
