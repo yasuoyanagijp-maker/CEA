@@ -1,5 +1,5 @@
 import { DEFAULT_HORIZON } from "./constants.js";
-import { DRUG_CATALOG } from "./drugs.js";
+import { DRUG_CATALOG, DRUG_IDS } from "./drugs.js";
 import { getEffectiveAnnualInjectionRate } from "./clinical.js";
 import { getCostPaper } from "./papers/index.js";
 import { runMarkov } from "./markov.js";
@@ -8,6 +8,7 @@ import {
   REFERENCE_INTERVAL_WEEKS,
   formatIntervalLabel,
 } from "./config/treatment-intervals.js";
+import { getSwitchEvidence } from "./config/switch-interval-evidence.js";
 
 function perInjectionCost(drugId, paper) {
   const price = paper.drugPrices[drugId];
@@ -73,6 +74,127 @@ export function analyticBreakEvenIntervalWeeks(
     annualInjections: breakEvenAnnualInj,
     label: formatIntervalLabel(Math.round(weeks)),
   };
+}
+
+/**
+ * 損益分岐間隔テーブル — 現行レジメン（薬剤＋間隔）に対し、全スイッチ先候補の
+ * コスト同等となる治療間隔を解析的に算出する（CMA の中核）。
+ *
+ * 損益分岐間隔 w_be = 現行間隔 × (スイッチ先1回コスト ÷ 現行1回コスト)
+ * 年間薬剤費 = 1回コスト × 52 ÷ 間隔（週）なので、w_be で年間薬剤費が一致する。
+ *
+ * @param {object} p
+ * @param {string} p.currentDrugId
+ * @param {number} p.currentIntervalWeeks — 任意の週数（プリセットに限らない）
+ * @param {string} p.costPaperId
+ * @param {number} [p.wtpPerQaly]
+ */
+export function computeBreakEvenTable({
+  currentDrugId,
+  currentIntervalWeeks,
+  costPaperId,
+  wtpPerQaly = DEFAULT_HORIZON.wtpPerQaly,
+}) {
+  const paper = getCostPaper(costPaperId);
+  const curPerInj = perInjectionCost(currentDrugId, paper);
+  if (curPerInj == null || !(currentIntervalWeeks > 0)) return null;
+
+  const annualInjections = 52 / currentIntervalWeeks;
+  const annualDrugAdmin = curPerInj * annualInjections;
+
+  const rows = DRUG_IDS.filter((id) => id !== currentDrugId).map((drugId) => {
+    const perInj = perInjectionCost(drugId, paper);
+    const evidence = getSwitchEvidence(drugId);
+    if (perInj == null) {
+      return { drugId, drug: DRUG_CATALOG[drugId], missingPrice: true, evidence };
+    }
+    const priceRatio = perInj / curPerInj;
+    const breakEvenWeeks = currentIntervalWeeks * priceRatio;
+    const requiredExtensionWeeks = breakEvenWeeks - currentIntervalWeeks;
+    const sameIntervalAnnualDelta = (perInj - curPerInj) * annualInjections;
+    // 同一間隔でスイッチした場合、WTP 内に収まる年あたり QALY 差の目安
+    const qalyPerYear = Math.abs(sameIntervalAnnualDelta) / wtpPerQaly;
+
+    let verdict;
+    if (priceRatio <= 1) {
+      verdict = {
+        kind: "cheaper",
+        label: "同一間隔でも削減",
+        detail: `間隔が Q${breakEvenWeeks.toFixed(1)} まで短縮しても現行と同等以下`,
+      };
+    } else if (evidence?.intervalExtensionWeeks) {
+      const maxExt = evidence.intervalExtensionWeeks[1];
+      const reachable = currentIntervalWeeks + maxExt >= breakEvenWeeks;
+      verdict = reachable
+        ? {
+            kind: "reachable",
+            label: "文献の延長で到達可能圏",
+            detail: `必要 +${requiredExtensionWeeks.toFixed(1)}週 ≤ 文献 +${maxExt}週`,
+          }
+        : {
+            kind: "unreachable",
+            label: "文献の延長では到達困難",
+            detail: `必要 +${requiredExtensionWeeks.toFixed(1)}週 > 文献 +${maxExt}週`,
+          };
+    } else {
+      verdict = {
+        kind: "unknown",
+        label: `+${requiredExtensionWeeks.toFixed(1)}週の延長が必要`,
+        detail: "スイッチ集団の間隔延長エビデンス未登録 — 個別判断",
+      };
+    }
+
+    return {
+      drugId,
+      drug: DRUG_CATALOG[drugId],
+      perInjection: perInj,
+      priceRatio,
+      breakEvenWeeks,
+      requiredExtensionWeeks,
+      sameIntervalAnnualDelta,
+      qalyPerYear,
+      qalyPerYearKind:
+        sameIntervalAnnualDelta > 0 ? "min_required_gain" : "max_acceptable_loss",
+      evidence,
+      verdict,
+    };
+  });
+
+  return {
+    currentDrugId,
+    currentDrug: DRUG_CATALOG[currentDrugId],
+    currentIntervalWeeks,
+    perInjection: curPerInj,
+    annualInjections,
+    annualDrugAdmin,
+    wtpPerQaly,
+    rows,
+  };
+}
+
+/**
+ * 年間薬剤+投与費 vs 治療間隔の曲線データ（チャート用）
+ * @returns {Array<{weeks:number, [drugId]:number}>}
+ */
+export function buildAnnualCostCurve({
+  drugIds = DRUG_IDS,
+  costPaperId,
+  minWeeks = 4,
+  maxWeeks = 24,
+  stepWeeks = 1,
+}) {
+  const paper = getCostPaper(costPaperId);
+  const rows = [];
+  for (let w = minWeeks; w <= maxWeeks + 1e-9; w += stepWeeks) {
+    const weeks = Math.round(w * 10) / 10;
+    const row = { weeks };
+    for (const id of drugIds) {
+      const perInj = perInjectionCost(id, paper);
+      if (perInj != null) row[id] = Math.round((perInj * 52) / weeks);
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 
 /**

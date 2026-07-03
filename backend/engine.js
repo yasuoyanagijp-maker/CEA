@@ -245,9 +245,12 @@ export {
 };
 export {
   runSwitchCostMinimization,
+  computeBreakEvenTable,
+  buildAnnualCostCurve,
   TREATMENT_INTERVAL_OPTIONS,
   REFERENCE_INTERVAL_WEEKS,
   formatIntervalLabel,
   cmaQalyTolerance,
   annualDrugAdminCostFromModel,
 } from "./switch-analysis.js";
+export { SWITCH_INTERVAL_EVIDENCE } from "./config/switch-interval-evidence.js";
