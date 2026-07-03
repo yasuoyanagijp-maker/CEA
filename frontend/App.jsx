@@ -29,6 +29,7 @@ import {
   TREATMENT_DURATION_OPTIONS,
   TREATMENT_INTERVAL_OPTIONS,
   CLINICAL_CASE_OPTIONS,
+  EVIDENCE_TIER_LABELS,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
 } from "../backend/engine.js";
@@ -1061,6 +1062,26 @@ export default function App() {
                                     {row.evidence.trialReach
                                       .map((t) => `Q${t.weeks}≥${Math.round(t.fraction * 100)}%`)
                                       .join(" / ")}
+                                    {row.evidence.trialEvidenceTier && (
+                                      <span
+                                        style={{
+                                          marginLeft: 4,
+                                          padding: "0 5px",
+                                          borderRadius: 3,
+                                          fontSize: 10,
+                                          background:
+                                            row.evidence.trialEvidenceTier === "direct"
+                                              ? "#DBEAFE"
+                                              : row.evidence.trialEvidenceTier === "modeled"
+                                                ? "#FEF3C7"
+                                                : "#E2E8F0",
+                                          color: "#334155",
+                                        }}
+                                      >
+                                        {EVIDENCE_TIER_LABELS[row.evidence.trialEvidenceTier] ??
+                                          row.evidence.trialEvidenceTier}
+                                      </span>
+                                    )}
                                   </div>
                                 )}
                                 {row.evidence?.note && (

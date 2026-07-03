@@ -253,4 +253,7 @@ export {
   cmaQalyTolerance,
   annualDrugAdminCostFromModel,
 } from "./switch-analysis.js";
-export { SWITCH_INTERVAL_EVIDENCE } from "./config/switch-interval-evidence.js";
+export {
+  SWITCH_INTERVAL_EVIDENCE,
+  EVIDENCE_TIER_LABELS,
+} from "./config/switch-interval-evidence.js";

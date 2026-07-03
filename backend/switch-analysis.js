@@ -11,6 +11,7 @@ import {
 import {
   getSwitchEvidence,
   trialReachFractionAt,
+  EVIDENCE_TIER_LABELS,
 } from "./config/switch-interval-evidence.js";
 
 function perInjectionCost(drugId, paper) {
@@ -120,6 +121,9 @@ function classifyReachability({
 
   // 実臨床では届かないが、RCT/延長期の到達率で境界〜困難を段階化
   if (trialReach) {
+    const tier = evidence?.trialEvidenceTier ?? null;
+    const tierLabel = tier ? EVIDENCE_TIER_LABELS[tier] ?? tier : null;
+    const tierSuffix = tierLabel ? `（${tierLabel}）` : "";
     const maxTrialWeeks = Math.max(...trialReach.map((t) => t.weeks));
     // 試験で観測された最長間隔を超える損益分岐は外挿せず「到達困難」
     if (breakEvenWeeks > maxTrialWeeks) {
@@ -127,6 +131,7 @@ function classifyReachability({
         kind: "difficult",
         label: "到達困難",
         detail: `必要 Q${breakEvenWeeks.toFixed(1)} は延長試験の観測上限（Q${maxTrialWeeks}）を超える`,
+        evidenceTier: tier,
       };
     }
     const frac = trialReachFractionAt(trialReach, breakEvenWeeks);
@@ -135,20 +140,23 @@ function classifyReachability({
         return {
           kind: "reachable",
           label: "延長試験では過半数が到達",
-          detail: `Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}%（試験上限）。実臨床平均は下回るため要経過観察`,
+          detail: `Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}%${tierSuffix}。実臨床平均は下回るため要経過観察`,
+          evidenceTier: tier,
         };
       }
       if (frac >= SWITCH_REACH_FLOOR) {
         return {
           kind: "borderline",
           label: "境界（一部症例で到達）",
-          detail: `Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}%。乾燥・前治療歴で反応差が大きい`,
+          detail: `Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}%${tierSuffix}。乾燥・前治療歴で反応差が大きい`,
+          evidenceTier: tier,
         };
       }
       return {
         kind: "difficult",
         label: "到達困難",
-        detail: `必要 +${req.toFixed(1)}週。Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}% にとどまる`,
+        detail: `必要 +${req.toFixed(1)}週。Q${breakEvenWeeks.toFixed(1)} 到達率 ≈ ${Math.round(frac * 100)}% にとどまる${tierSuffix}`,
+        evidenceTier: tier,
       };
     }
   }

@@ -48,7 +48,7 @@ describe("computeBreakEvenTable", () => {
     expect(row.breakEvenWeeks).toBeCloseTo(8 * (73959 / 119912), 2);
   });
 
-  it("BS Q8 → faricimab は文献延長（+1.6〜2.1週）では到達困難", () => {
+  it("BS Q8 → faricimab は実臨床では不足だが試験到達率(Q16W 63%)で reachable", () => {
     const t = computeBreakEvenTable({
       currentDrugId: "aflibercept_bs",
       currentIntervalWeeks: 8,
@@ -56,8 +56,11 @@ describe("computeBreakEvenTable", () => {
     });
     const row = t.rows.find((r) => r.drugId === "faricimab");
     expect(row.evidence.realisticExtensionWeeks).toEqual([1.6, 2.1]);
-    // 必要延長 ≈ +8.0週 >> 実臨床 +2.1週、試験到達率データなし → difficult
-    expect(row.verdict.kind).toBe("difficult");
+    // 実臨床 +2.1週では届かないが、分岐 Q16.0 は TENAYA/LUCERNE の Q16W 63% 圏 → reachable
+    expect(row.breakEvenWeeks).toBeCloseTo(16.0, 1);
+    expect(row.verdict.kind).toBe("reachable");
+    expect(row.verdict.evidenceTier).toBe("direct");
+    // 実臨床平均だけでは必要延長に足りない（試験到達率で救済）
     expect(row.requiredExtensionWeeks).toBeGreaterThan(row.evidence.realisticExtensionWeeks[1]);
   });
 
@@ -109,6 +112,36 @@ describe("computeBreakEvenTable", () => {
     const row = t.rows.find((r) => r.drugId === "aflibercept_8mg");
     expect(row.evidence.realisticExtensionWeeks).toEqual([1, 2]);
     expect(row.evidence.trialReach).toContainEqual({ weeks: 16, fraction: 0.78 });
+  });
+
+  it("faricimab は trialReach（direct）を持ち段階判定される", () => {
+    // AFL 2mg Q8 → faricimab: 分岐 = 8 × (141784+6000)/(119912) ≈ Q9.9（≥Q12W 未満 → 87%圏外だが12週手前）
+    const t = computeBreakEvenTable({
+      currentDrugId: "aflibercept",
+      currentIntervalWeeks: 10,
+      costPaperId: "paper2_rbz",
+    });
+    const row = t.rows.find((r) => r.drugId === "faricimab");
+    expect(row.evidence.trialEvidenceTier).toBe("direct");
+    expect(row.evidence.trialReach).toContainEqual({ weeks: 16, fraction: 0.631 });
+    expect(["reachable", "borderline", "difficult"]).toContain(row.verdict.kind);
+    // trial に基づく判定なら evidenceTier が伝播する
+    if (row.verdict.kind !== "cheaper") {
+      expect(row.verdict.evidenceTier).toBe("direct");
+    }
+  });
+
+  it("brolucizumab は modeled tier の trialReach を持つ", () => {
+    const t = computeBreakEvenTable({
+      currentDrugId: "aflibercept_bs",
+      currentIntervalWeeks: 8,
+      costPaperId: "paper2_rbz",
+    });
+    const row = t.rows.find((r) => r.drugId === "brolucizumab");
+    expect(row.evidence.trialEvidenceTier).toBe("modeled");
+    expect(row.evidence.trialReach).toContainEqual({ weeks: 12, fraction: 0.77 });
+    // BS Q8 → brolucizumab 分岐 ≈ Q11.8（≥Q12W 77%圏）→ reachable 相当
+    expect(row.breakEvenWeeks).toBeCloseTo(8 * ((103163 + 6000) / 73959), 2);
   });
 
   it("無効な間隔では null", () => {
