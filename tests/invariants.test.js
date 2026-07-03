@@ -17,6 +17,7 @@ import {
 } from "../backend/clinical.js";
 import {
   runAnalysis,
+  runAnalysisCached,
   runMarkov,
   DEFAULT_HORIZON,
   DEFAULT_MODEL_PARAMS,
@@ -134,6 +135,32 @@ describe("runMarkov の出力整合", () => {
     const high = runMarkov({ ...base, horizon: { ...HORIZON, discountRate: 0.05 } });
     expect(high.totalCost).toBeLessThan(low.totalCost);
     expect(high.totalQALY).toBeLessThan(low.totalQALY);
+  });
+});
+
+describe("runAnalysisCached", () => {
+  it("同一入力は同一結果(キャッシュヒット)、非キャッシュ版と一致する", () => {
+    const input = {
+      selectedDrugIds: ["ranibizumab_bs", "aflibercept"],
+      referenceDrugId: "aflibercept",
+      subtypeId: "typical",
+      costPaperId: "paper2_rbz",
+      clinicalCase: "base",
+      horizon: HORIZON,
+    };
+    const a = runAnalysisCached(input);
+    const b = runAnalysisCached({ ...input });
+    expect(b).toBe(a); // 参照同一 = キャッシュヒット
+
+    const fresh = runAnalysis(input);
+    expect(a.results.aflibercept.totalQALY).toBeCloseTo(
+      fresh.results.aflibercept.totalQALY,
+      12
+    );
+    expect(a.results.aflibercept.totalCost).toBeCloseTo(
+      fresh.results.aflibercept.totalCost,
+      6
+    );
   });
 });
 

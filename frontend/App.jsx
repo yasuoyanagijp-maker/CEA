@@ -12,7 +12,7 @@ import {
   Bar,
 } from "recharts";
 import {
-  runAnalysis,
+  runAnalysisCached,
   runMortalitySensitivity,
   DRUG_CATALOG,
   DRUG_IDS,
@@ -124,7 +124,7 @@ export default function App() {
 
   const analysis = useMemo(
     () =>
-      runAnalysis({
+      runAnalysisCached({
         selectedDrugIds,
         referenceDrugId,
         subtypeId,
@@ -147,7 +147,7 @@ export default function App() {
   );
 
   const mortalitySensitivity = useMemo(() => {
-    if (costPaperId !== "paper2_rbz") return null;
+    if (costPaperId !== "paper2_rbz" || activeTab !== "validate") return null;
     return runMortalitySensitivity({
       subtypeId,
       costPaperId: "paper2_rbz",
@@ -155,13 +155,34 @@ export default function App() {
       modelParams,
       selectedDrugIds: ["ranibizumab_bs", "aflibercept"],
     });
-  }, [subtypeId, costPaperId, horizon, modelParams]);
+  }, [subtypeId, costPaperId, horizon, modelParams, activeTab]);
+
+  /** Table S12 照合行 — validate タブ表示時のみ計算(結果はエンジン側でキャッシュ) */
+  const s12ValidationRows = useMemo(() => {
+    if (costPaperId !== "paper2_rbz" || activeTab !== "validate") return null;
+    const refS12 = SUBTYPES[subtypeId].referenceS12;
+    return ["ranibizumab_bs", "aflibercept"]
+      .map((id) => {
+        const refv = refS12?.[id === "ranibizumab_bs" ? "rbz_bs" : "aflibercept"];
+        if (!refv) return null;
+        const scen = runAnalysisCached({
+          selectedDrugIds: [id],
+          subtypeId,
+          costPaperId: "paper2_rbz",
+          clinicalCase: "scenario",
+          horizon,
+          modelParams,
+        }).results[id];
+        return { id, refv, scen };
+      })
+      .filter(Boolean);
+  }, [costPaperId, activeTab, subtypeId, horizon, modelParams]);
 
   /** 全サブタイプ — RBZ BS vs AFL（論文本文の増分と照合） */
   const paperIncrementalRows = useMemo(() => {
     if (costPaperId !== "paper2_rbz" || clinicalCase !== "base") return null;
     return (["typical", "pcv", "rap"]).map((sid) => {
-      const a = runAnalysis({
+      const a = runAnalysisCached({
         selectedDrugIds: ["ranibizumab_bs", "aflibercept"],
         referenceDrugId: "aflibercept",
         subtypeId: sid,
@@ -781,17 +802,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {["ranibizumab_bs", "aflibercept"].flatMap((id) => {
-                    const refv = subtype.referenceS12?.[id === "ranibizumab_bs" ? "rbz_bs" : "aflibercept"];
-                    if (!refv) return [];
-                    const scen = runAnalysis({
-                      selectedDrugIds: [id],
-                      subtypeId,
-                      costPaperId: "paper2_rbz",
-                      clinicalCase: "scenario",
-                      horizon,
-                      modelParams,
-                    }).results[id];
+                  {(s12ValidationRows ?? []).flatMap(({ id, refv, scen }) => {
                     return ["QALY", "Cost"].map((metric, idx) => (
                       <tr key={`${id}-${metric}`} style={{ background: idx % 2 ? "#fff" : "#F8FAFC" }}>
                         <td style={tdStyle}>{DRUG_CATALOG[id].name}</td>
