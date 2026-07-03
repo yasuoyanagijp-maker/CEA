@@ -5,12 +5,11 @@ import {
   normalizeTransitionProbs,
   isOnTreatment,
 } from "./utils.js";
-import { SUBTYPES, getClinicalTables, getBscTransitionProbs, getInjectionRate } from "./clinical.js";
+import { SUBTYPES, getClinicalDataset } from "./clinical.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
-import { getInjections2026MetaForDrug } from "./config/injections-2026-meta.js";
 
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
@@ -128,7 +127,7 @@ export function runMarkov(input) {
   const drug = getDrug(drugId);
   const subtype = SUBTYPES[subtypeId];
   const paper = getCostPaper(costPaperId);
-  const { transitions, injections } = getClinicalTables(clinicalCase);
+  const dataset = getClinicalDataset(clinicalCase);
   const clinicalKey = drug.clinicalKey;
 
   const cycleLen = horizon.cycleLengthYears;
@@ -160,10 +159,13 @@ export function runMarkov(input) {
 
   const warnings = [];
   if (drug.clinicalNote) warnings.push(drug.clinicalNote);
-  if (clinicalCase === "2026_meta" && !getInjections2026MetaForDrug(drugId)) {
-    warnings.push(`${drug.name}: 2026 meta 注射回数が未設定`);
+  if (
+    dataset.missingInjectionsWarning &&
+    !dataset.hasInjections(drugId, subtypeId, clinicalKey)
+  ) {
+    warnings.push(dataset.missingInjectionsWarning(drug.name));
   }
-  if (!transitions[subtypeId]?.[clinicalKey]) {
+  if (!dataset.hasTransitions(subtypeId, clinicalKey)) {
     return {
       drugId,
       incomplete: true,
@@ -208,21 +210,14 @@ export function runMarkov(input) {
     );
     const phase = phaseForCycle(c, cycleLen);
     const onTreatment = isOnTreatment(c, cycleLen, treatmentDurationYears);
-    const treatedProbs = transitions[subtypeId][clinicalKey][phase];
+    const treatedProbs = dataset.getTransitions(subtypeId, clinicalKey, phase);
     const probs = onTreatment
       ? normalizeTransitionProbs(treatedProbs)
-      : getBscTransitionProbs(transitions, subtypeId, phase) ??
+      : dataset.getBscTransitions(subtypeId, phase) ??
         normalizeTransitionProbs(treatedProbs);
 
     const annualInj = onTreatment
-      ? getInjectionRate(
-          clinicalCase,
-          injections,
-          subtypeId,
-          drugId,
-          clinicalKey,
-          phase
-        )
+      ? dataset.getAnnualInjections({ subtypeId, drugId, clinicalKey, phase })
       : 0;
     const injThisCycle = annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);

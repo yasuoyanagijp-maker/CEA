@@ -194,7 +194,9 @@ export function runMortalitySensitivity(
 
 export { runMarkov } from "./markov.js";
 export {
-  getInjectionRate,
+  CLINICAL_DATASETS,
+  CLINICAL_CASE_OPTIONS,
+  getClinicalDataset,
   INJECTIONS_2026_META_SOURCE,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";

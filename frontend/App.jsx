@@ -23,6 +23,7 @@ import {
   DEFAULT_UTILITIES,
   DEFAULT_UTILITY_NONE,
   TREATMENT_DURATION_OPTIONS,
+  CLINICAL_CASE_OPTIONS,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
 } from "../backend/engine.js";
@@ -119,11 +120,7 @@ export default function App() {
   );
 
   const clinicalCaseHint =
-    clinicalCase === "base"
-      ? "遷移: Table S5 / 注射: Table S6"
-      : clinicalCase === "scenario"
-        ? "遷移: Table S7–S8 / 注射: Table S8"
-        : "遷移: Table S5 / 注射: 2026 meta（year1 固定、year≥2 = year1−3）";
+    CLINICAL_CASE_OPTIONS.find((o) => o.id === clinicalCase)?.hint ?? "";
 
   const analysis = useMemo(
     () =>
@@ -385,9 +382,11 @@ export default function App() {
                 onChange={(e) => setClinicalCase(e.target.value)}
                 style={selectStyle}
               >
-                <option value="base">ベースケース（Table S5 遷移・S6 注射）</option>
-                <option value="scenario">シナリオ（Table S7–S8）</option>
-                <option value="2026_meta">2026 meta（注射回数のみ更新）</option>
+                {CLINICAL_CASE_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </label>
             <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5 }}>
