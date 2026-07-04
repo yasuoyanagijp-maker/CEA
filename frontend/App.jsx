@@ -26,6 +26,7 @@ import {
   PATIENT_DRUG_IDS,
   SUBTYPES,
   COST_PAPER_LIST,
+  DEFAULT_COST_PAPER_ID,
   DEFAULT_HORIZON,
   DEFAULT_MODEL_PARAMS,
   DEFAULT_UTILITIES,
@@ -85,7 +86,7 @@ export default function App() {
   const isNarrow = useIsNarrow();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [subtypeId, setSubtypeId] = useState("typical");
-  const [costPaperId, setCostPaperId] = useState("paper2_rbz");
+  const [costPaperId, setCostPaperId] = useState(DEFAULT_COST_PAPER_ID);
   const [clinicalCase, setClinicalCase] = useState("base");
   const [selectedDrugIds, setSelectedDrugIds] = useState([
     "ranibizumab",
@@ -140,6 +141,10 @@ export default function App() {
     setPatientBaselineBcvaAffected(String(bcva.baselineBcvaAffected));
     setPatientBaselineBcvaFellow(String(bcva.baselineBcvaFellow));
   }, [subtypeId]);
+
+  useEffect(() => {
+    if (activeTab === "costs" || activeTab === "qaly") setActiveTab("summary");
+  }, [activeTab]);
 
   const modelParams = useMemo(() => {
     const utilities = utilityInputs.map((v) => parseFloat(v));
@@ -970,9 +975,7 @@ export default function App() {
           <nav style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
             {[
               ["summary", "サマリー"],
-              ["costs", "コスト内訳"],
               ["switch", "スイッチ・CMA"],
-              ["qaly", "QALY推移"],
               ["patient", "個別患者負担"],
               ["vision", "視力推移"],
               ...(showIssuesTab
@@ -1062,6 +1065,40 @@ export default function App() {
                 </tbody>
               </table>
               </ScrollTable>
+
+              <div style={{ marginTop: 28 }}>
+                <h3 style={{ fontSize: 15, margin: "0 0 8px", color: "#0F172A" }}>
+                  累積 QALY 推移
+                </h3>
+                {!hasQalyTrajectory ? (
+                  <p style={{ color: "#B45309", fontSize: 13 }}>
+                    効用パラメータが未設定のため QALY 曲線を表示できません。左サイドバー「QALY
+                    パラメータ」を確認してください。
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <LineChart data={trajectoryData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="year" label={{ value: "年", position: "insideBottom", offset: -4 }} />
+                      <YAxis label={{ value: "累積 QALY", angle: -90, position: "insideLeft" }} />
+                      <Tooltip />
+                      <Legend />
+                      {trajectoryDrugs.map((id) => (
+                        <Line
+                          key={id}
+                          type="monotone"
+                          dataKey={id}
+                          name={DRUG_CATALOG[id].name}
+                          stroke={DRUG_CATALOG[id].color}
+                          strokeWidth={2}
+                          dot={false}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
 
               {costBreakdownData.length > 0 && (
                 <div style={{ marginTop: 28 }}>
@@ -2001,39 +2038,6 @@ export default function App() {
                     </details>
                   )}
                 </>
-              )}
-            </Panel>
-          )}
-
-          {activeTab === "qaly" && (
-            <Panel title="累積 QALY（全選択薬剤）">
-              {!hasQalyTrajectory ? (
-                <p style={{ color: "#B45309" }}>
-                  効用パラメータが未設定のため QALY 曲線を表示できません。左サイドバー「QALY
-                  パラメータ」を確認してください。
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height={360}>
-                  <LineChart data={trajectoryData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="year" label={{ value: "年", position: "insideBottom", offset: -4 }} />
-                    <YAxis label={{ value: "累積 QALY", angle: -90, position: "insideLeft" }} />
-                    <Tooltip />
-                    <Legend />
-                    {trajectoryDrugs.map((id) => (
-                      <Line
-                        key={id}
-                        type="monotone"
-                        dataKey={id}
-                        name={DRUG_CATALOG[id].name}
-                        stroke={DRUG_CATALOG[id].color}
-                        strokeWidth={2}
-                        dot={false}
-                        connectNulls
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
               )}
             </Panel>
           )}

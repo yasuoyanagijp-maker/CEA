@@ -1,7 +1,7 @@
 import { DEFAULT_HORIZON } from "./constants.js";
 import { DRUG_CATALOG, DRUG_IDS } from "./drugs.js";
 import { getEffectiveAnnualInjectionRate } from "./clinical.js";
-import { getCostPaper } from "./papers/index.js";
+import { DEFAULT_COST_PAPER_ID, getCostPaper } from "./papers/index.js";
 import { runMarkov } from "./markov.js";
 import {
   TREATMENT_INTERVAL_OPTIONS,
@@ -316,7 +316,7 @@ export function runSwitchCostMinimization(input) {
       ? input.treatmentDurationYears
       : null;
   const modelParams = input.modelParams ?? {};
-  const costPaperId = input.costPaperId ?? "paper2_rbz";
+  const costPaperId = input.costPaperId ?? DEFAULT_COST_PAPER_ID;
   const clinicalCase = input.clinicalCase ?? "base";
   const subtypeId = input.subtypeId ?? "typical";
 

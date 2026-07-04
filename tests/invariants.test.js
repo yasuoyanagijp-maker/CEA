@@ -130,6 +130,18 @@ describe("runMarkov の出力整合", () => {
     expect(r5.costBreakdown.drugAdmin).toBeLessThan(rLife.costBreakdown.drugAdmin);
   });
 
+  it("導入期の注射回数を3か月合計として集計する", () => {
+    const r = runMarkov({ ...base, treatmentDurationYears: 0.25 });
+    expect(r.tableExpectedInjections).toBeCloseTo(3, 9);
+    expect(r.totalInjections).toBeCloseTo(3, 9);
+  });
+
+  it("表示用注射回数は非割引・生存重み付き期待回数", () => {
+    const r = runMarkov({ ...base, treatmentDurationYears: 5 });
+    expect(r.totalInjections).toBeGreaterThan(0);
+    expect(r.tableExpectedInjections).toBeGreaterThanOrEqual(r.totalInjections);
+  });
+
   it("割引率を上げると総コスト・QALY とも減る", () => {
     const low = runMarkov({ ...base, horizon: { ...HORIZON, discountRate: 0 } });
     const high = runMarkov({ ...base, horizon: { ...HORIZON, discountRate: 0.05 } });

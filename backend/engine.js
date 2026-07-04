@@ -13,7 +13,7 @@ import {
   sortByDrugDisplayOrder,
 } from "./drugs.js";
 import { SUBTYPES } from "./clinical.js";
-import { COST_PAPER_LIST } from "./papers/index.js";
+import { COST_PAPER_LIST, DEFAULT_COST_PAPER_ID } from "./papers/index.js";
 import { runMarkov } from "./markov.js";
 import {
   DEFAULT_MODEL_PARAMS as CONFIG_DEFAULT_MODEL_PARAMS,
@@ -31,7 +31,7 @@ import {
  * @property {string[]} selectedDrugIds — 比較する薬剤 ID（最大6）
  * @property {string} referenceDrugId — ICER 参照薬
  * @property {string} subtypeId — typical | pcv | rap
- * @property {string} costPaperId — paper1_faricimab | paper2_rbz
+ * @property {string} costPaperId — default_integrated | paper1_faricimab | paper2_rbz
  * @property {'base'|'scenario'|'2026_meta'} clinicalCase
  * @property {{timeHorizonYears:number,cycleLengthYears:number,discountRate:number}} horizon
  * @property {number|null} [treatmentDurationYears] — 2 / 5 / null（生涯）
@@ -74,7 +74,7 @@ export function listMissingParams(
     missing.push({ key: "adverseEvents", label: PARAM_LABELS.adverseEvents });
   }
 
-  const paper = COST_PAPER_LIST.find((p) => p.id === costPaperId);
+  const paper = COST_PAPER_LIST.find((p) => p.id === (costPaperId ?? DEFAULT_COST_PAPER_ID));
   for (const drugId of selectedDrugIds) {
     if (paper && paper.drugPrices[drugId] == null) {
       missing.push({
@@ -111,7 +111,7 @@ export function runAnalysis(input) {
     results[drugId] = runMarkov({
       drugId,
       subtypeId: input.subtypeId ?? "typical",
-      costPaperId: input.costPaperId ?? "paper2_rbz",
+      costPaperId: input.costPaperId ?? DEFAULT_COST_PAPER_ID,
       clinicalCase: input.clinicalCase ?? "base",
       horizon,
       treatmentDurationYears,
@@ -291,6 +291,7 @@ export {
   PATIENT_DISPLAY_ORDER,
   SUBTYPES,
   COST_PAPER_LIST,
+  DEFAULT_COST_PAPER_ID,
   DEFAULT_HORIZON,
   DEFAULT_TREATMENT_DURATION_YEARS,
   TREATMENT_DURATION_OPTIONS,

@@ -1,5 +1,7 @@
 /** 論文2: RBZ BS サブタイプ CEA 補足 — Table S9–S11 (2024年4月) */
 import {
+  ADMINISTRATION_COSTS_JPY,
+  ADVERSE_EVENTS_OT_2024_NAMD,
   DRUG_PRICES_JPY,
   MONITORING_STANDARD,
   DEFAULT_TRANSPORT,
@@ -7,16 +9,16 @@ import {
 
 export const PAPER2 = {
   id: "paper2_rbz",
-  label: "Ophthalmology and Therapy, 13, 2629 - 2644.",
-  description: "Yanagi et al. RBZ BS / nAMD subtype supplement",
+  label: "O&T 2024;13:2629-2644.",
+  description: "Yanagi et al. RBZ BS / nAMD subtype — O&T 2024;13:2629-2644 supplementary costs",
 
   drugPrices: DRUG_PRICES_JPY,
 
   /** 論文2固有: 注射手技料 6,000円/回 を薬価と別建て */
-  injectionFee: 6_000,
+  injectionFee: ADMINISTRATION_COSTS_JPY.paper2Rbz,
   administrationBundled: false,
 
-  useSharedAdverseEvents: true,
+  adverseEvents: ADVERSE_EVENTS_OT_2024_NAMD,
 
   monitoring: MONITORING_STANDARD,
 

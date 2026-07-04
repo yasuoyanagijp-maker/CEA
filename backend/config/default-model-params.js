@@ -13,6 +13,7 @@ export const DEFAULT_UTILITIES = [0.76, 0.7, 0.64, 0.6, 0.51];
 export const DEFAULT_UTILITY_NONE = 0.83;
 
 import { MORTALITY_DEFAULTS } from "./mortality.js";
+import { ADVERSE_EVENTS_INTEGRATED_NAMD } from "./cost-common.js";
 
 /**
  * 死亡率3項目 — 文献・S12再現用デフォルト（2025-05 確定）
@@ -23,21 +24,7 @@ export const DEFAULT_BLIND_MORTALITY_HR = MORTALITY_DEFAULTS.blindMortalityHr;
 export const DEFAULT_SECOND_EYE_MONTHLY = MORTALITY_DEFAULTS.secondEyeMonthlyIncidence;
 
 /** 注射1回あたり有害事象（確率は小数、NMA / Expert opinion） */
-export const DEFAULT_ADVERSE_EVENTS = [
-  { id: "cataract", rate: 0.00024, unitCost: 229_460 },
-  { id: "endophthalmitis", rate: 0.00018, unitCost: 345_006 },
-  { id: "rpeTear", rate: 0.00024, unitCost: 0 },
-  { id: "retinalTear", rate: 0, unitCost: 115_920 },
-  { id: "rhegmatogenousRD", rate: 0.00006, unitCost: 304_330 },
-  { id: "stroke", rate: 0.00012, unitCost: 1_440_107 },
-  { id: "tractionalRD", rate: 0.00006, unitCost: 234_084 },
-  {
-    id: "retinalArteryOcclusion",
-    rate: 0.00072,
-    unitCost: 32_570,
-    scenarioOnly: true,
-  },
-];
+export const DEFAULT_ADVERSE_EVENTS = ADVERSE_EVENTS_INTEGRATED_NAMD;
 
 export const DEFAULT_MODEL_PARAMS = {
   utilities: DEFAULT_UTILITIES,

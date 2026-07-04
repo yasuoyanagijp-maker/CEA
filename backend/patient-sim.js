@@ -19,7 +19,7 @@ import {
   injectionsForMonth,
 } from "./clinical.js";
 import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDisplayOrder } from "./drugs.js";
-import { getCostPaper } from "./papers/index.js";
+import { DEFAULT_COST_PAPER_ID, getCostPaper } from "./papers/index.js";
 import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 import { cycleDeathProbability, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
 import { distributionFromMeanBcva, isMarkovDefaultBcva, getMarkovBaselineBcva } from "./config/baseline-characteristics.js";
@@ -145,11 +145,35 @@ function perInjectionCost(drugId, paper) {
   return price + (paper.injectionFee ?? 0);
 }
 
-function monthlyMonitoringCost(yearIndex, regimen, paper) {
+function visitBundleMonitoringAnnualCost(mon, visits) {
+  const unit = mon.unitCosts;
+  const octaEveryVisits = mon.octaEveryVisits ?? 3;
+  const perVisit =
+    (unit.revisit ?? 0) +
+    (unit.examSet ?? 0) +
+    (unit.oct ?? 0) +
+    (unit.octa ?? 0) / octaEveryVisits;
+  return visits * perVisit;
+}
+
+function visitBundleInitialExtra(mon) {
+  const unit = mon.unitCosts;
+  return (
+    ((unit.initialConsultation ?? unit.revisit ?? 0) - (unit.revisit ?? 0)) +
+    (unit.fa ?? 0) * (mon.initialFluorescenceAngiographyVisits ?? 0)
+  );
+}
+
+function monthlyMonitoringCost(monthIndex, yearIndex, regimen, paper) {
   const mon = paper.monitoring;
   if (!mon) return 0;
   const table = regimen === "bsc" ? mon.bsc : mon.tae;
   const u = yearIndex === 0 ? table.year1 : table.year2plus;
+  if (mon.kind === "visitBundle") {
+    const annual = visitBundleMonitoringAnnualCost(mon, u.visits ?? 0);
+    const initial = monthIndex === 0 ? visitBundleInitialExtra(mon) : 0;
+    return annual / 12 + initial;
+  }
   const unit = mon.unitCosts;
   const annual =
     u.physician * unit.physician +
@@ -289,7 +313,7 @@ function applyDrugCostsToPath({
   const { injections } = getClinicalTables(clinicalCase);
   const injUnit = perInjectionCost(drugId, paper);
   const aePerInj = perInjectionAeCost(
-    modelParams.adverseEvents,
+    paper.adverseEvents ?? modelParams.adverseEvents,
     modelParams.includeScenarioAe
   );
 
@@ -341,6 +365,7 @@ function applyDrugCostsToPath({
     }
 
     const monCost = monthlyMonitoringCost(
+      month,
       yearIndex,
       onTreatment ? drug.monitoringRegimen : "bsc",
       paper
@@ -682,7 +707,7 @@ export function runPatientDrugComparison(input) {
       path: masterPath,
       drugId,
       subtypeId: input.subtypeId,
-      costPaperId: input.costPaperId ?? "paper2_rbz",
+      costPaperId: input.costPaperId ?? DEFAULT_COST_PAPER_ID,
       clinicalCase: input.clinicalCase ?? "base",
       incomeBracket: input.incomeBracket ?? "standard",
       elderlyCopay: input.elderlyCopay ?? null,

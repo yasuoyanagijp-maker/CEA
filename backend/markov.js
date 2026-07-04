@@ -50,11 +50,35 @@ function monthlyIncidencePerCycle(cycleLengthYears, monthlyRate) {
   return 1 - Math.pow(1 - monthlyRate, cycleLengthYears * 12);
 }
 
-function monitoringCost(yearIndex, regimen, cycleLen, df, paper) {
+function visitBundleMonitoringAnnualCost(mon, visits) {
+  const unit = mon.unitCosts;
+  const octaEveryVisits = mon.octaEveryVisits ?? 3;
+  const perVisit =
+    (unit.revisit ?? 0) +
+    (unit.examSet ?? 0) +
+    (unit.oct ?? 0) +
+    (unit.octa ?? 0) / octaEveryVisits;
+  return visits * perVisit;
+}
+
+function visitBundleInitialExtra(mon) {
+  const unit = mon.unitCosts;
+  return (
+    ((unit.initialConsultation ?? unit.revisit ?? 0) - (unit.revisit ?? 0)) +
+    (unit.fa ?? 0) * (mon.initialFluorescenceAngiographyVisits ?? 0)
+  );
+}
+
+function monitoringCost(cycleIndex, yearIndex, regimen, cycleLen, df, paper) {
   const mon = paper.monitoring;
   if (!mon) return 0;
   const table = regimen === "bsc" ? mon.bsc : mon.tae;
   const u = yearIndex === 0 ? table.year1 : table.year2plus;
+  if (mon.kind === "visitBundle") {
+    const annual = visitBundleMonitoringAnnualCost(mon, u.visits ?? 0);
+    const initial = cycleIndex === 0 ? visitBundleInitialExtra(mon) : 0;
+    return annual * cycleLen * df + initial * df;
+  }
   const unit = mon.unitCosts;
   const perCycle =
     u.physician * unit.physician +
@@ -62,6 +86,15 @@ function monitoringCost(yearIndex, regimen, cycleLen, df, paper) {
     u.slit * unit.slit +
     u.fa * unit.fa;
   return perCycle * cycleLen * df;
+}
+
+function monitoringAnnualVisitRate(yearIndex, regimen, paper) {
+  const mon = paper.monitoring;
+  if (!mon) return 0;
+  const table = regimen === "bsc" ? mon.bsc : mon.tae;
+  const u = yearIndex === 0 ? table.year1 : table.year2plus;
+  if (mon.kind === "visitBundle") return u.visits ?? 0;
+  return u.physician ?? 0;
 }
 
 function drugAdminCost(drugId, injCount, aliveMass, df, paper) {
@@ -86,9 +119,41 @@ function adverseEventCost(injCount, df, adverseEvents, includeScenarioAe) {
   return perInj * injCount * df;
 }
 
-function societalCosts(cohort, pBoth, cycleLen, df, paper) {
+function jmeSocietalCosts(cohort, cycleLen, df, soc, context) {
+  const cycleScale = cycleLen / 0.25;
+  const aliveMass = cohort.reduce((a, b) => a + b, 0);
+  const careByState = [
+    soc.informalCarePerCycle.noVisualImpairment,
+    soc.informalCarePerCycle.visualImpairment,
+    soc.informalCarePerCycle.visualImpairment,
+    soc.informalCarePerCycle.visualImpairment,
+    soc.informalCarePerCycle.blind,
+  ];
+  const care =
+    cohort.reduce((sum, mass, i) => sum + mass * (careByState[i] ?? 0), 0) *
+    cycleScale *
+    df;
+
+  const transport = soc.transport
+    ? transportationCostPerVisit(soc.transport)
+    : soc.transportationPerVisit ?? 0;
+  const treatmentVisits = (context.injThisCycle ?? 0) * aliveMass;
+  const monitoringVisits =
+    (context.monitoringAnnualVisits ?? 0) * cycleLen * aliveMass;
+  const visit =
+    (treatmentVisits * (soc.informalCareOnTreatmentDay + transport) +
+      monitoringVisits * (soc.informalCareOnMonitoringVisit + transport)) *
+    df;
+
+  return { care, visit };
+}
+
+function societalCosts(cohort, pBoth, cycleLen, df, paper, context = {}) {
   const soc = paper.societal;
   if (!soc) return { care: 0, visit: 0 };
+  if (soc.kind === "jme2025") {
+    return jmeSocietalCosts(cohort, cycleLen, df, soc, context);
+  }
   const transport = soc.transport
     ? transportationCostPerVisit(soc.transport)
     : soc.transportationPerVisit ?? 0;
@@ -188,11 +253,7 @@ function resolveRunInputs(input) {
     );
   }
   const societalPaper = paper.societal ?? getCostPaper("paper2_rbz").societal;
-  if (!paper.societal && costPaperId === "paper1_faricimab") {
-    warnings.push(
-      "論文1: 社会的費用は論文2 Table S11 を暫定適用（介護・訪問）"
-    );
-  }
+  const adverseEvents = paper.adverseEvents ?? modelParams.adverseEvents;
 
   return {
     drug,
@@ -206,6 +267,7 @@ function resolveRunInputs(input) {
     mort,
     drugPrice,
     societalPaper,
+    adverseEvents,
     warnings,
   };
 }
@@ -268,7 +330,8 @@ function simulateCohort(
           phase,
         })
       : 0;
-    const injThisCycle = annualInj * cycleLen;
+    const injThisCycle =
+      phase === "induction" && intervalWeeks == null ? annualInj : annualInj * cycleLen;
     const cohort = dist.map((s) => s * aliveMass);
 
     series.push({
@@ -338,7 +401,7 @@ function accumulateQaly(series, qaly, cycleLen) {
  * }} 割引済みコスト(円)
  */
 function accumulateCosts(series, resolved, modelParams, cycleLen) {
-  const { drug, drugId, paper, societalPaper } = resolved;
+  const { drug, drugId, paper, societalPaper, adverseEvents } = resolved;
   const breakdown = {
     drugAdmin: 0,
     monitoring: 0,
@@ -361,7 +424,7 @@ function accumulateCosts(series, resolved, modelParams, cycleLen) {
       const ae = adverseEventCost(
         s.injThisCycle * s.aliveMass,
         s.df,
-        modelParams.adverseEvents,
+        adverseEvents,
         modelParams.includeScenarioAe
       );
       breakdown.adverseEvents += ae;
@@ -370,6 +433,7 @@ function accumulateCosts(series, resolved, modelParams, cycleLen) {
 
     const mon =
       monitoringCost(
+        s.cycle,
         s.yearIndex,
         s.onTreatment ? drug.monitoringRegimen : "bsc",
         cycleLen,
@@ -384,7 +448,15 @@ function accumulateCosts(series, resolved, modelParams, cycleLen) {
       s.pSecond,
       cycleLen,
       s.df,
-      { societal: societalPaper }
+      { societal: societalPaper },
+      {
+        injThisCycle: s.injThisCycle,
+        monitoringAnnualVisits: monitoringAnnualVisitRate(
+          s.yearIndex,
+          s.onTreatment ? drug.monitoringRegimen : "bsc",
+          paper
+        ),
+      }
     );
     breakdown.societalCare += care;
     breakdown.physicianVisit += visit;
@@ -398,6 +470,18 @@ function accumulateCosts(series, resolved, modelParams, cycleLen) {
     perCycle,
     breakdown,
   };
+}
+
+/** @returns {{ total: number, tableExpected: number }} 非割引の期待注射回数 */
+function accumulateInjections(series) {
+  let total = 0;
+  let tableExpected = 0;
+  for (const s of series) {
+    if (!s.onTreatment) continue;
+    tableExpected += s.injThisCycle;
+    total += s.injThisCycle * s.aliveMass;
+  }
+  return { total, tableExpected };
 }
 
 /** 年次スナップショット(UI の推移チャート用) */
@@ -471,6 +555,7 @@ export function runMarkov(input) {
     ? accumulateQaly(series, resolved.qaly, cycleLen)
     : null;
   const costResult = accumulateCosts(series, resolved, modelParams, cycleLen);
+  const injectionResult = accumulateInjections(series);
   const trajectory = buildTrajectory(
     series,
     qalyResult?.perCycle ?? null,
@@ -482,6 +567,8 @@ export function runMarkov(input) {
     drugId,
     totalQALY: qalyResult ? qalyResult.total : null,
     totalCost: costResult.total,
+    totalInjections: injectionResult.total,
+    tableExpectedInjections: injectionResult.tableExpected,
     trajectory,
     costBreakdown: costResult.breakdown,
     incomplete: !resolved.qaly || resolved.drugPrice == null,
