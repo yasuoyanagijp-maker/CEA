@@ -30,6 +30,13 @@
 `backend/config/injections-2026-meta.js` の year1 注射回数（ファリシマブ 6.45、アフリベルセプト 8mg 5.5、
 アフリベルセプト 2mg 7.67、ラニビズマブ 9.85、ブロルシズマブ 6.3）の根拠。
 
+**実装ロジック（2026 meta default）**
+
+- 1年目（`year1`）は上記メタ解析/NMAの薬剤別平均注射回数を使用。
+- 2年目以降（`year2`, `year3plus`）は原則 `year1 − 3` 回/年（導入期3回を除いた維持負担の近似）。
+- 例外: **アフリベルセプト 8mg** は PULSAR の Q16 到達率（96週時点で Q16 78%）と、臨床的にファリシマブと同程度の注射負担とみなす方針を反映し、2年目以降は **Q16 維持相当 = 52/16 = 3.25 回/年** とする。
+- この設定により、ファリシマブ `year2+ = 6.45 − 3 = 3.45 回/年` とアフリベルセプト 8mg `year2+ = 3.25 回/年` が近接し、臨床感覚とRCT到達率の両方に整合する。Q12（4.33回/年）はスイッチ実臨床の保守的下限として扱い、default 長期維持値には採用しない。
+
 - **Wojciechowski P, et al.** (2025). Efficacy, Safety, and Injection Frequency with Novel Aflibercept 8 mg in Neovascular Age-Related Macular Degeneration: A Comparison with Existing Anti-VEGF Regimens Using a Bayesian Network Meta-Analysis. *Ophthalmology and Therapy, 14, 733–753.* https://doi.org/10.1007/s40123-025-01098-y
 - **Butler E, et al.** (2025). Comparative efficacy of intravitreal anti-VEGF therapy for neovascular age-related macular degeneration: A systematic review with network meta-analysis. *Acta Ophthalmologica, 103, 741–763.* https://doi.org/10.1111/aos.17506
 - **Friedman S, et al.** (2025). Aflibercept 8 mg versus Faricimab Treat-and-Extend for Diabetic Macular Edema or Neovascular Age-Related Macular Degeneration: A Bayesian Fixed-Effect Network Meta-analysis of Clinical Trials. *Ophthalmology and Therapy, 14, 2919–2936.* https://doi.org/10.1007/s40123-025-01247-3

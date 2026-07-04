@@ -580,12 +580,12 @@
     },
     "aflibercept_8mg": {
       "totalQALY": 7.470341,
-      "totalCost": 25966370.04,
+      "totalCost": 26336539.08,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2500034.51,
+        "drugAdmin": 2869911.78,
         "monitoring": 107578.09,
-        "adverseEvents": 1972.14,
+        "adverseEvents": 2263.92,
         "societalCare": 23235369.54,
         "physicianVisit": 121415.76
       }

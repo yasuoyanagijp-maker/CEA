@@ -22,6 +22,10 @@ import {
   DEFAULT_HORIZON,
   DEFAULT_MODEL_PARAMS,
 } from "../backend/engine.js";
+import {
+  getInjections2026MetaForDrug,
+  getMetaReferenceIntervalWeeks,
+} from "../backend/config/injections-2026-meta.js";
 
 const probSum = (p) => p.imp2 + p.imp1 + p.remain + p.wors1 + p.wors2;
 
@@ -93,6 +97,16 @@ describe("フェーズ・治療期間ロジック", () => {
   it("treatmentDurationYears=2 は 2年目以降 false", () => {
     expect(isOnTreatment(7, 0.25, 2)).toBe(true); // 1.75年
     expect(isOnTreatment(8, 0.25, 2)).toBe(false); // 2.0年
+  });
+});
+
+describe("2026 meta 注射回数", () => {
+  it("aflibercept 8 mg の2年目以降は Q16 維持相当を使う", () => {
+    const schedule = getInjections2026MetaForDrug("aflibercept_8mg");
+    const expected = 52 / getMetaReferenceIntervalWeeks("aflibercept_8mg");
+    expect(schedule.year1).toBe(5.5);
+    expect(schedule.year2).toBeCloseTo(expected, 12);
+    expect(schedule.year3plus).toBeCloseTo(expected, 12);
   });
 });
 

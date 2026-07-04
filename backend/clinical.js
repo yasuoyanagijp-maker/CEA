@@ -140,7 +140,7 @@ const META_2026_DATASET = {
   ...makeTableDataset({
     id: "2026_meta",
     label: "2026 meta（注射回数のみ更新）",
-    hint: "遷移: Table S5 / 注射: 2026 meta（year1 固定、year≥2 = year1−3）",
+    hint: "遷移: Table S5 / 注射: 2026 meta（year1 固定、year≥2 は原則 year1−3、AFL 8 mg は Q16 維持）",
     transitions: TRANS_BASE,
     injections: {},
   }),
@@ -250,7 +250,7 @@ export function getInjectionPhaseReference(
       clinicalKey,
       transitionKey,
       phases: schedule,
-      note: "induction=3か月あたり3回換算、year1=年間回数、year2以降=year1−3",
+      note: "induction=最初3か月の合計3回、year1=年間回数、year2以降=原則year1−3（AFL 8 mgはQ16維持相当）",
     };
   }
 
