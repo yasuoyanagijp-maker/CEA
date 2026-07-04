@@ -177,9 +177,9 @@ describe("runAnalysisCached", () => {
 });
 
 describe("ICER 判定", () => {
-  it("参照薬は '—（参照）'、ΔQALY≤0 は Dominated、ΔC≤0 かつ ΔQ>0 は Dominant", () => {
+  it("参照薬は '—（参照）'、Δは比較薬剤−参照薬で計算する", () => {
     const analysis = runAnalysis({
-      selectedDrugIds: ["ranibizumab_bs", "aflibercept", "faricimab"],
+      selectedDrugIds: ["ranibizumab_bs", "aflibercept", "aflibercept_bs", "faricimab"],
       referenceDrugId: "aflibercept",
       subtypeId: "typical",
       costPaperId: "paper2_rbz",
@@ -189,17 +189,32 @@ describe("ICER 判定", () => {
     const ref = analysis.icerRows.find((r) => r.drugId === "aflibercept");
     expect(ref.icer).toBe("—（参照）");
 
-    for (const row of analysis.icerRows) {
-      if (row.drugId === "aflibercept") continue;
-      if (row.deltaQaly == null) continue;
-      if (row.deltaQaly <= 0) {
-        expect(row.icer).toBe("Dominated");
-      } else if (row.deltaCost <= 0) {
-        expect(row.icer).toBe("Dominant");
-      } else {
-        expect(typeof row.icer).toBe("number");
-        expect(row.icer).toBeCloseTo(row.deltaCost / row.deltaQaly, 9);
-      }
+    for (const row of analysis.icerRows.filter((r) => r.deltaQaly != null)) {
+      const result = analysis.results[row.drugId];
+      const reference = analysis.results.aflibercept;
+      expect(row.deltaQaly).toBeCloseTo(result.totalQALY - reference.totalQALY, 12);
+      expect(row.deltaCost).toBeCloseTo(result.totalCost - reference.totalCost, 6);
     }
+  });
+
+  it("同等 QALY で低コストなら Dominated ではなく cost-saving と判定する", () => {
+    const analysis = runAnalysis({
+      selectedDrugIds: ["aflibercept", "aflibercept_bs", "faricimab"],
+      referenceDrugId: "aflibercept",
+      subtypeId: "typical",
+      costPaperId: "paper2_rbz",
+      clinicalCase: "base",
+      horizon: HORIZON,
+    });
+    const bs = analysis.icerRows.find((r) => r.drugId === "aflibercept_bs");
+    const faricimab = analysis.icerRows.find((r) => r.drugId === "faricimab");
+
+    expect(bs.deltaQaly).toBeCloseTo(0, 12);
+    expect(bs.deltaCost).toBeLessThan(0);
+    expect(bs.icer).toBe("Cost-saving (QALY同等)");
+
+    expect(faricimab.deltaQaly).toBeCloseTo(0, 12);
+    expect(faricimab.deltaCost).toBeGreaterThan(0);
+    expect(faricimab.icer).toBe("Dominated");
   });
 });

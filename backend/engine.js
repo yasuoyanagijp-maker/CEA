@@ -49,6 +49,21 @@ const PARAM_LABELS = {
   adverseEvents: "注射あたり有害事象",
 };
 
+const QALY_EPS = 1e-9;
+const COST_EPS_JPY = 0.5;
+
+function classifyIcer(deltaQ, deltaC) {
+  if (deltaQ > QALY_EPS) {
+    return deltaC <= COST_EPS_JPY ? "Dominant" : deltaC / deltaQ;
+  }
+  if (deltaQ < -QALY_EPS) {
+    return deltaC >= -COST_EPS_JPY ? "Dominated" : "低費用・低QALY";
+  }
+  if (deltaC < -COST_EPS_JPY) return "Cost-saving (QALY同等)";
+  if (deltaC > COST_EPS_JPY) return "Dominated";
+  return "同等";
+}
+
 export function listMissingParams(
   modelParams = DEFAULT_MODEL_PARAMS,
   costPaperId,
@@ -132,10 +147,7 @@ export function runAnalysis(input) {
     }
     const deltaQ = r.totalQALY - ref.totalQALY;
     const deltaC = r.totalCost - ref.totalCost;
-    let icer = "—";
-    if (deltaQ <= 0) icer = "Dominated";
-    else if (deltaC <= 0) icer = "Dominant";
-    else icer = deltaC / deltaQ;
+    const icer = classifyIcer(deltaQ, deltaC);
     return { drugId, icer, deltaQaly: deltaQ, deltaCost: deltaC };
   });
 
