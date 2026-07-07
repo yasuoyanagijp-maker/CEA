@@ -80,6 +80,26 @@ export function getMonthlyOutpatientLimit(age, incomeBracket, monthlyTotalMedica
   return tier === "A" ? 35_400 : 57_600;
 }
 
+/** 患者向け表示用の出典・時点表記 */
+export const NHI_SOURCE_NOTE =
+  "厚生労働省「高額療養費制度について」— 2026年7月時点の現行値（2026年8月改定は未反映）";
+
+/**
+ * 月次限度額の表示用ラベル — 定率加算のある区分は式のまま示す
+ * （値は getMonthlyOutpatientLimit と同一のものを文字列化）
+ * @param {number} age
+ * @param {keyof typeof INCOME_BRACKETS} incomeBracket
+ */
+export function describeMonthlyLimit(age, incomeBracket) {
+  const tier = INCOME_BRACKETS[incomeBracket]?.tier ?? "I";
+  if (isActiveIncomeElderly(tier)) {
+    const base = getMonthlyOutpatientLimit(age, incomeBracket, 0);
+    const threshold = { U: 267_000, E: 558_000, O: 842_000 }[tier];
+    return `${base.toLocaleString("ja-JP")}円＋(医療費−${threshold.toLocaleString("ja-JP")}円)×1%`;
+  }
+  return `${getMonthlyOutpatientLimit(age, incomeBracket, 0).toLocaleString("ja-JP")}円`;
+}
+
 /**
  * 月内の医療費合計に対する患者自己負担（高額療養費上限適用）
  * @param {object} opts

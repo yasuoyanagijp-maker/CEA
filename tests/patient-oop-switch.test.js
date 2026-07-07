@@ -8,6 +8,7 @@ import {
   computeMonthlyPatientOop,
   getMonthlyOutpatientLimit,
   getCopayRate,
+  describeMonthlyLimit,
 } from "../backend/config/japan-nhi.js";
 
 // paper2: BS ¥67,959 + 手技 ¥6,000 = ¥73,959/回
@@ -42,6 +43,16 @@ describe("高額療養費 — 月次限度額・負担割合（厚労省の現�
     expect(getMonthlyOutpatientLimit(75, "general", 267_000)).toBe(80_100);
     expect(getMonthlyOutpatientLimit(72, "general", 1_000_000)).toBeCloseTo(87_430, 6);
     expect(getMonthlyOutpatientLimit(75, "top", 842_000)).toBe(252_600);
+  });
+
+  it("describeMonthlyLimit — 表示ラベルが getMonthlyOutpatientLimit と同じ値を示す", () => {
+    expect(describeMonthlyLimit(65, "standard")).toBe("57,600円");
+    expect(describeMonthlyLimit(65, "low")).toBe("35,400円");
+    expect(describeMonthlyLimit(75, "standard")).toBe("18,000円");
+    expect(describeMonthlyLimit(75, "low")).toBe("8,000円");
+    expect(describeMonthlyLimit(65, "general")).toBe("80,100円＋(医療費−267,000円)×1%");
+    expect(describeMonthlyLimit(75, "high")).toBe("167,400円＋(医療費−558,000円)×1%");
+    expect(describeMonthlyLimit(75, "top")).toBe("252,600円＋(医療費−842,000円)×1%");
   });
 
   it("負担割合: 70歳以上の現役並みは3割、75歳以上一般は1割、70–74一般は2割", () => {

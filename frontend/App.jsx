@@ -37,6 +37,9 @@ import {
   CLINICAL_CASE_OPTIONS,
   EVIDENCE_TIER_LABELS,
   INCOME_BRACKET_LIST,
+  getCopayRate,
+  describeMonthlyLimit,
+  NHI_SOURCE_NOTE,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
   getMarkovBaselineBcva,
@@ -85,6 +88,7 @@ function readUrlState() {
   if (DRUG_CATALOG[target]) s.target = target;
   const interval = parseFloat(p.get("interval") ?? "");
   if (interval >= 2 && interval <= 32) s.interval = String(interval);
+  if (p.get("explain") === "1") s.explain = true;
   return s;
 }
 
@@ -166,7 +170,7 @@ export default function App() {
     () => String(markovBcvaTypical.baselineBcvaFellow)
   );
   const [patientDetailDrugId, setPatientDetailDrugId] = useState("ranibizumab_bs");
-  const [patientExplainMode, setPatientExplainMode] = useState(false);
+  const [patientExplainMode, setPatientExplainMode] = useState(URL_INIT.explain ?? false);
   const [midSwitchToDrugId, setMidSwitchToDrugId] = useState("aflibercept_bs");
   const [midSwitchYearInput, setMidSwitchYearInput] = useState("2");
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
@@ -183,6 +187,7 @@ export default function App() {
       target: switchTargetDrugId,
       interval: switchIntervalInput,
     });
+    if (patientExplainMode) p.set("explain", "1");
     const url = `${window.location.origin}${window.location.pathname}?${p.toString()}`;
     navigator.clipboard?.writeText(url).then(() => {
       setShareLinkCopied(true);
@@ -1624,10 +1629,56 @@ export default function App() {
                           </tbody>
                         </table>
                       </ScrollTable>
+                      <h3 style={{ fontSize: 14, margin: "20px 0 8px" }}>
+                        高額療養費制度 — 1か月の自己負担上限（外来・{patientAge}歳の場合）
+                      </h3>
+                      <ScrollTable>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr style={{ background: "#0F172A", color: "#fff" }}>
+                              <th style={thStyle}>所得区分</th>
+                              <th style={{ ...thStyle, textAlign: "right" }}>窓口負担割合</th>
+                              <th style={{ ...thStyle, textAlign: "right" }}>1か月の上限額</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {INCOME_BRACKET_LIST.map((b, i) => {
+                              const explainAge = parseInt(patientAge, 10);
+                              const isMine = b.id === incomeBracket;
+                              return (
+                                <tr
+                                  key={b.id}
+                                  style={{
+                                    background: isMine ? "#EFF6FF" : i % 2 ? "#fff" : "#F8FAFC",
+                                  }}
+                                >
+                                  <td style={{ ...tdStyle, fontWeight: isMine ? 700 : 400 }}>
+                                    {b.label}
+                                    {isMine && " ←あなたの区分"}
+                                  </td>
+                                  <td style={{ ...tdStyle, textAlign: "right" }}>
+                                    {Math.round(getCopayRate(explainAge, null, b.id) * 10)}割
+                                  </td>
+                                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: isMine ? 700 : 400 }}>
+                                    {describeMonthlyLimit(explainAge, b.id)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </ScrollTable>
+                      <p style={{ fontSize: 11, color: "#64748B", marginTop: 8, lineHeight: 1.6 }}>
+                        {NHI_SOURCE_NOTE}。
+                        {parseInt(patientAge, 10) >= 70
+                          ? "70歳以上の「一般」「住民税非課税」には外来だけの上限（外来特例）が適用されます。現役並み所得の方は外来特例の対象外です。"
+                          : "70歳未満には外来だけの特例上限はなく、高額療養費の月単位の限度額が適用されます。"}
+                      </p>
                       <p style={{ fontSize: 11, color: "#64748B", marginTop: 12, lineHeight: 1.6 }}>
                         高額療養費制度の月ごとの上限を適用しためやすです。実際の窓口負担は受診内容・
                         検査の有無・保険の適用状況により変わります。金額は選択中の薬価・診療報酬に基づく試算であり、
-                        将来の改定は反映していません。
+                        将来の改定は反映していません。多数回該当（4回目以降の軽減）・外来年間上限（14.4万円）は
+                        考慮していないため、実際の負担はこの試算より少なくなる場合があります。
                       </p>
                     </div>
                   ) : (

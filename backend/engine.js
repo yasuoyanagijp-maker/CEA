@@ -261,6 +261,8 @@ export {
   getCopayRate,
   getMonthlyOutpatientLimit,
   computeMonthlyPatientOop,
+  describeMonthlyLimit,
+  NHI_SOURCE_NOTE,
 } from "./config/japan-nhi.js";
 export {
   CLINICAL_DATASETS,
