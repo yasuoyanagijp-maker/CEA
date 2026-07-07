@@ -250,6 +250,7 @@ export {
 export {
   runPatientSimulation,
   runPatientDrugComparison,
+  runPatientMidSwitchComparison,
   buildPatientAnnualDrugComparison,
   createRng,
   resolvePatientVisionBaseline,
@@ -315,6 +316,7 @@ export {
   runSwitchCostMinimization,
   computeBreakEvenTable,
   buildAnnualCostCurve,
+  estimateAnnualPatientOopForInterval,
   TREATMENT_INTERVAL_OPTIONS,
   REFERENCE_INTERVAL_WEEKS,
   formatIntervalLabel,
