@@ -19,6 +19,7 @@ import {
   computeBreakEvenTable,
   buildAnnualCostCurve,
   runPatientDrugComparison,
+  runPatientMidSwitchComparison,
   buildInjectionYearReference,
   getInjectionPhaseReference,
   DRUG_CATALOG,
@@ -36,6 +37,9 @@ import {
   CLINICAL_CASE_OPTIONS,
   EVIDENCE_TIER_LABELS,
   INCOME_BRACKET_LIST,
+  getCopayRate,
+  describeMonthlyLimit,
+  NHI_SOURCE_NOTE,
   listInjections2026MetaSummary,
   INJECTIONS_2026_META_SOURCE,
   getMarkovBaselineBcva,
@@ -58,6 +62,37 @@ const CYCLE_OPTIONS = [
 ];
 
 const NARROW_QUERY = "(max-width: 760px)";
+
+const SHAREABLE_TABS = ["summary", "patient", "switch", "vision"];
+
+/** URL クエリから初期状態を読む（システム境界 — 不正値は無視して既定値に落とす） */
+function readUrlState() {
+  if (typeof window === "undefined") return {};
+  const p = new URLSearchParams(window.location.search);
+  const s = {};
+  const tab = p.get("tab");
+  if (SHAREABLE_TABS.includes(tab)) s.tab = tab;
+  const age = parseInt(p.get("age") ?? "", 10);
+  if (age >= 40 && age <= 100) s.age = String(age);
+  const sex = p.get("sex");
+  if (sex === "male" || sex === "female") s.sex = sex;
+  const income = p.get("income");
+  if (INCOME_BRACKET_LIST.some((b) => b.id === income)) s.income = income;
+  const seed = parseInt(p.get("seed") ?? "", 10);
+  if (Number.isFinite(seed)) s.seed = String(seed);
+  const subtype = p.get("subtype");
+  if (SUBTYPES[subtype]) s.subtype = subtype;
+  const drug = p.get("drug");
+  if (DRUG_CATALOG[drug]) s.drug = drug;
+  const target = p.get("target");
+  if (DRUG_CATALOG[target]) s.target = target;
+  const interval = parseFloat(p.get("interval") ?? "");
+  if (interval >= 2 && interval <= 32) s.interval = String(interval);
+  if (p.get("explain") === "1") s.explain = true;
+  return s;
+}
+
+const URL_INIT = readUrlState();
 
 /** スマホ縦画面などの狭幅判定（リサイズ・回転に追従） */
 function useIsNarrow() {
@@ -85,7 +120,7 @@ function ScrollTable({ children }) {
 export default function App() {
   const isNarrow = useIsNarrow();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [subtypeId, setSubtypeId] = useState("typical");
+  const [subtypeId, setSubtypeId] = useState(URL_INIT.subtype ?? "typical");
   const [costPaperId, setCostPaperId] = useState(DEFAULT_COST_PAPER_ID);
   const [clinicalCase, setClinicalCase] = useState("2026_meta");
   const [selectedDrugIds, setSelectedDrugIds] = useState(() => [...DRUG_IDS]);
@@ -96,7 +131,7 @@ export default function App() {
   );
   const [cycleLengthYears, setCycleLengthYears] = useState(0.25);
   const [discountRate, setDiscountRate] = useState(2);
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState(URL_INIT.tab ?? "summary");
   const [utilityInputs, setUtilityInputs] = useState(
     DEFAULT_UTILITIES.map(String)
   );
@@ -111,16 +146,22 @@ export default function App() {
     String(DEFAULT_MODEL_PARAMS.secondEyeMonthlyIncidence ?? "")
   );
   const [includeScenarioAe, setIncludeScenarioAe] = useState(false);
-  const [switchCurrentDrugId, setSwitchCurrentDrugId] = useState("aflibercept_bs");
-  const [switchTargetDrugId, setSwitchTargetDrugId] = useState("aflibercept_8mg");
-  const [switchIntervalInput, setSwitchIntervalInput] = useState("8");
+  const [switchCurrentDrugId, setSwitchCurrentDrugId] = useState(
+    URL_INIT.drug ?? "aflibercept_bs"
+  );
+  const [switchTargetDrugId, setSwitchTargetDrugId] = useState(
+    URL_INIT.target ?? "aflibercept_8mg"
+  );
+  const [switchIntervalInput, setSwitchIntervalInput] = useState(
+    URL_INIT.interval ?? "8"
+  );
   const switchCurrentIntervalWeeks = parseFloat(switchIntervalInput);
   const switchIntervalValid =
     Number.isFinite(switchCurrentIntervalWeeks) && switchCurrentIntervalWeeks >= 2;
-  const [patientAge, setPatientAge] = useState("75");
-  const [patientSex, setPatientSex] = useState("male");
-  const [incomeBracket, setIncomeBracket] = useState("standard");
-  const [patientSeed, setPatientSeed] = useState("42");
+  const [patientAge, setPatientAge] = useState(URL_INIT.age ?? "75");
+  const [patientSex, setPatientSex] = useState(URL_INIT.sex ?? "male");
+  const [incomeBracket, setIncomeBracket] = useState(URL_INIT.income ?? "standard");
+  const [patientSeed, setPatientSeed] = useState(URL_INIT.seed ?? "42");
   const markovBcvaTypical = getMarkovBaselineBcva("typical");
   const [patientBaselineBcvaAffected, setPatientBaselineBcvaAffected] = useState(
     () => String(markovBcvaTypical.baselineBcvaAffected)
@@ -129,6 +170,30 @@ export default function App() {
     () => String(markovBcvaTypical.baselineBcvaFellow)
   );
   const [patientDetailDrugId, setPatientDetailDrugId] = useState("ranibizumab_bs");
+  const [patientExplainMode, setPatientExplainMode] = useState(URL_INIT.explain ?? false);
+  const [midSwitchToDrugId, setMidSwitchToDrugId] = useState("aflibercept_bs");
+  const [midSwitchYearInput, setMidSwitchYearInput] = useState("2");
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  const copyShareLink = () => {
+    const p = new URLSearchParams({
+      tab: activeTab,
+      age: patientAge,
+      sex: patientSex,
+      income: incomeBracket,
+      seed: patientSeed,
+      subtype: subtypeId,
+      drug: switchCurrentDrugId,
+      target: switchTargetDrugId,
+      interval: switchIntervalInput,
+    });
+    if (patientExplainMode) p.set("explain", "1");
+    const url = `${window.location.origin}${window.location.pathname}?${p.toString()}`;
+    navigator.clipboard?.writeText(url).then(() => {
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 2000);
+    });
+  };
 
   useEffect(() => {
     const bcva = getMarkovBaselineBcva(subtypeId);
@@ -286,13 +351,23 @@ export default function App() {
 
   const switchBreakEven = useMemo(() => {
     if (!switchIntervalValid) return null;
+    const age = parseInt(patientAge, 10);
     return computeBreakEvenTable({
       currentDrugId: switchCurrentDrugId,
       currentIntervalWeeks: switchCurrentIntervalWeeks,
       costPaperId,
       wtpPerQaly: DEFAULT_HORIZON.wtpPerQaly,
+      patient:
+        age >= 40 && age <= 100 ? { age, incomeBracket } : null,
     });
-  }, [switchIntervalValid, switchCurrentDrugId, switchCurrentIntervalWeeks, costPaperId]);
+  }, [
+    switchIntervalValid,
+    switchCurrentDrugId,
+    switchCurrentIntervalWeeks,
+    costPaperId,
+    patientAge,
+    incomeBracket,
+  ]);
 
   const switchCostCurve = useMemo(
     () =>
@@ -402,6 +477,105 @@ export default function App() {
       directMedical: Math.round(row.directMedical / 1000),
       cumPatientOop: Math.round(row.cumPatientOop / 1000),
     })) ?? [];
+
+  const midSwitchYear = parseFloat(midSwitchYearInput);
+  const midSwitchValid =
+    Number.isFinite(midSwitchYear) && midSwitchYear >= 0.5 && midSwitchYear <= 30;
+  const effectiveMidSwitchToDrugId =
+    midSwitchToDrugId !== patientDetailDrugId
+      ? midSwitchToDrugId
+      : DRUG_IDS.find((id) => id !== patientDetailDrugId);
+
+  const patientMidSwitch = useMemo(() => {
+    const age = parseInt(patientAge, 10);
+    const seed = parseInt(patientSeed, 10);
+    if (Number.isNaN(age) || age < 40 || age > 100 || !midSwitchValid) return null;
+    const bcvaAffected = parseFloat(patientBaselineBcvaAffected);
+    const bcvaFellow = parseFloat(patientBaselineBcvaFellow);
+    const patientBaseline = {};
+    if (Number.isFinite(bcvaAffected)) patientBaseline.baselineBcvaAffected = bcvaAffected;
+    if (Number.isFinite(bcvaFellow)) patientBaseline.baselineBcvaFellow = bcvaFellow;
+    return runPatientMidSwitchComparison({
+      entryAge: age,
+      sex: patientSex,
+      subtypeId,
+      currentDrugId: patientDetailDrugId,
+      switchToDrugId: effectiveMidSwitchToDrugId,
+      switchAtYear: midSwitchYear,
+      costPaperId,
+      clinicalCase,
+      timeHorizonYears: Number(timeHorizonYears),
+      treatmentDurationYears,
+      incomeBracket,
+      seed: Number.isNaN(seed) ? 42 : seed,
+      modelParams,
+      patientBaseline,
+    });
+  }, [
+    patientAge,
+    patientSex,
+    subtypeId,
+    patientDetailDrugId,
+    effectiveMidSwitchToDrugId,
+    midSwitchYear,
+    midSwitchValid,
+    costPaperId,
+    clinicalCase,
+    timeHorizonYears,
+    treatmentDurationYears,
+    incomeBracket,
+    patientSeed,
+    patientBaselineBcvaAffected,
+    patientBaselineBcvaFellow,
+    modelParams,
+  ]);
+
+  const midSwitchChartData = useMemo(
+    () =>
+      patientMidSwitch?.monthly?.map((m) => ({
+        month: m.month,
+        year: Math.round((m.month / 12) * 10) / 10,
+        cumOopContinue: Math.round(m.cumOopContinue / 1000),
+        cumOopSwitch: Math.round(m.cumOopSwitch / 1000),
+      })) ?? [],
+    [patientMidSwitch]
+  );
+
+  /** 患者説明モード用 — 選択薬剤の負担サマリー（既算出の軌跡から抽出） */
+  const explainSummary = useMemo(() => {
+    if (!patientDetailDrug?.annualTrajectory?.length) return null;
+    const y0 = patientDetailDrug.annualTrajectory[0];
+    const injMonths = (patientDetailDrug.monthlyTrajectory ?? []).filter(
+      (m) => m.year === 0 && m.injections > 0
+    );
+    const y5 = patientDetailDrug.annualTrajectory.filter((r) => r.year <= 4).at(-1);
+    return {
+      year1Oop: y0.patientOop,
+      year1Inj: y0.injections,
+      injMonthOop: injMonths.length
+        ? Math.max(...injMonths.map((m) => m.patientOop))
+        : null,
+      fiveYearCum: y5?.cumPatientOop ?? null,
+      totalOop: patientDetailDrug.totalPatientOop,
+    };
+  }, [patientDetailDrug]);
+
+  const explainCompareRows = useMemo(
+    () =>
+      patientSummaryRows.map((row) => {
+        const res = patientAnalysis?.results[row.drugId];
+        const y0 = res?.annualTrajectory?.[0];
+        const y5 = res?.annualTrajectory?.filter((r) => r.year <= 4).at(-1);
+        return {
+          drugId: row.drugId,
+          name: row.name,
+          year1: y0?.patientOop ?? null,
+          fiveYear: y5?.cumPatientOop ?? null,
+          total: row.totalPatientOop,
+        };
+      }),
+    [patientSummaryRows, patientAnalysis]
+  );
 
   const injectionReference = useMemo(() => {
     if (!patientDetailDrugId) return null;
@@ -539,8 +713,19 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily: "'Noto Sans JP', sans-serif", background: "#F1F5F9", minHeight: "100vh" }}>
+    <div
+      className="app-root"
+      style={{ fontFamily: "'Noto Sans JP', sans-serif", background: "#F1F5F9", minHeight: "100vh" }}
+    >
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          .app-grid { display: block !important; }
+          .app-root { background: #fff !important; }
+        }
+      `}</style>
       <header
+        className="no-print"
         style={{
           background: "linear-gradient(135deg, #0F172A 0%, #1E40AF 100%)",
           color: "#fff",
@@ -554,9 +739,27 @@ export default function App() {
         <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
           QALY・Cost — ラニビズマブ / アフリベルセプト / ファリシマブ / ブロルシズマブ / BS 製剤
         </p>
+        <button
+          type="button"
+          onClick={copyShareLink}
+          style={{
+            marginTop: 10,
+            padding: "5px 12px",
+            fontSize: 11,
+            fontWeight: 600,
+            border: "1px solid rgba(255,255,255,0.4)",
+            borderRadius: 6,
+            background: "rgba(255,255,255,0.12)",
+            color: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          {shareLinkCopied ? "コピーしました ✓" : "設定リンクをコピー（患者条件を URL で共有）"}
+        </button>
       </header>
 
       <div
+        className="app-grid"
         style={{
           display: "grid",
           gridTemplateColumns: isNarrow ? "1fr" : "minmax(300px, 340px) 1fr",
@@ -566,6 +769,7 @@ export default function App() {
         }}
       >
         <aside
+          className="no-print"
           style={{
             background: "#fff",
             borderRight: isNarrow ? "none" : "1px solid #E2E8F0",
@@ -975,7 +1179,10 @@ export default function App() {
         </aside>
 
         <main style={{ padding: isNarrow ? 12 : 20 }}>
-          <nav style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+          <nav
+            className="no-print"
+            style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}
+          >
             {[
               ["summary", "CEA Summary"],
               ["patient", "Pt Simulation"],
@@ -1257,6 +1464,225 @@ export default function App() {
                 <p style={{ color: "#B45309" }}>参入年齢（40–100）を入力してください。</p>
               ) : (
                 <>
+                  <div
+                    className="no-print"
+                    style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setPatientExplainMode((v) => !v)}
+                      style={{
+                        padding: "8px 14px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        border: "1px solid #CBD5E1",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        background: patientExplainMode ? "#1E40AF" : "#fff",
+                        color: patientExplainMode ? "#fff" : "#1E293B",
+                      }}
+                    >
+                      {patientExplainMode
+                        ? "詳細表示に戻る"
+                        : "患者説明モード（簡易表示）"}
+                    </button>
+                    {patientExplainMode && (
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        style={{
+                          padding: "8px 14px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          border: "1px solid #CBD5E1",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          background: "#fff",
+                          color: "#1E293B",
+                        }}
+                      >
+                        印刷 / PDF 保存
+                      </button>
+                    )}
+                  </div>
+
+                  {patientExplainMode && explainSummary ? (
+                    <div>
+                      <div style={{ fontSize: 14, color: "#334155", marginBottom: 8, lineHeight: 1.7 }}>
+                        <strong style={{ fontSize: 16, color: DRUG_CATALOG[patientDetailDrugId].color }}>
+                          {DRUG_CATALOG[patientDetailDrugId].name}
+                        </strong>
+                        {" "}で治療した場合の窓口負担のめやす（
+                        {patientSex === "male" ? "男性" : "女性"} {patientAge}歳 ・{" "}
+                        {INCOME_BRACKET_LIST.find((b) => b.id === incomeBracket)?.label}）
+                      </div>
+                      <div className="no-print" style={{ marginBottom: 16 }}>
+                        <label style={{ ...labelStyle, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          薬剤を変える
+                          <select
+                            value={patientDetailDrugId}
+                            onChange={(e) => setPatientDetailDrugId(e.target.value)}
+                            style={{ ...selectStyle, width: 220, marginTop: 0 }}
+                          >
+                            {patientCompareDrugIds.map((id) => (
+                              <option key={id} value={id}>
+                                {DRUG_CATALOG[id].name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                          gap: 12,
+                          marginBottom: 20,
+                        }}
+                      >
+                        <ExplainMetric
+                          label="注射がある月の負担"
+                          value={
+                            explainSummary.injMonthOop != null
+                              ? `約 ¥${fmtJpy(explainSummary.injMonthOop)}`
+                              : "—"
+                          }
+                          sub="高額療養費の月上限を適用"
+                        />
+                        <ExplainMetric
+                          label="最初の1年間の合計"
+                          value={`約 ¥${fmtJpy(explainSummary.year1Oop)}`}
+                          sub={`注射 ${explainSummary.year1Inj} 回`}
+                        />
+                        <ExplainMetric
+                          label="5年間の合計"
+                          value={
+                            explainSummary.fiveYearCum != null
+                              ? `約 ¥${fmtJpy(explainSummary.fiveYearCum)}`
+                              : "—"
+                          }
+                        />
+                        <ExplainMetric
+                          label="通院期間全体の合計"
+                          value={`約 ¥${fmtJpy(explainSummary.totalOop)}`}
+                          sub="生涯のめやす"
+                        />
+                      </div>
+
+                      <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>自己負担の積み上がり（万円）</h3>
+                      <ResponsiveContainer width="100%" height={240}>
+                        <LineChart
+                          data={
+                            patientDetailDrug?.annualTrajectory?.map((r) => ({
+                              year: r.year + 1,
+                              cum: Math.round(r.cumPatientOop / 10000),
+                            })) ?? []
+                          }
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="year" label={{ value: "経過年", position: "insideBottom", offset: -4 }} />
+                          <YAxis />
+                          <Tooltip formatter={(v) => [`約 ${v} 万円`, "累積自己負担"]} labelFormatter={(y) => `${y}年目まで`} />
+                          <Line type="monotone" dataKey="cum" stroke="#1E40AF" strokeWidth={3} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+
+                      <h3 style={{ fontSize: 14, margin: "20px 0 8px" }}>他の薬剤とのくらべ（自己負担）</h3>
+                      <ScrollTable>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr style={{ background: "#0F172A", color: "#fff" }}>
+                              <th style={thStyle}>薬剤</th>
+                              <th style={{ ...thStyle, textAlign: "right" }}>最初の1年</th>
+                              <th style={{ ...thStyle, textAlign: "right" }}>5年間</th>
+                              <th style={{ ...thStyle, textAlign: "right" }}>通院期間全体</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {explainCompareRows.map((row, i) => (
+                              <tr
+                                key={row.drugId}
+                                style={{
+                                  background:
+                                    row.drugId === patientDetailDrugId
+                                      ? "#EFF6FF"
+                                      : i % 2
+                                        ? "#fff"
+                                        : "#F8FAFC",
+                                }}
+                              >
+                                <td style={{ ...tdStyle, fontWeight: row.drugId === patientDetailDrugId ? 700 : 400 }}>
+                                  {row.name}
+                                  {row.drugId === patientDetailDrugId && " ←いま見ている薬"}
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: "right" }}>
+                                  {row.year1 != null ? `¥${fmtJpy(row.year1)}` : "—"}
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: "right" }}>
+                                  {row.fiveYear != null ? `¥${fmtJpy(row.fiveYear)}` : "—"}
+                                </td>
+                                <td style={{ ...tdStyle, textAlign: "right" }}>
+                                  {row.total != null ? `¥${fmtJpy(row.total)}` : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </ScrollTable>
+                      <h3 style={{ fontSize: 14, margin: "20px 0 8px" }}>
+                        高額療養費制度 — 1か月の自己負担上限（外来・{patientAge}歳の場合）
+                      </h3>
+                      <ScrollTable>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr style={{ background: "#0F172A", color: "#fff" }}>
+                              <th style={thStyle}>所得区分</th>
+                              <th style={{ ...thStyle, textAlign: "right" }}>窓口負担割合</th>
+                              <th style={{ ...thStyle, textAlign: "right" }}>1か月の上限額</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {INCOME_BRACKET_LIST.map((b, i) => {
+                              const explainAge = parseInt(patientAge, 10);
+                              const isMine = b.id === incomeBracket;
+                              return (
+                                <tr
+                                  key={b.id}
+                                  style={{
+                                    background: isMine ? "#EFF6FF" : i % 2 ? "#fff" : "#F8FAFC",
+                                  }}
+                                >
+                                  <td style={{ ...tdStyle, fontWeight: isMine ? 700 : 400 }}>
+                                    {b.label}
+                                    {isMine && " ←あなたの区分"}
+                                  </td>
+                                  <td style={{ ...tdStyle, textAlign: "right" }}>
+                                    {Math.round(getCopayRate(explainAge, null, b.id) * 10)}割
+                                  </td>
+                                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: isMine ? 700 : 400 }}>
+                                    {describeMonthlyLimit(explainAge, b.id)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </ScrollTable>
+                      <p style={{ fontSize: 11, color: "#64748B", marginTop: 8, lineHeight: 1.6 }}>
+                        {NHI_SOURCE_NOTE}。
+                        {parseInt(patientAge, 10) >= 70
+                          ? "70歳以上の「一般」「住民税非課税」には外来だけの上限（外来特例）が適用されます。現役並み所得の方は外来特例の対象外です。"
+                          : "70歳未満には外来だけの特例上限はなく、高額療養費の月単位の限度額が適用されます。"}
+                      </p>
+                      <p style={{ fontSize: 11, color: "#64748B", marginTop: 12, lineHeight: 1.6 }}>
+                        高額療養費制度の月ごとの上限を適用しためやすです。実際の窓口負担は受診内容・
+                        検査の有無・保険の適用状況により変わります。金額は選択中の薬価・診療報酬に基づく試算であり、
+                        将来の改定は反映していません。多数回該当（4回目以降の軽減）・外来年間上限（14.4万円）は
+                        考慮していないため、実際の負担はこの試算より少なくなる場合があります。
+                      </p>
+                    </div>
+                  ) : (
+                  <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                     直接医療費に年齢別自己負担・月次高額療養費を適用。
                     余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
@@ -1495,6 +1921,155 @@ export default function App() {
                       </div>
                     </>
                   )}
+
+                  <div style={{ marginTop: 28, paddingTop: 16, borderTop: "1px solid #E2E8F0" }}>
+                    <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>
+                      途中スイッチ試算 — {DRUG_CATALOG[patientDetailDrugId].name} からの切替（累積患者負担）
+                    </h3>
+                    <p style={{ fontSize: 12, color: "#64748B", lineHeight: 1.6, marginTop: 0 }}>
+                      視力経路は両アーム共通（CMA 前提）で、スイッチ月以降のコスト・注射スケジュールのみ差し替え。
+                      スイッチ後の注射フェーズは導入期から再起算（再導入）します。
+                      現行薬は上の「年度別詳細 — 薬剤」の選択に連動。
+                    </p>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                        gap: 12,
+                        marginBottom: 12,
+                        padding: 12,
+                        background: "#F8FAFC",
+                        borderRadius: 8,
+                      }}
+                    >
+                      <label style={labelStyle}>
+                        スイッチ先
+                        <select
+                          value={effectiveMidSwitchToDrugId}
+                          onChange={(e) => setMidSwitchToDrugId(e.target.value)}
+                          style={selectStyle}
+                        >
+                          {DRUG_IDS.filter((id) => id !== patientDetailDrugId).map((id) => (
+                            <option key={id} value={id}>
+                              {DRUG_CATALOG[id].name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={labelStyle}>
+                        スイッチ時期（参入から年・0.5〜30）
+                        <input
+                          type="number"
+                          min={0.5}
+                          max={30}
+                          step={0.5}
+                          value={midSwitchYearInput}
+                          onChange={(e) => setMidSwitchYearInput(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </label>
+                    </div>
+                    {!patientMidSwitch ? (
+                      <p style={{ color: "#B45309", fontSize: 13 }}>
+                        スイッチ時期（0.5〜30年）を入力してください。
+                      </p>
+                    ) : (
+                      <>
+                        <div
+                          style={{
+                            padding: 12,
+                            background:
+                              patientMidSwitch.deltaPatientOop <= 0 ? "#ECFDF5" : "#FEF3C7",
+                            borderRadius: 8,
+                            marginBottom: 12,
+                            fontSize: 13,
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          継続（{DRUG_CATALOG[patientDetailDrugId].name}）の累積患者負担 ¥
+                          {fmtJpy(patientMidSwitch.continueArm.totalPatientOop)} に対し、
+                          {patientMidSwitch.switchAtYear}年目に{" "}
+                          {DRUG_CATALOG[effectiveMidSwitchToDrugId].name} へスイッチすると ¥
+                          {fmtJpy(patientMidSwitch.switchArm.totalPatientOop)}（Δ{" "}
+                          {patientMidSwitch.deltaPatientOop > 0 ? "+" : ""}¥
+                          {fmtJpy(patientMidSwitch.deltaPatientOop)}）。
+                          {!patientMidSwitch.switchApplied ? (
+                            <> スイッチ時期がフォロー期間より後のため、切替は発生していません。</>
+                          ) : patientMidSwitch.crossoverMonth != null ? (
+                            <>
+                              {" "}
+                              累積負担はスイッチから{" "}
+                              {patientMidSwitch.crossoverMonth - patientMidSwitch.switchAtMonth}
+                              か月（通算 {patientMidSwitch.crossoverMonth} か月目）で継続を下回ります。
+                            </>
+                          ) : (
+                            <> フォロー期間内では累積負担が継続を下回りません。</>
+                          )}
+                        </div>
+                        <ResponsiveContainer width="100%" height={280}>
+                          <LineChart data={midSwitchChartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis
+                              dataKey="year"
+                              type="number"
+                              domain={[0, "dataMax"]}
+                              label={{ value: "経過年", position: "insideBottom", offset: -4 }}
+                            />
+                            <YAxis
+                              label={{ value: "累積患者負担（千円）", angle: -90, position: "insideLeft" }}
+                            />
+                            <Tooltip
+                              formatter={(v, name) => [
+                                `${fmtJpy(v)} 千円`,
+                                name === "cumOopContinue"
+                                  ? `継続: ${DRUG_CATALOG[patientDetailDrugId].name}`
+                                  : `スイッチ: ${DRUG_CATALOG[effectiveMidSwitchToDrugId].name}`,
+                              ]}
+                              labelFormatter={(y) => `${y}年`}
+                            />
+                            <Legend
+                              formatter={(name) =>
+                                name === "cumOopContinue"
+                                  ? `継続（${DRUG_CATALOG[patientDetailDrugId].name}）`
+                                  : `スイッチ（${DRUG_CATALOG[effectiveMidSwitchToDrugId].name}）`
+                              }
+                            />
+                            <ReferenceLine
+                              x={Math.round((patientMidSwitch.switchAtMonth / 12) * 10) / 10}
+                              stroke="#0F172A"
+                              strokeDasharray="6 3"
+                              label={{ value: "スイッチ", position: "top", fontSize: 11 }}
+                            />
+                            {patientMidSwitch.crossoverMonth != null && (
+                              <ReferenceLine
+                                x={Math.round((patientMidSwitch.crossoverMonth / 12) * 10) / 10}
+                                stroke="#059669"
+                                strokeDasharray="4 2"
+                                label={{ value: "逆転", position: "top", fontSize: 11, fill: "#059669" }}
+                              />
+                            )}
+                            <Line
+                              type="monotone"
+                              dataKey="cumOopContinue"
+                              stroke={DRUG_CATALOG[patientDetailDrugId].color}
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="cumOopSwitch"
+                              stroke={DRUG_CATALOG[effectiveMidSwitchToDrugId].color}
+                              strokeWidth={2}
+                              strokeDasharray="5 3"
+                              dot={false}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </>
+                    )}
+                  </div>
+                  </>
+                  )}
                 </>
               )}
             </Panel>
@@ -1507,6 +2082,8 @@ export default function App() {
                 年間薬剤費 = 1回コスト × 52 ÷ 間隔（週）なので、この間隔で年間薬剤費が現行と一致します。
                 QALY 不変（CMA）の前提では、スイッチ先がこの間隔以上に延長できるかが判断基準です。
                 1回コスト = 薬価 + 注射手技料（選択コスト出典）。
+                Δ患者負担/年は左サイドバー「個別患者」の年齢・所得区分に月次高額療養費上限を適用しためやす
+                （モニタリング来院分は含まない）。
               </p>
 
               <div
@@ -1599,6 +2176,20 @@ export default function App() {
                     {fmtJpy(switchBreakEven.perInjection)}/回 ={" "}
                     <strong>¥{fmtJpy(Math.round(switchBreakEven.annualDrugAdmin))}/年</strong>
                     （薬剤+手技）
+                    {switchBreakEven.currentPatientOop && (
+                      <>
+                        <br />
+                        患者自己負担（{patientAge}歳・
+                        {INCOME_BRACKET_LIST.find((b) => b.id === incomeBracket)?.label}
+                        ・高額療養費適用）: 注射月 ¥
+                        {fmtJpy(Math.round(switchBreakEven.currentPatientOop.perInjectionOop))} ×{" "}
+                        {switchBreakEven.currentPatientOop.annualInjections.toFixed(1)} 回/年 ={" "}
+                        <strong>
+                          ¥{fmtJpy(Math.round(switchBreakEven.currentPatientOop.annualOop))}/年
+                        </strong>
+                        {switchBreakEven.currentPatientOop.capped && "（月上限適用）"}
+                      </>
+                    )}
                   </div>
 
                   <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>
@@ -1614,6 +2205,7 @@ export default function App() {
                           <th style={thStyle}>損益分岐間隔</th>
                           <th style={thStyle}>必要延長</th>
                           <th style={thStyle}>同一間隔 Δ薬剤費/年</th>
+                          <th style={thStyle}>同一間隔 Δ患者負担/年</th>
                           <th style={thStyle}>必要効果（QALY/年）</th>
                           <th style={thStyle}>文献（スイッチ後間隔）</th>
                           <th style={thStyle}>判定</th>
@@ -1625,7 +2217,7 @@ export default function App() {
                             return (
                               <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
                                 <td style={tdStyle}>{row.drug?.name}</td>
-                                <td style={tdStyle} colSpan={8}>
+                                <td style={tdStyle} colSpan={9}>
                                   薬価未掲載（コスト出典を確認）
                                 </td>
                               </tr>
@@ -1677,6 +2269,32 @@ export default function App() {
                               >
                                 {row.sameIntervalAnnualDelta > 0 ? "+" : ""}¥
                                 {fmtJpy(Math.round(row.sameIntervalAnnualDelta))}
+                              </td>
+                              <td
+                                style={{
+                                  ...tdStyle,
+                                  textAlign: "right",
+                                  color:
+                                    row.patientOopAnnualDelta == null
+                                      ? "#94A3B8"
+                                      : row.patientOopAnnualDelta <= 0
+                                        ? "#059669"
+                                        : "#B45309",
+                                }}
+                              >
+                                {row.patientOopAnnualDelta != null ? (
+                                  <>
+                                    {Math.round(row.patientOopAnnualDelta) === 0
+                                      ? "±¥0"
+                                      : `${row.patientOopAnnualDelta > 0 ? "+" : ""}¥${fmtJpy(Math.round(row.patientOopAnnualDelta))}`}
+                                    <div style={{ fontSize: 10, color: "#94A3B8" }}>
+                                      年 ¥{fmtJpy(Math.round(row.patientOop.annualOop))}
+                                      {row.patientOop.capped && "・上限"}
+                                    </div>
+                                  </>
+                                ) : (
+                                  "—"
+                                )}
                               </td>
                               <td style={{ ...tdStyle, textAlign: "right", fontSize: 11 }}>
                                 {row.qalyPerYearKind === "min_required_gain"
@@ -1771,6 +2389,39 @@ export default function App() {
                           fontSize: 11,
                         }}
                       />
+                      {switchBreakEven.currentIntervalWeeks >= 4 &&
+                        switchBreakEven.currentIntervalWeeks <= 24 && (
+                          <ReferenceLine
+                            x={switchBreakEven.currentIntervalWeeks}
+                            stroke="#64748B"
+                            strokeDasharray="2 2"
+                            label={{
+                              value: `現在 Q${switchBreakEven.currentIntervalWeeks}`,
+                              position: "insideBottomLeft",
+                              fontSize: 10,
+                              fill: "#64748B",
+                            }}
+                          />
+                        )}
+                      {switchBreakEven.rows
+                        .filter(
+                          (r) =>
+                            !r.missingPrice && r.breakEvenWeeks >= 4 && r.breakEvenWeeks <= 24
+                        )
+                        .map((r) => (
+                          <ReferenceLine
+                            key={`be-${r.drugId}`}
+                            x={r.breakEvenWeeks}
+                            stroke={r.drug?.color ?? "#94A3B8"}
+                            strokeDasharray="3 3"
+                            label={{
+                              value: `Q${r.breakEvenWeeks.toFixed(1)}`,
+                              position: "top",
+                              fontSize: 10,
+                              fill: r.drug?.color ?? "#94A3B8",
+                            }}
+                          />
+                        ))}
                       {DRUG_IDS.map((id) => (
                         <Line
                           key={id}
@@ -1785,7 +2436,8 @@ export default function App() {
                     </LineChart>
                   </ResponsiveContainer>
                   <p style={{ fontSize: 11, color: "#64748B", marginTop: 8, lineHeight: 1.5 }}>
-                    各薬剤の曲線が点線（現行の年間薬剤費）と交わる間隔が損益分岐。
+                    各薬剤の曲線が横点線（現行の年間薬剤費）と交わる間隔が損益分岐 —
+                    縦点線はその位置（薬剤色）と現在の間隔（グレー）。
                     必要効果（QALY/年）= 同一間隔 Δ薬剤費 ÷ WTP（¥
                     {(DEFAULT_HORIZON.wtpPerQaly / 1e6).toFixed(1)}M/QALY）—
                     現行より高い薬剤は、この分の効用改善が毎年見込めなければ CMA 上は非推奨。
@@ -2193,6 +2845,27 @@ function TabButton({ active, onClick, label }) {
     >
       {label}
     </button>
+  );
+}
+
+/** 患者説明モード用 — 大きめの数字カード */
+function ExplainMetric({ label, value, sub }) {
+  return (
+    <div
+      style={{
+        padding: 16,
+        background: "#F8FAFC",
+        border: "1px solid #E2E8F0",
+        borderRadius: 10,
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#475569", fontWeight: 600, marginBottom: 6 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: "#0F172A" }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>{sub}</div>}
+    </div>
   );
 }
 

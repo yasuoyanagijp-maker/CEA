@@ -296,6 +296,10 @@ function simulateClinicalPath({
 
 /**
  * 臨床経路に薬剤コストを適用（月次・高額療養費）
+ *
+ * @param {{atMonth:number, toDrugId:string}|null} [switchPlan]
+ *   — 指定時、atMonth 以降はスイッチ先薬剤のコスト・注射スケジュールを適用。
+ *     スイッチ先の注射フェーズはスイッチ月から再起算（再導入 = 導入期をやり直す）。
  */
 function applyDrugCostsToPath({
   path,
@@ -307,11 +311,17 @@ function applyDrugCostsToPath({
   elderlyCopay,
   modelParams,
   treatmentDurationYears,
+  switchPlan = null,
 }) {
   const drug = getDrug(drugId);
   const paper = getCostPaper(costPaperId);
   const { injections } = getClinicalTables(clinicalCase);
   const injUnit = perInjectionCost(drugId, paper);
+  const switchAtMonth = switchPlan?.atMonth ?? null;
+  const switchDrug = switchPlan ? getDrug(switchPlan.toDrugId) : null;
+  const switchInjUnit = switchPlan
+    ? perInjectionCost(switchPlan.toDrugId, paper)
+    : null;
   const aePerInj = perInjectionAeCost(
     paper.adverseEvents ?? modelParams.adverseEvents,
     modelParams.includeScenarioAe
@@ -341,6 +351,16 @@ function applyDrugCostsToPath({
     drugId,
     treatmentDurationYears,
   };
+  // スイッチ後: フェーズはスイッチ月から再起算。治療継続判定は元の月次（step.onTreatment）で行う
+  const switchInjContext = switchPlan
+    ? {
+        clinicalCase,
+        injections,
+        subtypeId,
+        drugId: switchPlan.toDrugId,
+        treatmentDurationYears: null,
+      }
+    : null;
 
   for (const step of path.months) {
     const { month, yearIndex, age, onTreatment } = step;
@@ -350,15 +370,21 @@ function applyDrugCostsToPath({
     let monthAe = 0;
     let monthInj = 0;
 
-    if (onTreatment && injUnit != null) {
-      injAccumulator += injectionsForMonth(month, injContext);
+    const switched = switchAtMonth != null && month >= switchAtMonth;
+    if (switched && month === switchAtMonth) injAccumulator = 0;
+    const unit = switched ? switchInjUnit : injUnit;
+
+    if (onTreatment && unit != null) {
+      injAccumulator += switched
+        ? injectionsForMonth(month - switchAtMonth, switchInjContext)
+        : injectionsForMonth(month, injContext);
       while (injAccumulator >= 1 - 1e-9) {
         monthInj += 1;
         injAccumulator -= 1;
       }
       if (monthInj > 0) {
-        monthDrug += injUnit * monthInj;
-        monthDirect += injUnit * monthInj;
+        monthDrug += unit * monthInj;
+        monthDirect += unit * monthInj;
         monthAe += aePerInj * monthInj;
         monthDirect += aePerInj * monthInj;
       }
@@ -367,7 +393,7 @@ function applyDrugCostsToPath({
     const monCost = monthlyMonitoringCost(
       month,
       yearIndex,
-      onTreatment ? drug.monitoringRegimen : "bsc",
+      onTreatment ? (switched ? switchDrug : drug).monitoringRegimen : "bsc",
       paper
     );
     monthMon += monCost;
@@ -463,7 +489,7 @@ function applyDrugCostsToPath({
     },
     annualTrajectory: annualRecords,
     monthlyTrajectory: monthlyRecords,
-    injUnitMissing: injUnit == null,
+    injUnitMissing: injUnit == null || (switchPlan != null && switchInjUnit == null),
   };
 }
 
@@ -561,6 +587,130 @@ export function runPatientSimulation(input) {
     costPaperId,
     clinicalCase,
     treatmentDurationYears,
+  };
+}
+
+/**
+ * 途中スイッチ比較 — 同一タイムライン上で「現行継続」vs「switchAtYear 年目にスイッチ」の
+ * 累積患者負担を月次で比較する（CMA: 視力経路は共通、コスト・注射のみ差し替え）。
+ *
+ * @param {object} input — runPatientDrugComparison と同様 +
+ * @param {string} input.currentDrugId
+ * @param {string} input.switchToDrugId
+ * @param {number} input.switchAtYear — 参入から何年目でスイッチするか（1 = 12か月目）
+ */
+export function runPatientMidSwitchComparison(input) {
+  const {
+    entryAge,
+    sex,
+    subtypeId,
+    currentDrugId,
+    switchToDrugId,
+    switchAtYear,
+    costPaperId = DEFAULT_COST_PAPER_ID,
+    clinicalCase = "base",
+    timeHorizonYears = DEFAULT_HORIZON.timeHorizonYears,
+    treatmentDurationYears = null,
+    incomeBracket = "standard",
+    elderlyCopay = null,
+    seed = 42,
+    modelParams = {},
+    patientBaseline = {},
+  } = input;
+
+  if (!(switchAtYear > 0)) return null;
+  const switchAtMonth = Math.round(switchAtYear * 12);
+
+  const effectiveHorizon = patientEffectiveHorizon(entryAge, sex, timeHorizonYears);
+  const transitionKeys = [
+    ...new Set([currentDrugId, switchToDrugId].map(getDrugTransitionKey)),
+  ];
+
+  // runPatientDrugComparison と同じ規約: 同一 seed で transitionKey 別に経路を引き、最長生存を共用
+  let masterPath = null;
+  for (const tk of transitionKeys) {
+    const path = simulateClinicalPath({
+      entryAge,
+      sex,
+      subtypeId,
+      transitionKey: tk,
+      clinicalCase,
+      timeHorizonYears: effectiveHorizon,
+      treatmentDurationYears,
+      modelParams,
+      patientBaseline,
+      rng: createRng(seed),
+    });
+    if (path && (!masterPath || path.months.length > masterPath.months.length)) {
+      masterPath = path;
+    }
+  }
+  if (!masterPath) return null;
+
+  const costArgs = {
+    path: masterPath,
+    drugId: currentDrugId,
+    subtypeId,
+    costPaperId,
+    clinicalCase,
+    incomeBracket,
+    elderlyCopay,
+    modelParams,
+    treatmentDurationYears,
+  };
+
+  const continueArm = applyDrugCostsToPath(costArgs);
+  const switchArm = applyDrugCostsToPath({
+    ...costArgs,
+    switchPlan: { atMonth: switchAtMonth, toDrugId: switchToDrugId },
+  });
+
+  const months = masterPath.months.length;
+  const monthly = [];
+  let crossoverMonth = null;
+  for (let i = 0; i < months; i++) {
+    const c = continueArm.monthlyTrajectory[i];
+    const s = switchArm.monthlyTrajectory[i];
+    if (
+      crossoverMonth == null &&
+      c.month >= switchAtMonth &&
+      s.cumPatientOop < c.cumPatientOop
+    ) {
+      crossoverMonth = c.month;
+    }
+    monthly.push({
+      month: c.month,
+      age: c.age,
+      cumOopContinue: c.cumPatientOop,
+      cumOopSwitch: s.cumPatientOop,
+    });
+  }
+
+  return {
+    currentDrugId,
+    switchToDrugId,
+    switchAtYear,
+    switchAtMonth,
+    switchApplied: switchAtMonth < months,
+    timelineMonths: months,
+    effectiveHorizonYears: effectiveHorizon,
+    continueArm: {
+      totalPatientOop: continueArm.totalPatientOop,
+      totalDirectMedical: continueArm.totalDirectMedical,
+      totalInjections: continueArm.totalInjections,
+      injUnitMissing: continueArm.injUnitMissing,
+    },
+    switchArm: {
+      totalPatientOop: switchArm.totalPatientOop,
+      totalDirectMedical: switchArm.totalDirectMedical,
+      totalInjections: switchArm.totalInjections,
+      injUnitMissing: switchArm.injUnitMissing,
+    },
+    deltaPatientOop: switchArm.totalPatientOop - continueArm.totalPatientOop,
+    crossoverMonth,
+    monthly,
+    note:
+      "視力経路（QALY）は両アーム共通（CMA 前提）。スイッチ後の注射フェーズはスイッチ月から再起算（再導入）。",
   };
 }
 

@@ -13,6 +13,7 @@ import {
   trialReachFractionAt,
   EVIDENCE_TIER_LABELS,
 } from "./config/switch-interval-evidence.js";
+import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 
 function perInjectionCost(drugId, paper) {
   const price = paper.drugPrices[drugId];
@@ -77,6 +78,61 @@ export function analyticBreakEvenIntervalWeeks(
     weeks,
     annualInjections: breakEvenAnnualInj,
     label: formatIntervalLabel(Math.round(weeks)),
+  };
+}
+
+/**
+ * 年間患者自己負担のめやす（薬剤＋手技のみ、月次高額療養費上限を適用）
+ *
+ * 間隔 ≥ 約4.3週（月1回以下）: 注射月ごとに上限を適用し、年間注射回数を乗じる。
+ * 間隔 < 約4.3週: 月あたり注射回数ぶんの費用に上限を適用し、12か月分とする。
+ * モニタリング来院分は含まない（説明用のめやす）。
+ */
+export function estimateAnnualPatientOopForInterval({
+  drugId,
+  intervalWeeks,
+  costPaperId,
+  age,
+  incomeBracket,
+  elderlyCopay = null,
+}) {
+  const paper = getCostPaper(costPaperId);
+  const perInj = perInjectionCost(drugId, paper);
+  if (perInj == null || !(intervalWeeks > 0) || !Number.isFinite(age)) return null;
+
+  const annualInjections = 52 / intervalWeeks;
+  const injectionsPerMonth = annualInjections / 12;
+
+  if (injectionsPerMonth <= 1) {
+    const m = computeMonthlyPatientOop({
+      monthlyDirectMedical: perInj,
+      age,
+      incomeBracket,
+      elderlyCopay,
+    });
+    return {
+      perInjectionOop: m.patientOop,
+      annualOop: m.patientOop * annualInjections,
+      annualInjections,
+      capped: m.capped ?? false,
+      limit: m.limit,
+      copayRate: m.copayRate,
+    };
+  }
+
+  const m = computeMonthlyPatientOop({
+    monthlyDirectMedical: perInj * injectionsPerMonth,
+    age,
+    incomeBracket,
+    elderlyCopay,
+  });
+  return {
+    perInjectionOop: m.patientOop / injectionsPerMonth,
+    annualOop: m.patientOop * 12,
+    annualInjections,
+    capped: m.capped ?? false,
+    limit: m.limit,
+    copayRate: m.copayRate,
   };
 }
 
@@ -189,12 +245,15 @@ function classifyReachability({
  * @param {number} p.currentIntervalWeeks — 任意の週数（プリセットに限らない）
  * @param {string} p.costPaperId
  * @param {number} [p.wtpPerQaly]
+ * @param {{age:number, incomeBracket:string, elderlyCopay?:string|null}} [p.patient]
+ *   — 指定時、各行に患者自己負担（同一間隔・高額療養費適用）の差を付与
  */
 export function computeBreakEvenTable({
   currentDrugId,
   currentIntervalWeeks,
   costPaperId,
   wtpPerQaly = DEFAULT_HORIZON.wtpPerQaly,
+  patient = null,
 }) {
   const paper = getCostPaper(costPaperId);
   const curPerInj = perInjectionCost(currentDrugId, paper);
@@ -202,6 +261,20 @@ export function computeBreakEvenTable({
 
   const annualInjections = 52 / currentIntervalWeeks;
   const annualDrugAdmin = curPerInj * annualInjections;
+
+  const patientOopFor = (drugId) =>
+    patient
+      ? estimateAnnualPatientOopForInterval({
+          drugId,
+          intervalWeeks: currentIntervalWeeks,
+          costPaperId,
+          age: patient.age,
+          incomeBracket: patient.incomeBracket,
+          elderlyCopay: patient.elderlyCopay ?? null,
+        })
+      : null;
+
+  const currentPatientOop = patientOopFor(currentDrugId);
 
   const rows = DRUG_IDS.filter((id) => id !== currentDrugId).map((drugId) => {
     const perInj = perInjectionCost(drugId, paper);
@@ -224,6 +297,8 @@ export function computeBreakEvenTable({
       evidence,
     });
 
+    const patientOop = patientOopFor(drugId);
+
     return {
       drugId,
       drug: DRUG_CATALOG[drugId],
@@ -237,6 +312,11 @@ export function computeBreakEvenTable({
         sameIntervalAnnualDelta > 0 ? "min_required_gain" : "max_acceptable_loss",
       evidence,
       verdict,
+      patientOop,
+      patientOopAnnualDelta:
+        patientOop && currentPatientOop
+          ? patientOop.annualOop - currentPatientOop.annualOop
+          : null,
     };
   });
 
@@ -248,6 +328,8 @@ export function computeBreakEvenTable({
     annualInjections,
     annualDrugAdmin,
     wtpPerQaly,
+    patient,
+    currentPatientOop,
     rows,
   };
 }

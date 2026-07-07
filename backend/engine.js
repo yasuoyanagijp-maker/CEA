@@ -250,6 +250,7 @@ export {
 export {
   runPatientSimulation,
   runPatientDrugComparison,
+  runPatientMidSwitchComparison,
   buildPatientAnnualDrugComparison,
   createRng,
   resolvePatientVisionBaseline,
@@ -260,6 +261,8 @@ export {
   getCopayRate,
   getMonthlyOutpatientLimit,
   computeMonthlyPatientOop,
+  describeMonthlyLimit,
+  NHI_SOURCE_NOTE,
 } from "./config/japan-nhi.js";
 export {
   CLINICAL_DATASETS,
@@ -315,6 +318,7 @@ export {
   runSwitchCostMinimization,
   computeBreakEvenTable,
   buildAnnualCostCurve,
+  estimateAnnualPatientOopForInterval,
   TREATMENT_INTERVAL_OPTIONS,
   REFERENCE_INTERVAL_WEEKS,
   formatIntervalLabel,
