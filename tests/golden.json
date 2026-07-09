@@ -14,10 +14,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.470341,
-      "totalCost": 6766814.54,
+      "totalCost": 6624014.47,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1256739.81,
+        "drugAdmin": 1113939.74,
         "monitoring": 77876.81,
         "adverseEvents": 3198.26,
         "societalCare": 5158411.57,
@@ -40,10 +40,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.470341,
-      "totalCost": 24655505.29,
+      "totalCost": 24512705.22,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1189954.23,
+        "drugAdmin": 1047154.17,
         "monitoring": 107578.09,
         "adverseEvents": 1187.67,
         "societalCare": 23235369.54,
@@ -66,10 +66,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.612949,
-      "totalCost": 6419198.04,
+      "totalCost": 6286040.13,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1171882.11,
+        "drugAdmin": 1038724.2,
         "monitoring": 78363.06,
         "adverseEvents": 2982.3,
         "societalCare": 4902283.96,
@@ -92,10 +92,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.612949,
-      "totalCost": 22334797.08,
+      "totalCost": 22201639.18,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1109606.03,
+        "drugAdmin": 976448.13,
         "monitoring": 108211.39,
         "adverseEvents": 1107.48,
         "societalCare": 21001945.72,
@@ -118,10 +118,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.470341,
-      "totalCost": 8947161.49,
+      "totalCost": 8578152.86,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 3247532.33,
+        "drugAdmin": 2878523.7,
         "monitoring": 77876.81,
         "adverseEvents": 8264.59,
         "societalCare": 5158411.57,
@@ -144,10 +144,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.470341,
-      "totalCost": 26542384.64,
+      "totalCost": 26173376.01,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 3074952.2,
+        "drugAdmin": 2705943.57,
         "monitoring": 107578.09,
         "adverseEvents": 3069.05,
         "societalCare": 23235369.54,
@@ -170,10 +170,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.925252,
-      "totalCost": 7156118.33,
+      "totalCost": 6997820.31,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1393132.63,
+        "drugAdmin": 1234834.6,
         "monitoring": 80974.12,
         "adverseEvents": 3545.36,
         "societalCare": 5389108.67,
@@ -196,10 +196,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.925252,
-      "totalCost": 23848605.28,
+      "totalCost": 23690307.25,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1319098.87,
+        "drugAdmin": 1160800.85,
         "monitoring": 111612.07,
         "adverseEvents": 1316.57,
         "societalCare": 22293175.15,
@@ -222,10 +222,10 @@
     },
     "aflibercept": {
       "totalQALY": 8.31118,
-      "totalCost": 6640638,
+      "totalCost": 6494845.09,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1283078.91,
+        "drugAdmin": 1137286,
         "monitoring": 82094.88,
         "adverseEvents": 3265.29,
         "societalCare": 4990822.04,
@@ -248,10 +248,10 @@
     },
     "aflibercept": {
       "totalQALY": 8.31118,
-      "totalCost": 18178794.82,
+      "totalCost": 18033001.91,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1214893.62,
+        "drugAdmin": 1069100.71,
         "monitoring": 113071.77,
         "adverseEvents": 1212.56,
         "societalCare": 16738044.09,
@@ -274,10 +274,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.925252,
-      "totalCost": 9204832.45,
+      "totalCost": 8833982.63,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 3263736.18,
+        "drugAdmin": 2892886.35,
         "monitoring": 80974.12,
         "adverseEvents": 8305.83,
         "societalCare": 5389108.67,
@@ -300,10 +300,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.925252,
-      "totalCost": 25621569.15,
+      "totalCost": 25250719.33,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 3090294.95,
+        "drugAdmin": 2719445.12,
         "monitoring": 111612.07,
         "adverseEvents": 3084.37,
         "societalCare": 22293175.15,
@@ -326,10 +326,10 @@
     },
     "aflibercept": {
       "totalQALY": 4.587779,
-      "totalCost": 6097252.74,
+      "totalCost": 5835905.05,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2300041.27,
+        "drugAdmin": 2038693.58,
         "monitoring": 54963.47,
         "adverseEvents": 5853.34,
         "societalCare": 3414470.65,
@@ -352,10 +352,10 @@
     },
     "aflibercept": {
       "totalQALY": 4.587779,
-      "totalCost": 19857835.08,
+      "totalCost": 19596487.4,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2177812.64,
+        "drugAdmin": 1916464.95,
         "monitoring": 77735.37,
         "adverseEvents": 2173.64,
         "societalCare": 17515774.53,
@@ -378,10 +378,10 @@
     },
     "aflibercept": {
       "totalQALY": 4.772599,
-      "totalCost": 6382721.71,
+      "totalCost": 6073489.97,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2721454.26,
+        "drugAdmin": 2412222.52,
         "monitoring": 55621.4,
         "adverseEvents": 6925.78,
         "societalCare": 3236441.53,
@@ -404,10 +404,10 @@
     },
     "aflibercept": {
       "totalQALY": 4.772599,
-      "totalCost": 17870238.77,
+      "totalCost": 17561007.03,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2576830.94,
+        "drugAdmin": 2267599.19,
         "monitoring": 78592.26,
         "adverseEvents": 2571.89,
         "societalCare": 15132766.45,
@@ -430,10 +430,10 @@
     },
     "aflibercept": {
       "totalQALY": 4.587779,
-      "totalCost": 6847563.05,
+      "totalCost": 6508371.51,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2985121.3,
+        "drugAdmin": 2645929.76,
         "monitoring": 54963.47,
         "adverseEvents": 7596.79,
         "societalCare": 3414470.65,
@@ -456,10 +456,10 @@
     },
     "aflibercept": {
       "totalQALY": 4.587779,
-      "totalCost": 20507156.08,
+      "totalCost": 20167964.53,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2826486.2,
+        "drugAdmin": 2487294.66,
         "monitoring": 77735.37,
         "adverseEvents": 2821.06,
         "societalCare": 17515774.53,
@@ -482,10 +482,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.470341,
-      "totalCost": 24655505.29,
+      "totalCost": 24512705.22,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1189954.23,
+        "drugAdmin": 1047154.17,
         "monitoring": 107578.09,
         "adverseEvents": 1187.67,
         "societalCare": 23235369.54,
@@ -568,10 +568,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.470341,
-      "totalCost": 26542384.64,
+      "totalCost": 26173376.01,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 3074952.2,
+        "drugAdmin": 2705943.57,
         "monitoring": 107578.09,
         "adverseEvents": 3069.05,
         "societalCare": 23235369.54,
@@ -654,10 +654,10 @@
     },
     "aflibercept": {
       "totalQALY": 7.214589,
-      "totalCost": 28388905.85,
+      "totalCost": 28295776.47,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 776047.99,
+        "drugAdmin": 682918.61,
         "monitoring": 96572.28,
         "adverseEvents": 774.56,
         "societalCare": 27380822.51,
@@ -680,10 +680,10 @@
     },
     "aflibercept": {
       "totalQALY": 8.299278,
-      "totalCost": 13826868.15,
+      "totalCost": 13565121.3,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2181138.85,
+        "drugAdmin": 1919392,
         "monitoring": 135438.6,
         "adverseEvents": 2176.96,
         "societalCare": 11414741.17,

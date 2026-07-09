@@ -102,6 +102,12 @@ export function describeMonthlyLimit(age, incomeBracket) {
 
 /**
  * 月内の医療費合計に対する患者自己負担（高額療養費上限適用）
+ *
+ * 上限は「定額請求」ではなく天井（cap）である。
+ * 定率負担（1割・2割・3割）が月次限度額未満なら、限度額ぴったりではなく
+ * 定率負担額のまま返す（例: 75歳・一般・上限18,000円でも、1割が15,172円なら15,172円）。
+ * これは制度上・本シミュレーション仕様上ともに正しい。
+ *
  * @param {object} opts
  * @param {number} opts.monthlyDirectMedical — 当月の直接医療費（保険点数換算前の総額）
  * @param {number} opts.age
