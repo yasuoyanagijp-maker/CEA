@@ -32,6 +32,7 @@ describe("App SSR スモーク（タブ別レンダリング）", () => {
   it("summary タブ（既定）", async () => {
     const html = await renderAppWithSearch("");
     expect(html).toContain("結果 — "); // summary パネルのタイトル
+    expect(html).toContain("免責事項（本シミュレーションについて）");
   });
 
   it("patient タブ — URL クエリで年齢・所得区分・タブを初期化", async () => {
@@ -42,6 +43,7 @@ describe("App SSR スモーク（タブ別レンダリング）", () => {
     expect(html).toContain("女性 68歳");
     expect(html).toContain("患者説明モード（簡易表示）");
     expect(html).toContain("途中スイッチ試算");
+    expect(html).toContain("免責事項（本シミュレーションについて）");
   });
 
   it("patient タブ・患者説明モード（explain=1）— 高額療養費の現行値テーブルを表示", async () => {
@@ -68,11 +70,13 @@ describe("App SSR スモーク（タブ別レンダリング）", () => {
     expect(html).toContain("スイッチングシミュレーション");
     expect(html).toContain("同一間隔 Δ患者負担/年");
     expect(html).toContain("患者自己負担");
+    expect(html).toContain("免責事項（本シミュレーションについて）");
   });
 
   it("vision タブ", async () => {
     const html = await renderAppWithSearch("?tab=vision");
     expect(html).toContain("視力推移 — 期待 BCVA");
+    expect(html).toContain("免責事項（本シミュレーションについて）");
   });
 
   it("不正な URL クエリは無視して既定値で描画", async () => {

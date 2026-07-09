@@ -16,6 +16,16 @@ import { DRUG_IDS } from "../backend/drugs.js";
 import { DEFAULT_TRANSPORT } from "../backend/config/transport.js";
 
 describe("論文1・論文2 の共通コスト定数", () => {
+  it("薬価はキット製品（瓶不使用）で、アイリーア2mgは99,522円", () => {
+    expect(PAPER2.drugPrices.aflibercept).toBe(99_522);
+    expect(PAPER2.drugPrices.aflibercept_8mg).toBe(145_718);
+    expect(PAPER2.drugPrices.aflibercept_bs).toBe(67_959);
+    expect(PAPER2.drugPrices.ranibizumab).toBe(92_753);
+    expect(PAPER2.drugPrices.ranibizumab_bs).toBe(72_136);
+    expect(PAPER2.drugPrices.brolucizumab).toBe(103_163);
+    expect(PAPER2.drugPrices.faricimab).toBe(141_784);
+  });
+
   it("薬価テーブルが一致し、全薬剤をカバーする", () => {
     expect(PAPER1.drugPrices).toEqual(PAPER2.drugPrices);
     for (const id of DRUG_IDS) {

@@ -63,6 +63,28 @@ describe("高額療養費 — 月次限度額・負担割合（厚労省の現�
     expect(getCopayRate(72, "early_elderly_10", "standard")).toBe(0.1);
     expect(getCopayRate(65, null, "standard")).toBe(0.3);
   });
+
+  it("上限は天井 — 定率負担が限度額未満なら限度額ぴったりではなく定率負担額を返す", () => {
+    // 75歳・一般・外来特例 18,000円。8mgキット+手技の1割 ≈ 15,172円 < 18,000
+    const under = computeMonthlyPatientOop({
+      monthlyDirectMedical: 145_718 + 6_000,
+      age: 75,
+      incomeBracket: "standard",
+    });
+    expect(under.limit).toBe(18_000);
+    expect(under.capped).toBe(false);
+    expect(under.patientOop).toBeCloseTo(15_171.8, 4);
+    expect(under.patientOop).toBeLessThan(under.limit);
+
+    // 定率負担が上限を超えるときだけ上限にクリップ
+    const over = computeMonthlyPatientOop({
+      monthlyDirectMedical: 200_000,
+      age: 75,
+      incomeBracket: "standard",
+    });
+    expect(over.patientOop).toBe(18_000);
+    expect(over.capped).toBe(true);
+  });
 });
 
 describe("estimateAnnualPatientOopForInterval", () => {

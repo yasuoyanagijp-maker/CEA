@@ -7,7 +7,7 @@ import { trialReachFractionAt } from "../backend/config/switch-interval-evidence
 
 // paper2: BS ¥67,959 + 手技 ¥6,000 = ¥73,959/回
 //         8mg ¥145,718 + ¥6,000 = ¥151,718/回
-//         AFL 2mg ¥113,912 + ¥6,000 = ¥119,912/回
+//         AFL 2mg キット ¥99,522 + ¥6,000 = ¥105,522/回
 
 describe("computeBreakEvenTable", () => {
   it("BS Q10 → 8mg の損益分岐間隔は約 Q20.5", () => {
@@ -44,8 +44,8 @@ describe("computeBreakEvenTable", () => {
     const row = t.rows.find((r) => r.drugId === "aflibercept_bs");
     expect(row.verdict.kind).toBe("cheaper");
     expect(row.sameIntervalAnnualDelta).toBeLessThan(0);
-    // 短縮許容: Q8 → 約 Q4.9 まで縮んでも損しない
-    expect(row.breakEvenWeeks).toBeCloseTo(8 * (73959 / 119912), 2);
+    // 短縮許容: Q8 → 約 Q5.6 まで縮んでも損しない（キット薬価）
+    expect(row.breakEvenWeeks).toBeCloseTo(8 * (73959 / 105522), 2);
   });
 
   it("aflibercept BS の trialReach は先行品借用（reference-derived）で BS 実証ではない", () => {
@@ -105,14 +105,14 @@ describe("computeBreakEvenTable", () => {
   });
 
   it("8mg スイッチで損益分岐が試験到達率50%以上なら reachable 判定", () => {
-    // AFL 2mg Q8 現行 → 8mg。分岐 = 8 × (151718/119912) ≈ Q10.1（PULSAR 12週87%圏）
+    // AFL 2mg キット Q8 現行 → 8mg。分岐 = 8 × (151718/105522) ≈ Q11.5（PULSAR 12週87%圏）
     const t = computeBreakEvenTable({
       currentDrugId: "aflibercept",
       currentIntervalWeeks: 8,
       costPaperId: "paper2_rbz",
     });
     const row = t.rows.find((r) => r.drugId === "aflibercept_8mg");
-    expect(row.breakEvenWeeks).toBeCloseTo(8 * (151718 / 119912), 2);
+    expect(row.breakEvenWeeks).toBeCloseTo(8 * (151718 / 105522), 2);
     expect(["reachable", "borderline"]).toContain(row.verdict.kind);
     expect(row.evidence.trialReach).toBeTruthy();
   });
@@ -129,7 +129,7 @@ describe("computeBreakEvenTable", () => {
   });
 
   it("faricimab は trialReach（direct）を持ち段階判定される", () => {
-    // AFL 2mg Q8 → faricimab: 分岐 = 8 × (141784+6000)/(119912) ≈ Q9.9（≥Q12W 未満 → 87%圏外だが12週手前）
+    // AFL 2mg キット Q10 → faricimab: 分岐 = 10 × (147784/105522) ≈ Q14.0
     const t = computeBreakEvenTable({
       currentDrugId: "aflibercept",
       currentIntervalWeeks: 10,
