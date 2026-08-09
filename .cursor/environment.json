@@ -1,0 +1,17 @@
+{
+  "name": "nAMD CEA",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "vite-dev",
+      "command": "npm run dev -- --host 0.0.0.0",
+      "description": "Vite dev server for the nAMD CEA app on http://localhost:5173 (hot reload). The Markov cost-effectiveness computation runs entirely in the browser; there is no separate backend server."
+    }
+  ],
+  "ports": [
+    {
+      "name": "vite dev server",
+      "port": 5173
+    }
+  ]
+}
