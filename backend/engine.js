@@ -10,6 +10,7 @@ import {
   PATIENT_DISPLAY_ORDER,
   patientDrugIds,
   getDrugTransitionKey,
+  getDrugClinicalNote,
   sortByDrugDisplayOrder,
 } from "./drugs.js";
 import { SUBTYPES } from "./clinical.js";
@@ -265,6 +266,7 @@ export {
   getMonthlyOutpatientLimit,
   computeMonthlyPatientOop,
   describeMonthlyLimit,
+  describeInjMonthOopCapNote,
   NHI_SOURCE_NOTE,
 } from "./config/japan-nhi.js";
 export {
@@ -273,6 +275,7 @@ export {
   DEFAULT_TRANSITION_MODE,
   TRANSITION_MODE_OPTIONS,
   TRANSITION_POOL_SOURCE,
+  isPooledTransitionMode,
   getClinicalDataset,
   getEffectiveAnnualInjectionRate,
   getInjectionRate,
@@ -319,6 +322,7 @@ export {
   PATIENT_DRUG_IDS,
   patientDrugIds,
   getDrugTransitionKey,
+  getDrugClinicalNote,
   sortByDrugDisplayOrder,
   PATIENT_DISPLAY_ORDER,
   SUBTYPES,

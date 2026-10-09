@@ -108,6 +108,15 @@ export function describeMonthlyLimit(age, incomeBracket) {
 }
 
 /**
+ * 患者説明カード用。上限に達した月があるときだけ「上限を適用」。
+ * 達しないときは定率負担である旨と月上限を出す。金額は変えない。
+ */
+export function describeInjMonthOopCapNote({ capped, age, incomeBracket }) {
+  if (capped) return "上限を適用";
+  return `定率負担（月上限 ${describeMonthlyLimit(age, incomeBracket)}未満）`;
+}
+
+/**
  * 月内の医療費合計に対する患者自己負担（高額療養費上限適用）
  *
  * 上限は「定額請求」ではなく天井（cap）である。

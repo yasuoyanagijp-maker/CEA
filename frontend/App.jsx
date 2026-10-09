@@ -24,6 +24,7 @@ import {
   getInjectionPhaseReference,
   DRUG_CATALOG,
   DRUG_IDS,
+  getDrugClinicalNote,
   PATIENT_DRUG_IDS,
   SUBTYPES,
   COST_PAPER_LIST,
@@ -37,11 +38,13 @@ import {
   CLINICAL_CASE_OPTIONS,
   DEFAULT_TRANSITION_MODE,
   TRANSITION_MODE_OPTIONS,
+  isPooledTransitionMode,
   TRANSITION_POOL_SOURCE,
   EVIDENCE_TIER_LABELS,
   INCOME_BRACKET_LIST,
   getCopayRate,
   describeMonthlyLimit,
+  describeInjMonthOopCapNote,
   NHI_SOURCE_NOTE,
   listInjections2026MetaSummary,
   listInjectionsLit2025Summary,
@@ -580,6 +583,7 @@ export default function App() {
       injMonthOop: injMonths.length
         ? Math.max(...injMonths.map((m) => m.patientOop))
         : null,
+      injMonthCapped: injMonths.some((m) => m.capped),
       fiveYearCum: y5?.cumPatientOop ?? null,
       totalOop: patientDetailDrug.totalPatientOop,
     };
@@ -1209,7 +1213,11 @@ export default function App() {
               個別患者タブは全7薬剤を表示。各薬剤は clinicalKey=drugId で独立し、
               注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ
               （S6 未掲載の AFL 8 mg / ファリ / ブロルは{EXPERT_ESTIMATE_LABEL}。ネットワークメタ解析・感度分析の2年目以降も同注釈）、
-              視力遷移は transitionKey（rbz_bs / aflibercept）を使用。
+              視力遷移は
+              {isPooledTransitionMode(transitionMode)
+                ? "病型別 RBZ+AFL 統合（全薬剤共通）"
+                : "薬剤別 Table S5（ラニビズマブ系は rbz_bs 列、その他は aflibercept 列）"}
+              を使用。
               <br />
               <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、フォロー期間（最長生存タイムライン）の
               視力遷移・両眼発症に使う乱数列の番号です。同じ seed なら結果を再現でき、変えると別の経路になります。
@@ -1663,7 +1671,11 @@ export default function App() {
                               ? `約 ¥${fmtJpy(explainSummary.injMonthOop)}`
                               : "—"
                           }
-                          sub="高額療養費の月上限を適用"
+                          sub={describeInjMonthOopCapNote({
+                            capped: Boolean(explainSummary.injMonthCapped),
+                            age: parseInt(patientAge, 10),
+                            incomeBracket,
+                          })}
                         />
                         <ExplainMetric
                           label="最初の1年間の合計"
@@ -1805,7 +1817,10 @@ export default function App() {
                     直接医療費に年齢別自己負担・月次高額療養費を適用。
                     余命（生命表）≈ {patientAnalysis.patientProfile.remainingLifeExpectancy?.toFixed(1)} 年 /
                     解析上限 {patientAnalysis.patientProfile.effectiveHorizonYears?.toFixed(1)} 年。
-                    注射・コストは薬剤×病型別。フォロー期間は全 transitionKey 中最長生存タイムライン（同一 seed）。
+                    注射・コストは薬剤×病型別。
+                    {isPooledTransitionMode(transitionMode)
+                      ? "視力遷移は病型別 RBZ+AFL 統合（全薬剤共通）。フォロー期間は同一 seed の生存タイムライン。"
+                      : "フォロー期間は視力遷移列（ラニビズマブ系 / アフリベルセプト系）のうち最長生存タイムライン（同一 seed）。"}
                   </p>
                   <div
                     style={{
@@ -1828,7 +1843,9 @@ export default function App() {
                     )}
                     <br />
                     フォロー期間（{patientAnalysis.patientProfile.costTimelineMonths} か月）を決める乱数列です。
-                    QALY は transitionKey 別、コスト・注射は最長生存タイムライン共通。
+                    {isPooledTransitionMode(transitionMode)
+                      ? "QALY は全薬剤共通（病型別 RBZ+AFL 統合）、コスト・注射は薬剤別。"
+                      : "QALY は視力遷移列ごと、コスト・注射は最長生存タイムライン共通。"}
                   </div>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 10, lineHeight: 1.6 }}>
                     全7薬剤（ラニビズマブ先発・BS、アフリベルセプト 2 mg/BS/8 mg、ファリ、ブロル）を表示。
@@ -1848,15 +1865,17 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {patientSummaryRows.map((row, i) => (
+                      {patientSummaryRows.map((row, i) => {
+                        const clinicalNote = getDrugClinicalNote(row.drugId, { transitionMode });
+                        return (
                         <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
                           <td style={compactTdStyle}>
                             <span style={{ fontWeight: 600, color: DRUG_CATALOG[row.drugId].color }}>
                               {row.name}
                             </span>
-                            {DRUG_CATALOG[row.drugId].clinicalNote && (
+                            {clinicalNote && (
                               <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>
-                                {DRUG_CATALOG[row.drugId].clinicalNote}
+                                {clinicalNote}
                               </div>
                             )}
                           </td>
@@ -1895,7 +1914,8 @@ export default function App() {
                             {row.totalQALY != null ? row.totalQALY.toFixed(3) : "—"}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                   </ScrollTable>
@@ -1930,7 +1950,7 @@ export default function App() {
                     >
                       <strong>注射回数パラメータ（{injectionPhaseRef.source}）</strong>
                       <br />
-                      clinicalKey: {injectionPhaseRef.clinicalKey} — {injectionPhaseRef.note}
+                      {injectionPhaseRef.note}
                       {injectionPhaseRef.isInjectionReference && (
                         <div
                           style={{

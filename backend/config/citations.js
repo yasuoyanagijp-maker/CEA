@@ -39,6 +39,9 @@ export const TRANSITION_MODE_LABELS = {
   rbz_afl_pooled: `病型別 RBZ+AFL 統合（${CITE.yanagi2024}）`,
 };
 
+/** 統合モード時に各薬剤行へ出す遷移注記（スライド用。数値は変えない） */
+export const POOLED_TRANSITION_NOTE = "遷移：病型別 RBZ+AFL 統合（全薬剤共通）";
+
 export const TRANSITION_MODE_HINTS = {
   drug_specific: `ラニビズマブ系は Table S5 の rbz_bs 列、アフリベルセプト系・ファリシマブ・ブロルシズマブは aflibercept 列（${CITE.yanagi2024}）。`,
   rbz_afl_pooled: `各病型・各期間で Table S5 の RBZ 列と AFL 列を元研究の症例数で加重平均し、その病型の統合値を全薬剤に適用（病型横断はしない）。重み: ${CITE.yoneda2023}、${CITE.jin2021}、${CITE.hoshino2020}、${CITE.kertes2021}。`,
