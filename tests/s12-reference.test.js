@@ -41,22 +41,24 @@ describe("Table S12 — 絶対値の乖離ガード(シナリオケース)", () 
         const ref = refS12[key];
         const qalyRelErr = Math.abs(r.totalQALY - ref.qaly) / ref.qaly;
         const costRelErr = Math.abs(r.totalCost - ref.cost) / ref.cost;
-        // 現状の乖離: QALY 最大 ~6.7%(RAP)、コスト最大 ~31%(RAP/AFL)。
-        // 悪化を検知するための上限(既知の乖離 + マージン)。
-        expect(qalyRelErr, `${subtypeId}/${drugId} QALY 乖離 ${(qalyRelErr * 100).toFixed(1)}%`).toBeLessThan(0.08);
-        expect(costRelErr, `${subtypeId}/${drugId} コスト乖離 ${(costRelErr * 100).toFixed(1)}%`).toBeLessThan(0.35);
+        // 遷移向き＋論文 BSC の修正後の既知乖離: QALY 最大 ~17%(RAP)、コスト最大 ~50%(typical)。
+        // 効用規則・中止・僚眼発症などが論文と異なるため絶対値は一致しない。
+        expect(qalyRelErr, `${subtypeId}/${drugId} QALY 乖離 ${(qalyRelErr * 100).toFixed(1)}%`).toBeLessThan(0.22);
+        expect(costRelErr, `${subtypeId}/${drugId} コスト乖離 ${(costRelErr * 100).toFixed(1)}%`).toBeLessThan(0.55);
       }
     });
   }
 });
 
 describe("論文本文増分 — ΔQALY・ΔCost の方向性(RBZ BS vs AFL)", () => {
-  // 既知の乖離: typical は ΔQALY、RAP は ΔQALY・ΔCost とも符号が論文と
-  // 逆転する(ツールの効用・死亡率入力が論文と異なるため)。
-  // ここでは現状一致している組み合わせのみ回帰ガードとして固定する。
+  // 以前の符号逆転は効用・死亡率入力の差ではなく、improve/worsen の向きが
+  // 逆だったことが原因。向きを直すと ΔQALY は3病型とも論文と一致する。
+  // typical の総コスト符号は、残る仕様差（僚眼・中止・効用規則）で介護費が
+  // 膨らむため論文の総コスト符号とは一致しない（Δ介護の向きは論文と一致）。
   const CHECKS = {
-    typical: { deltaCost: true },
+    typical: { deltaQaly: true },
     pcv: { deltaQaly: true, deltaCost: true },
+    rap: { deltaQaly: true, deltaCost: true },
   };
 
   for (const [subtypeId, check] of Object.entries(CHECKS)) {

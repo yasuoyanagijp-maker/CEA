@@ -5,7 +5,6 @@ import { describe, it, expect } from "vitest";
 import {
   tp,
   normalizeTransitionProbs,
-  deriveBscTransitionProbs,
   phaseForCycle,
   isOnTreatment,
 } from "../backend/utils.js";
@@ -13,8 +12,10 @@ import {
   TRANS_BASE,
   TRANS_SCENARIO,
   getBscTransitionProbs,
-  BSC_PROGRESSION_MULTIPLIER,
+  injectionsForCycle,
+  injectionsForMonth,
 } from "../backend/clinical.js";
+import { getPaperBscTransitions } from "../backend/config/table-s2-bsc-transitions.js";
 import {
   runAnalysis,
   runAnalysisCached,
@@ -59,24 +60,24 @@ describe("遷移確率の質量保存", () => {
     }
   });
 
-  it("BSC 派生遷移も合計1を保つ", () => {
+  it("BSC は O&T 2023 Table S2（改善 0%）で合計1を保つ", () => {
     for (const subtypeId of ["typical", "pcv", "rap"]) {
       for (const phase of ["induction", "year1", "year2", "year3plus"]) {
         const p = getBscTransitionProbs(TRANS_BASE, subtypeId, phase);
         expect(p).not.toBeNull();
+        expect(p.imp1).toBe(0);
+        expect(p.imp2).toBe(0);
         expect(probSum(p)).toBeCloseTo(1, 9);
       }
     }
   });
 
-  it("BSC 派生は治療遷移より悪化方向(改善確率が下がらないことはない)", () => {
-    const treated = tp(15, 15, 40, 15, 15);
-    const bsc = deriveBscTransitionProbs(treated, BSC_PROGRESSION_MULTIPLIER);
-    // deriveBscTransitionProbs の「悪化」は改善確率の増幅ではなく
-    // wors の縮小と改善の増幅…実装は imp を増やし wors を減らす形なので
-    // ここでは合計1と非負のみ検証する(実装仕様のドキュメント代わり)。
-    expect(probSum(bsc)).toBeCloseTo(1, 9);
-    for (const v of Object.values(bsc)) expect(v).toBeGreaterThanOrEqual(0);
+  it("BSC 悪化確率は論文 Table S2 の値（サイクルあたり、年率換算なし）", () => {
+    const y2 = getPaperBscTransitions("year2");
+    expect(y2.wors1).toBeCloseTo(0.27, 9);
+    expect(y2.wors2).toBeCloseTo(0.283, 9);
+    expect(getPaperBscTransitions("induction").wors1).toBeCloseTo(0.141, 9);
+    expect(getPaperBscTransitions("year1").wors2).toBeCloseTo(0.182, 9);
   });
 });
 
@@ -107,6 +108,38 @@ describe("2026 meta 注射回数", () => {
     expect(schedule.year1).toBe(5.5);
     expect(schedule.year2).toBeCloseTo(expected, 12);
     expect(schedule.year3plus).toBeCloseTo(expected, 12);
+  });
+
+  it("最初の12か月の合計は year1（導入期を二重計上しない）", () => {
+    const ctx = {
+      clinicalCase: "2026_meta",
+      subtypeId: "typical",
+      drugId: "aflibercept_bs",
+      treatmentDurationYears: 5,
+      cycleLengthYears: 0.25,
+    };
+    const year1 = getInjections2026MetaForDrug("aflibercept_bs").year1;
+    let firstYearCycles = 0;
+    for (let c = 0; c < 4; c++) firstYearCycles += injectionsForCycle(c, ctx);
+    expect(firstYearCycles).toBeCloseTo(year1, 9);
+
+    let firstYearMonths = 0;
+    for (let m = 0; m < 12; m++) firstYearMonths += injectionsForMonth(m, ctx);
+    expect(firstYearMonths).toBeCloseTo(year1, 9);
+  });
+
+  it("5年の表期待回数は year1 + 4×year2", () => {
+    const ctx = {
+      clinicalCase: "2026_meta",
+      subtypeId: "typical",
+      drugId: "aflibercept_bs",
+      treatmentDurationYears: 5,
+      cycleLengthYears: 0.25,
+    };
+    const s = getInjections2026MetaForDrug("aflibercept_bs");
+    let total = 0;
+    for (let c = 0; c < 20; c++) total += injectionsForCycle(c, ctx);
+    expect(total).toBeCloseTo(s.year1 + 4 * s.year2, 9);
   });
 });
 
@@ -148,6 +181,13 @@ describe("runMarkov の出力整合", () => {
     const r = runMarkov({ ...base, treatmentDurationYears: 0.25 });
     expect(r.tableExpectedInjections).toBeCloseTo(3, 9);
     expect(r.totalInjections).toBeCloseTo(3, 9);
+  });
+
+  it("改善は視力良好方向 — 導入〜1年で typical AFL の平均 BCVA が上がる", () => {
+    const r = runMarkov({ ...base, treatmentDurationYears: 5 });
+    const y0 = parseFloat(r.trajectory[0].meanBcva);
+    const y1 = parseFloat(r.trajectory[1].meanBcva);
+    expect(y1).toBeGreaterThan(y0);
   });
 
   it("表示用注射回数は非割引・生存重み付き期待回数", () => {

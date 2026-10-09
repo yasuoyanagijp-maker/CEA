@@ -1,693 +1,693 @@
 {
   "typical__base__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 7.48733,
-      "totalCost": 6339911.04,
+      "totalQALY": 6.811638,
+      "totalCost": 6732837.5,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 909707.74,
-        "monitoring": 77959.84,
-        "adverseEvents": 3454.73,
-        "societalCare": 5068697.03,
-        "physicianVisit": 280091.7
+        "drugAdmin": 905332.45,
+        "monitoring": 75306,
+        "adverseEvents": 3438.11,
+        "societalCare": 5474526.47,
+        "physicianVisit": 274234.46
       }
     },
     "aflibercept": {
-      "totalQALY": 7.470341,
-      "totalCost": 6624014.47,
+      "totalQALY": 6.852106,
+      "totalCost": 6860830.88,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1113939.74,
-        "monitoring": 77876.81,
-        "adverseEvents": 3198.26,
-        "societalCare": 5158411.57,
-        "physicianVisit": 270588.1
+        "drugAdmin": 1110500.94,
+        "monitoring": 75466.41,
+        "adverseEvents": 3188.38,
+        "societalCare": 5406216.96,
+        "physicianVisit": 265458.18
       }
     }
   },
   "typical__base__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 7.48733,
-      "totalCost": 23891511.69,
+      "totalQALY": 6.811638,
+      "totalCost": 34516224.13,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 837566.56,
-        "monitoring": 107686.23,
-        "adverseEvents": 1282.91,
-        "societalCare": 22826078.77,
-        "physicianVisit": 118897.22
+        "drugAdmin": 833538.24,
+        "monitoring": 104229.82,
+        "adverseEvents": 1276.74,
+        "societalCare": 33433167.62,
+        "physicianVisit": 144011.7
       }
     },
     "aflibercept": {
-      "totalQALY": 7.470341,
-      "totalCost": 24512705.22,
+      "totalQALY": 6.852106,
+      "totalCost": 34046290.25,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1047154.17,
-        "monitoring": 107578.09,
-        "adverseEvents": 1187.67,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 1043921.54,
+        "monitoring": 104438.75,
+        "adverseEvents": 1184.01,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     }
   },
   "typical__scenario__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 7.62936,
-      "totalCost": 5991954,
+      "totalQALY": 6.748437,
+      "totalCost": 6747892.04,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 828035.14,
-        "monitoring": 78436.26,
-        "adverseEvents": 3144.57,
-        "societalCare": 4812597.83,
-        "physicianVisit": 269740.19
+        "drugAdmin": 822079.48,
+        "monitoring": 75104.35,
+        "adverseEvents": 3121.95,
+        "societalCare": 5585263.83,
+        "physicianVisit": 262322.44
       }
     },
     "aflibercept": {
-      "totalQALY": 7.612949,
-      "totalCost": 6286040.13,
+      "totalQALY": 6.77193,
+      "totalCost": 6913675.51,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1038724.2,
-        "monitoring": 78363.06,
-        "adverseEvents": 2982.3,
-        "societalCare": 4902283.96,
-        "physicianVisit": 263686.61
+        "drugAdmin": 1032747.19,
+        "monitoring": 75166.32,
+        "adverseEvents": 2965.14,
+        "societalCare": 5546061.79,
+        "physicianVisit": 256735.07
       }
     }
   },
   "typical__scenario__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 7.62936,
-      "totalCost": 21594354.82,
+      "totalQALY": 6.748437,
+      "totalCost": 35344791.09,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 762370.73,
-        "monitoring": 108306.73,
-        "adverseEvents": 1167.73,
-        "societalCare": 20611068.13,
-        "physicianVisit": 111441.5
+        "drugAdmin": 756887.35,
+        "monitoring": 103967.19,
+        "adverseEvents": 1159.33,
+        "societalCare": 34335249.88,
+        "physicianVisit": 147527.33
       }
     },
     "aflibercept": {
-      "totalQALY": 7.612949,
-      "totalCost": 22201639.18,
+      "totalQALY": 6.77193,
+      "totalCost": 35262258.53,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 976448.13,
-        "monitoring": 108211.39,
-        "adverseEvents": 1107.48,
-        "societalCare": 21001945.72,
-        "physicianVisit": 113926.46
+        "drugAdmin": 970829.46,
+        "monitoring": 104047.9,
+        "adverseEvents": 1101.11,
+        "societalCare": 34039871.49,
+        "physicianVisit": 146408.57
       }
     }
   },
   "typical__2026_meta__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 7.48733,
-      "totalCost": 8681408.13,
+      "totalQALY": 6.811638,
+      "totalCost": 8937639.25,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2959900.67,
-        "monitoring": 77959.84,
-        "adverseEvents": 11240.59,
-        "societalCare": 5068697.03,
-        "physicianVisit": 563610
+        "drugAdmin": 2835836.22,
+        "monitoring": 75306,
+        "adverseEvents": 10769.44,
+        "societalCare": 5474526.47,
+        "physicianVisit": 541201.12
       }
     },
     "aflibercept": {
-      "totalQALY": 7.470341,
-      "totalCost": 8578152.86,
+      "totalQALY": 6.852106,
+      "totalCost": 8584395.57,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2878523.7,
-        "monitoring": 77876.81,
-        "adverseEvents": 8264.59,
-        "societalCare": 5158411.57,
-        "physicianVisit": 455076.19
+        "drugAdmin": 2666877.21,
+        "monitoring": 75466.41,
+        "adverseEvents": 7656.93,
+        "societalCare": 5406216.96,
+        "physicianVisit": 428178.06
       }
     }
   },
   "typical__2026_meta__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 7.48733,
-      "totalCost": 25782012.54,
+      "totalQALY": 6.811638,
+      "totalCost": 36296358.57,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2725176.14,
-        "monitoring": 107686.23,
-        "adverseEvents": 4174.19,
-        "societalCare": 22826078.77,
-        "physicianVisit": 118897.22
+        "drugAdmin": 2610950.19,
+        "monitoring": 104229.82,
+        "adverseEvents": 3999.23,
+        "societalCare": 33433167.62,
+        "physicianVisit": 144011.7
       }
     },
     "aflibercept": {
-      "totalQALY": 7.470341,
-      "totalCost": 26173376.01,
+      "totalQALY": 6.852106,
+      "totalCost": 35511014.32,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2705943.57,
-        "monitoring": 107578.09,
-        "adverseEvents": 3069.05,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 2506986.21,
+        "monitoring": 104438.75,
+        "adverseEvents": 2843.4,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     }
   },
   "pcv__base__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 7.933459,
-      "totalCost": 6781865.72,
+      "totalQALY": 7.237768,
+      "totalCost": 6908921.59,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 947610.93,
-        "monitoring": 81029.28,
-        "adverseEvents": 3598.67,
-        "societalCare": 5458218.86,
-        "physicianVisit": 291407.98
+        "drugAdmin": 945927.7,
+        "monitoring": 78457.25,
+        "adverseEvents": 3592.28,
+        "societalCare": 5594859.44,
+        "physicianVisit": 286084.93
       }
     },
     "aflibercept": {
-      "totalQALY": 7.925252,
-      "totalCost": 6997820.31,
+      "totalQALY": 7.170247,
+      "totalCost": 7223872.46,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1234834.6,
-        "monitoring": 80974.12,
-        "adverseEvents": 3545.36,
-        "societalCare": 5389108.67,
-        "physicianVisit": 289357.56
+        "drugAdmin": 1231381.11,
+        "monitoring": 78198.51,
+        "adverseEvents": 3535.45,
+        "societalCare": 5627254.07,
+        "physicianVisit": 283503.32
       }
     }
   },
   "pcv__base__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 7.933459,
-      "totalCost": 23235084.53,
+      "totalQALY": 7.237768,
+      "totalCost": 33972068.35,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 872463.97,
-        "monitoring": 111683.92,
-        "adverseEvents": 1336.37,
-        "societalCare": 22125948.33,
-        "physicianVisit": 123651.94
+        "drugAdmin": 870914.22,
+        "monitoring": 108334.07,
+        "adverseEvents": 1333.99,
+        "societalCare": 32847574.28,
+        "physicianVisit": 143911.79
       }
     },
     "aflibercept": {
-      "totalQALY": 7.925252,
-      "totalCost": 23690307.25,
+      "totalQALY": 7.170247,
+      "totalCost": 35362041.64,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1160800.85,
-        "monitoring": 111612.07,
-        "adverseEvents": 1316.57,
-        "societalCare": 22293175.15,
-        "physicianVisit": 123402.62
+        "drugAdmin": 1157554.41,
+        "monitoring": 107997.08,
+        "adverseEvents": 1312.89,
+        "societalCare": 33948350.96,
+        "physicianVisit": 146826.31
       }
     }
   },
   "pcv__scenario__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 8.388922,
-      "totalCost": 5945388.61,
+      "totalQALY": 7.165457,
+      "totalCost": 6810905.11,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 782809.01,
-        "monitoring": 82374.83,
-        "adverseEvents": 2972.81,
-        "societalCare": 4805951.26,
-        "physicianVisit": 271280.7
+        "drugAdmin": 780982.68,
+        "monitoring": 78313.28,
+        "adverseEvents": 2965.88,
+        "societalCare": 5685653.29,
+        "physicianVisit": 262989.98
       }
     },
     "aflibercept": {
-      "totalQALY": 8.31118,
-      "totalCost": 6494845.09,
+      "totalQALY": 7.13053,
+      "totalCost": 7195679.96,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1137286,
-        "monitoring": 82094.88,
-        "adverseEvents": 3265.29,
-        "societalCare": 4990822.04,
-        "physicianVisit": 281376.89
+        "drugAdmin": 1132547.41,
+        "monitoring": 78076.18,
+        "adverseEvents": 3251.68,
+        "societalCare": 5708876.58,
+        "physicianVisit": 272928.11
       }
     }
   },
   "pcv__scenario__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 8.388922,
-      "totalCost": 16143175.66,
+      "totalQALY": 7.165457,
+      "totalCost": 34670337.05,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 720731.09,
-        "monitoring": 113436.38,
-        "adverseEvents": 1103.95,
-        "societalCare": 15202382.81,
-        "physicianVisit": 105521.42
+        "drugAdmin": 719049.59,
+        "monitoring": 108146.55,
+        "adverseEvents": 1101.38,
+        "societalCare": 33694911.52,
+        "physicianVisit": 147128
       }
     },
     "aflibercept": {
-      "totalQALY": 8.31118,
-      "totalCost": 18033001.91,
+      "totalQALY": 7.13053,
+      "totalCost": 35883416.01,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1069100.71,
-        "monitoring": 113071.77,
-        "adverseEvents": 1212.56,
-        "societalCare": 16738044.09,
-        "physicianVisit": 111572.78
+        "drugAdmin": 1064646.22,
+        "monitoring": 107837.75,
+        "adverseEvents": 1207.51,
+        "societalCare": 34560205.37,
+        "physicianVisit": 149519.15
       }
     }
   },
   "pcv__2026_meta__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 7.933459,
-      "totalCost": 9095500.21,
+      "totalQALY": 7.237768,
+      "totalCost": 9094456.74,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2973407.63,
-        "monitoring": 81029.28,
-        "adverseEvents": 11291.88,
-        "societalCare": 5458218.86,
-        "physicianVisit": 571552.56
+        "drugAdmin": 2859561.81,
+        "monitoring": 78457.25,
+        "adverseEvents": 10859.54,
+        "societalCare": 5594859.44,
+        "physicianVisit": 550718.7
       }
     },
     "aflibercept": {
-      "totalQALY": 7.925252,
-      "totalCost": 8833982.63,
+      "totalQALY": 7.170247,
+      "totalCost": 8832164.69,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2892886.35,
-        "monitoring": 80974.12,
-        "adverseEvents": 8305.83,
-        "societalCare": 5389108.67,
-        "physicianVisit": 462707.66
+        "drugAdmin": 2683666.52,
+        "monitoring": 78198.51,
+        "adverseEvents": 7705.13,
+        "societalCare": 5627254.07,
+        "physicianVisit": 435340.45
       }
     }
   },
   "pcv__2026_meta__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 7.933459,
-      "totalCost": 25103089.41,
+      "totalQALY": 7.237768,
+      "totalCost": 35736647.12,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2737611.98,
-        "monitoring": 111683.92,
-        "adverseEvents": 4193.24,
-        "societalCare": 22125948.33,
-        "physicianVisit": 123651.94
+        "drugAdmin": 2632794.31,
+        "monitoring": 108334.07,
+        "adverseEvents": 4032.69,
+        "societalCare": 32847574.28,
+        "physicianVisit": 143911.79
       }
     },
     "aflibercept": {
-      "totalQALY": 7.925252,
-      "totalCost": 25250719.33,
+      "totalQALY": 7.170247,
+      "totalCost": 36728804.58,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2719445.12,
-        "monitoring": 111612.07,
-        "adverseEvents": 3084.37,
-        "societalCare": 22293175.15,
-        "physicianVisit": 123402.62
+        "drugAdmin": 2522768.93,
+        "monitoring": 107997.08,
+        "adverseEvents": 2861.3,
+        "societalCare": 33948350.96,
+        "physicianVisit": 146826.31
       }
     }
   },
   "rap__base__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 4.571782,
-      "totalCost": 5342355.48,
+      "totalQALY": 4.206881,
+      "totalCost": 5197548.69,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1532504.47,
-        "monitoring": 54901.89,
-        "adverseEvents": 5819.88,
-        "societalCare": 3428545.61,
-        "physicianVisit": 320583.63
+        "drugAdmin": 1520828.38,
+        "monitoring": 53166.66,
+        "adverseEvents": 5775.53,
+        "societalCare": 3302243.31,
+        "physicianVisit": 315534.8
       }
     },
     "aflibercept": {
-      "totalQALY": 4.587779,
-      "totalCost": 5835905.05,
+      "totalQALY": 4.201475,
+      "totalCost": 5707001.33,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2038693.58,
-        "monitoring": 54963.47,
-        "adverseEvents": 5853.34,
-        "societalCare": 3414470.65,
-        "physicianVisit": 321924.01
+        "drugAdmin": 2020471.82,
+        "monitoring": 53146.7,
+        "adverseEvents": 5801.02,
+        "societalCare": 3311158.42,
+        "physicianVisit": 316423.36
       }
     }
   },
   "rap__base__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 4.571782,
-      "totalCost": 19307072.7,
+      "totalQALY": 4.206881,
+      "totalCost": 24220512.28,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1410974.58,
-        "monitoring": 77655.16,
-        "adverseEvents": 2161.21,
-        "societalCare": 17731428.23,
-        "physicianVisit": 84853.52
+        "drugAdmin": 1400224.42,
+        "monitoring": 75395.17,
+        "adverseEvents": 2144.74,
+        "societalCare": 22655203.38,
+        "physicianVisit": 87544.57
       }
     },
     "aflibercept": {
-      "totalQALY": 4.587779,
-      "totalCost": 19596487.4,
+      "totalQALY": 4.201475,
+      "totalCost": 24791356.03,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1916464.95,
-        "monitoring": 77735.37,
-        "adverseEvents": 2173.64,
-        "societalCare": 17515774.53,
-        "physicianVisit": 84338.91
+        "drugAdmin": 1899335.67,
+        "monitoring": 75369.17,
+        "adverseEvents": 2154.21,
+        "societalCare": 22726697.1,
+        "physicianVisit": 87799.88
       }
     }
   },
   "rap__scenario__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 4.712297,
-      "totalCost": 5456774.91,
+      "totalQALY": 4.186111,
+      "totalCost": 5469447.94,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1730725.68,
-        "monitoring": 55385.19,
-        "adverseEvents": 6572.65,
-        "societalCare": 3315139.52,
-        "physicianVisit": 348951.87
+        "drugAdmin": 1717415.55,
+        "monitoring": 53199.69,
+        "adverseEvents": 6522.1,
+        "societalCare": 3349524.68,
+        "physicianVisit": 342785.92
       }
     },
     "aflibercept": {
-      "totalQALY": 4.772599,
-      "totalCost": 6073489.97,
+      "totalQALY": 4.139404,
+      "totalCost": 6211459.85,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2412222.52,
-        "monitoring": 55621.4,
-        "adverseEvents": 6925.78,
-        "societalCare": 3236441.53,
-        "physicianVisit": 362278.74
+        "drugAdmin": 2384290.87,
+        "monitoring": 53051.02,
+        "adverseEvents": 6845.59,
+        "societalCare": 3413000.92,
+        "physicianVisit": 354271.45
       }
     }
   },
   "rap__scenario__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 4.712297,
-      "totalCost": 17778864.5,
+      "totalQALY": 4.186111,
+      "totalCost": 24404834.69,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1593476.56,
-        "monitoring": 78284.62,
-        "adverseEvents": 2440.75,
-        "societalCare": 16022930.32,
-        "physicianVisit": 81732.25
+        "drugAdmin": 1581221.94,
+        "monitoring": 75438.18,
+        "adverseEvents": 2421.98,
+        "societalCare": 22657203.8,
+        "physicianVisit": 88548.79
       }
     },
     "aflibercept": {
-      "totalQALY": 4.772599,
-      "totalCost": 17561007.03,
+      "totalQALY": 4.139404,
+      "totalCost": 25643288.82,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2267599.19,
-        "monitoring": 78592.26,
-        "adverseEvents": 2571.89,
-        "societalCare": 15132766.45,
-        "physicianVisit": 79477.23
+        "drugAdmin": 2241342.17,
+        "monitoring": 75244.55,
+        "adverseEvents": 2542.11,
+        "societalCare": 23233867.34,
+        "physicianVisit": 90292.65
       }
     }
   },
   "rap__2026_meta__paper1_faricimab": {
     "ranibizumab_bs": {
-      "totalQALY": 4.571782,
-      "totalCost": 6676772.96,
+      "totalQALY": 4.206881,
+      "totalCost": 6408783.42,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2700907.92,
-        "monitoring": 54901.89,
-        "adverseEvents": 10257.03,
-        "societalCare": 3428545.61,
-        "physicianVisit": 482160.51
+        "drugAdmin": 2581374.16,
+        "monitoring": 53166.66,
+        "adverseEvents": 9803.09,
+        "societalCare": 3302243.31,
+        "physicianVisit": 462196.19
       }
     },
     "aflibercept": {
-      "totalQALY": 4.587779,
-      "totalCost": 6508371.51,
+      "totalQALY": 4.201475,
+      "totalCost": 6165105.1,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2645929.76,
-        "monitoring": 54963.47,
-        "adverseEvents": 7596.79,
-        "societalCare": 3414470.65,
-        "physicianVisit": 385410.84
+        "drugAdmin": 2434138.82,
+        "monitoring": 53146.7,
+        "adverseEvents": 6988.71,
+        "societalCare": 3311158.42,
+        "physicianVisit": 359672.44
       }
     }
   },
   "rap__2026_meta__paper2_rbz": {
     "ranibizumab_bs": {
-      "totalQALY": 4.571782,
-      "totalCost": 20384467.76,
+      "totalQALY": 4.206881,
+      "totalCost": 25198450.84,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2486721.91,
-        "monitoring": 77655.16,
-        "adverseEvents": 3808.95,
-        "societalCare": 17731428.23,
-        "physicianVisit": 84853.52
+        "drugAdmin": 2376667.35,
+        "monitoring": 75395.17,
+        "adverseEvents": 3640.37,
+        "societalCare": 22655203.38,
+        "physicianVisit": 87544.57
       }
     },
     "aflibercept": {
-      "totalQALY": 4.587779,
-      "totalCost": 20167964.53,
+      "totalQALY": 4.201475,
+      "totalCost": 25180662.92,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2487294.66,
-        "monitoring": 77735.37,
-        "adverseEvents": 2821.06,
-        "societalCare": 17515774.53,
-        "physicianVisit": 84338.91
+        "drugAdmin": 2288201.52,
+        "monitoring": 75369.17,
+        "adverseEvents": 2595.26,
+        "societalCare": 22726697.1,
+        "physicianVisit": 87799.88
       }
     }
   },
   "all_drugs__typical__base__paper2": {
     "ranibizumab": {
-      "totalQALY": 7.48733,
-      "totalCost": 24112512.37,
+      "totalQALY": 6.811638,
+      "totalCost": 34736161.91,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1058567.25,
-        "monitoring": 107686.23,
-        "adverseEvents": 1282.91,
-        "societalCare": 22826078.77,
-        "physicianVisit": 118897.22
+        "drugAdmin": 1053476.02,
+        "monitoring": 104229.82,
+        "adverseEvents": 1276.74,
+        "societalCare": 33433167.62,
+        "physicianVisit": 144011.7
       }
     },
     "aflibercept": {
-      "totalQALY": 7.470341,
-      "totalCost": 24512705.22,
+      "totalQALY": 6.852106,
+      "totalCost": 34046290.25,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1047154.17,
-        "monitoring": 107578.09,
-        "adverseEvents": 1187.67,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 1043921.54,
+        "monitoring": 104438.75,
+        "adverseEvents": 1184.01,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "aflibercept_8mg": {
-      "totalQALY": 7.470341,
-      "totalCost": 24971134.12,
+      "totalQALY": 6.852106,
+      "totalCost": 34503303.95,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1505583.06,
-        "monitoring": 107578.09,
-        "adverseEvents": 1187.67,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 1500935.23,
+        "monitoring": 104438.75,
+        "adverseEvents": 1184.01,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "faricimab": {
-      "totalQALY": 7.470341,
-      "totalCost": 24932094.82,
+      "totalQALY": 6.852106,
+      "totalCost": 34464385.17,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1466543.77,
-        "monitoring": 107578.09,
-        "adverseEvents": 1187.67,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 1462016.45,
+        "monitoring": 104438.75,
+        "adverseEvents": 1184.01,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "brolucizumab": {
-      "totalQALY": 7.470341,
-      "totalCost": 24548836.91,
+      "totalQALY": 6.852106,
+      "totalCost": 34082310.4,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1083285.86,
-        "monitoring": 107578.09,
-        "adverseEvents": 1187.67,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 1079941.69,
+        "monitoring": 104438.75,
+        "adverseEvents": 1184.01,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "ranibizumab_bs": {
-      "totalQALY": 7.48733,
-      "totalCost": 23891511.69,
+      "totalQALY": 6.811638,
+      "totalCost": 34516224.13,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 837566.56,
-        "monitoring": 107686.23,
-        "adverseEvents": 1282.91,
-        "societalCare": 22826078.77,
-        "physicianVisit": 118897.22
+        "drugAdmin": 833538.24,
+        "monitoring": 104229.82,
+        "adverseEvents": 1276.74,
+        "societalCare": 33433167.62,
+        "physicianVisit": 144011.7
       }
     },
     "aflibercept_bs": {
-      "totalQALY": 7.470341,
-      "totalCost": 24199487.82,
+      "totalQALY": 6.852106,
+      "totalCost": 33734039.77,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 733936.76,
-        "monitoring": 107578.09,
-        "adverseEvents": 1187.67,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 731671.05,
+        "monitoring": 104438.75,
+        "adverseEvents": 1184.01,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     }
   },
   "all_drugs__typical__2026_meta__paper2": {
     "ranibizumab": {
-      "totalQALY": 7.48733,
-      "totalCost": 26501078.74,
+      "totalQALY": 6.811638,
+      "totalCost": 36985285.06,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 3444242.34,
-        "monitoring": 107686.23,
-        "adverseEvents": 4174.19,
-        "societalCare": 22826078.77,
-        "physicianVisit": 118897.22
+        "drugAdmin": 3299876.68,
+        "monitoring": 104229.82,
+        "adverseEvents": 3999.23,
+        "societalCare": 33433167.62,
+        "physicianVisit": 144011.7
       }
     },
     "aflibercept": {
-      "totalQALY": 7.470341,
-      "totalCost": 26173376.01,
+      "totalQALY": 6.852106,
+      "totalCost": 35511014.32,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2705943.57,
-        "monitoring": 107578.09,
-        "adverseEvents": 3069.05,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 2506986.21,
+        "monitoring": 104438.75,
+        "adverseEvents": 2843.4,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "aflibercept_8mg": {
-      "totalQALY": 7.470341,
-      "totalCost": 26336539.08,
+      "totalQALY": 6.852106,
+      "totalCost": 35538710.94,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2869911.78,
-        "monitoring": 107578.09,
-        "adverseEvents": 2263.92,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 2535526.09,
+        "monitoring": 104438.75,
+        "adverseEvents": 2000.14,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "faricimab": {
-      "totalQALY": 7.470341,
-      "totalCost": 26494998.43,
+      "totalQALY": 6.852106,
+      "totalCost": 35713013.65,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 3028182.69,
-        "monitoring": 107578.09,
-        "adverseEvents": 2452.36,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 2709634.56,
+        "monitoring": 104438.75,
+        "adverseEvents": 2194.38,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "brolucizumab": {
-      "totalQALY": 7.470341,
-      "totalCost": 25634395.84,
+      "totalQALY": 6.852106,
+      "totalCost": 34932030.2,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2167655.93,
-        "monitoring": 107578.09,
-        "adverseEvents": 2376.53,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 1928730.9,
+        "monitoring": 104438.75,
+        "adverseEvents": 2114.58,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     },
     "ranibizumab_bs": {
-      "totalQALY": 7.48733,
-      "totalCost": 25782012.54,
+      "totalQALY": 6.811638,
+      "totalCost": 36296358.57,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 2725176.14,
-        "monitoring": 107686.23,
-        "adverseEvents": 4174.19,
-        "societalCare": 22826078.77,
-        "physicianVisit": 118897.22
+        "drugAdmin": 2610950.19,
+        "monitoring": 104229.82,
+        "adverseEvents": 3999.23,
+        "societalCare": 33433167.62,
+        "physicianVisit": 144011.7
       }
     },
     "aflibercept_bs": {
-      "totalQALY": 7.470341,
-      "totalCost": 25363993.16,
+      "totalQALY": 6.852106,
+      "totalCost": 34761142.2,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1896560.72,
-        "monitoring": 107578.09,
-        "adverseEvents": 3069.05,
-        "societalCare": 23235369.54,
-        "physicianVisit": 121415.76
+        "drugAdmin": 1757114.09,
+        "monitoring": 104438.75,
+        "adverseEvents": 2843.4,
+        "societalCare": 32755331.78,
+        "physicianVisit": 141414.18
       }
     }
   },
   "duration_2__typical__base__paper2": {
     "ranibizumab_bs": {
-      "totalQALY": 7.24284,
-      "totalCost": 27567520.61,
+      "totalQALY": 6.70681,
+      "totalCost": 35312967.5,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 511208.03,
-        "monitoring": 96722.49,
-        "adverseEvents": 783.02,
-        "societalCare": 26826510.37,
-        "physicianVisit": 132296.69
+        "drugAdmin": 511095.48,
+        "monitoring": 94162.1,
+        "adverseEvents": 782.85,
+        "societalCare": 34559578.21,
+        "physicianVisit": 147348.86
       }
     },
     "aflibercept": {
-      "totalQALY": 7.214589,
-      "totalCost": 28295776.47,
+      "totalQALY": 6.727633,
+      "totalCost": 35129602.54,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 682918.61,
-        "monitoring": 96572.28,
-        "adverseEvents": 774.56,
-        "societalCare": 27380822.51,
-        "physicianVisit": 134688.51
+        "drugAdmin": 682882.05,
+        "monitoring": 94262.48,
+        "adverseEvents": 774.52,
+        "societalCare": 34205825.8,
+        "physicianVisit": 145857.69
       }
     }
   },
   "duration_lifetime__typical__base__paper2": {
     "ranibizumab_bs": {
-      "totalQALY": 8.278354,
-      "totalCost": 13490221.5,
+      "totalQALY": 6.931675,
+      "totalCost": 34611216.16,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1631328.84,
-        "monitoring": 135376.41,
-        "adverseEvents": 2498.73,
-        "societalCare": 11627539.38,
-        "physicianVisit": 93478.14
+        "drugAdmin": 1528982.98,
+        "monitoring": 125896.28,
+        "adverseEvents": 2341.96,
+        "societalCare": 32811458.46,
+        "physicianVisit": 142536.48
       }
     },
     "aflibercept": {
-      "totalQALY": 8.299278,
-      "totalCost": 13565121.3,
+      "totalQALY": 6.963161,
+      "totalCost": 34178198.81,
       "incomplete": false,
       "costBreakdown": {
-        "drugAdmin": 1919392,
-        "monitoring": 135438.6,
-        "adverseEvents": 2176.96,
-        "societalCare": 11414741.17,
-        "physicianVisit": 93372.57
+        "drugAdmin": 1809927.34,
+        "monitoring": 126197.17,
+        "adverseEvents": 2052.8,
+        "societalCare": 32100155.89,
+        "physicianVisit": 139865.61
       }
     }
   }

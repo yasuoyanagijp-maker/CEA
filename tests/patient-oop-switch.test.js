@@ -15,44 +15,44 @@ import {
 //         8mg ¥145,718 + ¥6,000 = ¥151,718/回
 
 describe("高額療養費 — 月次限度額・負担割合（厚労省の現行値）", () => {
-  it("70歳未満に外来特例はない — 一般（エ相当）は月57,600円", () => {
-    expect(getMonthlyOutpatientLimit(65, "standard")).toBe(57_600);
+  it("70歳未満に外来特例はない — 一般（エ相当）は月61,500円（2026年8月〜）", () => {
+    expect(getMonthlyOutpatientLimit(65, "standard")).toBe(61_500);
   });
 
-  it("70歳未満・住民税非課税（オ相当）は月35,400円", () => {
-    expect(getMonthlyOutpatientLimit(65, "low")).toBe(35_400);
+  it("70歳未満・住民税非課税（オ相当）は月36,900円", () => {
+    expect(getMonthlyOutpatientLimit(65, "low")).toBe(36_900);
   });
 
-  it("ウ相当（年収370〜770万円）: 医療費100万円で 80,100 + 1% = 87,430円（厚労省の例示）", () => {
-    expect(getMonthlyOutpatientLimit(65, "general", 1_000_000)).toBeCloseTo(87_430, 6);
+  it("ウ相当（年収370〜770万円）: 医療費100万円で 85,800 + (100万−28.6万)×1% = 92,940円", () => {
+    expect(getMonthlyOutpatientLimit(65, "general", 1_000_000)).toBeCloseTo(92_940, 6);
   });
 
-  it("イ・ア相当は 167,400+1% / 252,600+1%", () => {
-    expect(getMonthlyOutpatientLimit(65, "high", 558_000)).toBe(167_400);
-    expect(getMonthlyOutpatientLimit(65, "top", 842_000)).toBe(252_600);
-    expect(getMonthlyOutpatientLimit(65, "top", 942_000)).toBeCloseTo(253_600, 6);
+  it("イ・ア相当は 179,100+1% / 270,300+1%", () => {
+    expect(getMonthlyOutpatientLimit(65, "high", 597_000)).toBe(179_100);
+    expect(getMonthlyOutpatientLimit(65, "top", 901_000)).toBe(270_300);
+    expect(getMonthlyOutpatientLimit(65, "top", 1_001_000)).toBeCloseTo(271_300, 6);
   });
 
-  it("70歳以上の外来特例: 一般 18,000円・住民税非課税 8,000円", () => {
-    expect(getMonthlyOutpatientLimit(75, "standard")).toBe(18_000);
-    expect(getMonthlyOutpatientLimit(72, "standard")).toBe(18_000);
-    expect(getMonthlyOutpatientLimit(75, "low")).toBe(8_000);
+  it("70歳以上の外来特例: 一般 22,000円・住民税非課税II 11,000円", () => {
+    expect(getMonthlyOutpatientLimit(75, "standard")).toBe(22_000);
+    expect(getMonthlyOutpatientLimit(72, "standard")).toBe(22_000);
+    expect(getMonthlyOutpatientLimit(75, "low")).toBe(11_000);
   });
 
-  it("70歳以上の現役並みは外来特例廃止 — 80,100+1% 等の世帯限度額と同一", () => {
-    expect(getMonthlyOutpatientLimit(75, "general", 267_000)).toBe(80_100);
-    expect(getMonthlyOutpatientLimit(72, "general", 1_000_000)).toBeCloseTo(87_430, 6);
-    expect(getMonthlyOutpatientLimit(75, "top", 842_000)).toBe(252_600);
+  it("70歳以上の現役並みは外来特例なし — 85,800+1% 等の世帯限度額と同一", () => {
+    expect(getMonthlyOutpatientLimit(75, "general", 286_000)).toBe(85_800);
+    expect(getMonthlyOutpatientLimit(72, "general", 1_000_000)).toBeCloseTo(92_940, 6);
+    expect(getMonthlyOutpatientLimit(75, "top", 901_000)).toBe(270_300);
   });
 
   it("describeMonthlyLimit — 表示ラベルが getMonthlyOutpatientLimit と同じ値を示す", () => {
-    expect(describeMonthlyLimit(65, "standard")).toBe("57,600円");
-    expect(describeMonthlyLimit(65, "low")).toBe("35,400円");
-    expect(describeMonthlyLimit(75, "standard")).toBe("18,000円");
-    expect(describeMonthlyLimit(75, "low")).toBe("8,000円");
-    expect(describeMonthlyLimit(65, "general")).toBe("80,100円＋(医療費−267,000円)×1%");
-    expect(describeMonthlyLimit(75, "high")).toBe("167,400円＋(医療費−558,000円)×1%");
-    expect(describeMonthlyLimit(75, "top")).toBe("252,600円＋(医療費−842,000円)×1%");
+    expect(describeMonthlyLimit(65, "standard")).toBe("61,500円");
+    expect(describeMonthlyLimit(65, "low")).toBe("36,900円");
+    expect(describeMonthlyLimit(75, "standard")).toBe("22,000円");
+    expect(describeMonthlyLimit(75, "low")).toBe("11,000円");
+    expect(describeMonthlyLimit(65, "general")).toBe("85,800円＋(医療費−286,000円)×1%");
+    expect(describeMonthlyLimit(75, "high")).toBe("179,100円＋(医療費−597,000円)×1%");
+    expect(describeMonthlyLimit(75, "top")).toBe("270,300円＋(医療費−901,000円)×1%");
   });
 
   it("負担割合: 70歳以上の現役並みは3割、75歳以上一般は1割、70–74一般は2割", () => {
@@ -65,30 +65,30 @@ describe("高額療養費 — 月次限度額・負担割合（厚労省の現�
   });
 
   it("上限は天井 — 定率負担が限度額未満なら限度額ぴったりではなく定率負担額を返す", () => {
-    // 75歳・一般・外来特例 18,000円。8mgキット+手技の1割 ≈ 15,172円 < 18,000
+    // 75歳・一般I・外来特例 22,000円。8mgキット+手技の1割 ≈ 15,172円 < 22,000
     const under = computeMonthlyPatientOop({
       monthlyDirectMedical: 145_718 + 6_000,
       age: 75,
       incomeBracket: "standard",
     });
-    expect(under.limit).toBe(18_000);
+    expect(under.limit).toBe(22_000);
     expect(under.capped).toBe(false);
     expect(under.patientOop).toBeCloseTo(15_171.8, 4);
     expect(under.patientOop).toBeLessThan(under.limit);
 
     // 定率負担が上限を超えるときだけ上限にクリップ
     const over = computeMonthlyPatientOop({
-      monthlyDirectMedical: 200_000,
+      monthlyDirectMedical: 300_000,
       age: 75,
       incomeBracket: "standard",
     });
-    expect(over.patientOop).toBe(18_000);
+    expect(over.patientOop).toBe(22_000);
     expect(over.capped).toBe(true);
   });
 });
 
 describe("estimateAnnualPatientOopForInterval", () => {
-  it("75歳・一般（月上限¥18,000）: 上限未満なら 1割 × 年間回数", () => {
+  it("75歳・一般I（月上限¥22,000）: 上限未満なら 1割 × 年間回数", () => {
     const r = estimateAnnualPatientOopForInterval({
       drugId: "aflibercept_bs",
       intervalWeeks: 8,
@@ -96,7 +96,7 @@ describe("estimateAnnualPatientOopForInterval", () => {
       age: 75,
       incomeBracket: "standard",
     });
-    // 1割負担 ¥7,395.9 < 上限 ¥18,000 → 上限適用なし
+    // 1割負担 ¥7,395.9 < 上限 ¥22,000 → 上限適用なし
     expect(r.perInjectionOop).toBeCloseTo(73959 * 0.1, 6);
     expect(r.annualInjections).toBeCloseTo(52 / 8, 6);
     expect(r.annualOop).toBeCloseTo(73959 * 0.1 * (52 / 8), 4);
@@ -129,7 +129,7 @@ describe("estimateAnnualPatientOopForInterval", () => {
     });
     expect(r.perInjectionOop).toBeCloseTo(151718 * 0.3, 4);
     expect(r.capped).toBe(false);
-    expect(r.limit).toBe(57_600);
+    expect(r.limit).toBe(61_500);
   });
 
   it("65歳・住民税非課税: 8mg の3割 ¥45,515 は上限 ¥35,400 でキャップ", () => {
@@ -140,9 +140,9 @@ describe("estimateAnnualPatientOopForInterval", () => {
       age: 65,
       incomeBracket: "low",
     });
-    expect(r.perInjectionOop).toBe(35_400);
+    expect(r.perInjectionOop).toBe(36_900);
     expect(r.capped).toBe(true);
-    expect(r.annualOop).toBeCloseTo(35_400 * (52 / 12), 4);
+    expect(r.annualOop).toBeCloseTo(36_900 * (52 / 12), 4);
   });
 
   it("外来特例が効く区分（72歳・2割・一般）では高額薬同士の年間自己負担が同額になる", () => {
@@ -154,10 +154,10 @@ describe("estimateAnnualPatientOopForInterval", () => {
     };
     const mg8 = estimateAnnualPatientOopForInterval({ ...args, drugId: "aflibercept_8mg" });
     const fari = estimateAnnualPatientOopForInterval({ ...args, drugId: "faricimab" });
-    // 2割負担: 8mg ¥30,344、ファリ ¥29,557 — どちらも外来特例上限 ¥18,000 に到達
+    // 2割負担: 8mg ¥30,344、ファリ ¥29,557 — どちらも外来特例上限 ¥22,000 に到達
     expect(mg8.capped).toBe(true);
     expect(fari.capped).toBe(true);
-    expect(mg8.perInjectionOop).toBe(18_000);
+    expect(mg8.perInjectionOop).toBe(22_000);
     expect(mg8.annualOop).toBeCloseTo(fari.annualOop, 6);
   });
 

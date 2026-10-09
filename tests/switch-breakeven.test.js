@@ -55,7 +55,7 @@ describe("computeBreakEvenTable", () => {
       costPaperId: "paper2_rbz",
     });
     const row = t.rows.find((r) => r.drugId === "aflibercept_bs");
-    // 先行 2mg の ARIES/ALTAIR 到達率を借用しているが tier は t&e-derived ではない
+    // 先行 2mg の ALTAIR（日本人）到達率を借用しているが tier は t&e-derived ではない
     expect(row.evidence.trialEvidenceTier).toBe("reference-derived");
     expect(row.evidence.trialEvidenceTier).not.toBe("t&e-derived");
     expect(row.evidence.reachIsBorrowed).toBe(true);
@@ -158,7 +158,7 @@ describe("computeBreakEvenTable", () => {
     expect(row.breakEvenWeeks).toBeCloseTo(8 * ((103163 + 6000) / 73959), 2);
   });
 
-  it("aflibercept 2mg は ARIES/ALTAIR 由来の t&e-derived trialReach を持つ", () => {
+  it("aflibercept 2mg は ALTAIR（日本人）由来の t&e-derived trialReach を持つ", () => {
     const t = computeBreakEvenTable({
       currentDrugId: "aflibercept_bs",
       currentIntervalWeeks: 8,
