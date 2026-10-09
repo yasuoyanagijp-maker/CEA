@@ -109,11 +109,14 @@ export function describeMonthlyLimit(age, incomeBracket) {
 
 /**
  * 患者説明カード用。上限に達した月があるときだけ「上限を適用」。
- * 達しないときは定率負担である旨と月上限を出す。金額は変えない。
+ * 達しないときはその月の実額上限（円）を出す。数式ラベルは使わない。
  */
-export function describeInjMonthOopCapNote({ capped, age, incomeBracket }) {
+export function describeInjMonthOopCapNote({ capped, monthlyLimit }) {
   if (capped) return "上限を適用";
-  return `定率負担（月上限 ${describeMonthlyLimit(age, incomeBracket)}未満）`;
+  if (monthlyLimit == null || !Number.isFinite(monthlyLimit) || monthlyLimit <= 0) {
+    return "定率負担（月上限未満）";
+  }
+  return `定率負担（月上限 ${Math.round(monthlyLimit).toLocaleString("ja-JP")}円未満）`;
 }
 
 /**

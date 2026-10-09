@@ -577,13 +577,15 @@ export default function App() {
       (m) => m.year === 0 && m.injections > 0
     );
     const y5 = patientDetailDrug.annualTrajectory.filter((r) => r.year <= 4).at(-1);
+    const peakInj = injMonths.length
+      ? injMonths.reduce((a, b) => (b.patientOop > a.patientOop ? b : a))
+      : null;
     return {
       year1Oop: y0.patientOop,
       year1Inj: y0.injections,
-      injMonthOop: injMonths.length
-        ? Math.max(...injMonths.map((m) => m.patientOop))
-        : null,
+      injMonthOop: peakInj?.patientOop ?? null,
       injMonthCapped: injMonths.some((m) => m.capped),
+      injMonthLimit: peakInj?.limit ?? null,
       fiveYearCum: y5?.cumPatientOop ?? null,
       totalOop: patientDetailDrug.totalPatientOop,
     };
@@ -1673,8 +1675,7 @@ export default function App() {
                           }
                           sub={describeInjMonthOopCapNote({
                             capped: Boolean(explainSummary.injMonthCapped),
-                            age: parseInt(patientAge, 10),
-                            incomeBracket,
+                            monthlyLimit: explainSummary.injMonthLimit,
                           })}
                         />
                         <ExplainMetric

@@ -67,13 +67,17 @@ describe("統合モードの遷移注記（表示のみ・数値は不変）", (
 });
 
 describe("患者説明カードの高額療養費ラベル", () => {
-  it("上限未達なら定率負担と月上限を出し、達したときだけ上限を適用", () => {
+  it("上限未達なら定率負担と実額上限を出し、達したときだけ上限を適用", () => {
     expect(
-      describeInjMonthOopCapNote({ capped: false, age: 75, incomeBracket: "standard" })
+      describeInjMonthOopCapNote({ capped: false, monthlyLimit: 22_000 })
     ).toBe("定率負担（月上限 22,000円未満）");
     expect(
-      describeInjMonthOopCapNote({ capped: true, age: 75, incomeBracket: "standard" })
+      describeInjMonthOopCapNote({ capped: true, monthlyLimit: 22_000 })
     ).toBe("上限を適用");
+    expect(
+      describeInjMonthOopCapNote({ capped: false, monthlyLimit: 85_800 })
+    ).toBe("定率負担（月上限 85,800円未満）");
+    expect(describeInjMonthOopCapNote({ capped: false, monthlyLimit: 85_800 })).not.toContain("＋");
   });
 
   it("既定患者（75歳・一般I・seed 42）の注射月は上限未達で金額は変わらない", () => {
@@ -93,6 +97,7 @@ describe("患者説明カードの高額療養費ラベル", () => {
     const injMonths = (bs.monthlyTrajectory ?? []).filter((m) => m.year === 0 && m.injections > 0);
     expect(injMonths.length).toBeGreaterThan(0);
     expect(injMonths.every((m) => m.capped === false)).toBe(true);
+    expect(injMonths.every((m) => m.limit === 22_000)).toBe(true);
     expect(Math.max(...injMonths.map((m) => m.patientOop))).toBe(8171);
     expect(bs.annualTrajectory[0].patientOop).toBe(54151);
   });

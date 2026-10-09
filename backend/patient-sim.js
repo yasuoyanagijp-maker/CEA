@@ -397,7 +397,7 @@ function applyDrugCostsToPath({
     monthMon += monCost;
     monthDirect += monCost;
 
-    const { patientOop, capped } = computeMonthlyPatientOop({
+    const { patientOop, capped, limit } = computeMonthlyPatientOop({
       monthlyDirectMedical: monthDirect,
       age,
       incomeBracket,
@@ -426,6 +426,7 @@ function applyDrugCostsToPath({
       directMedical: Math.round(monthDirect),
       patientOop: Math.round(patientOop),
       capped: Boolean(capped),
+      limit: Math.round(limit ?? 0),
       drugAdmin: Math.round(monthDrug),
       monitoring: Math.round(monthMon),
       adverseEvents: Math.round(monthAe),
