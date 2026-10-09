@@ -48,6 +48,22 @@ export const INJECTIONS_2026_META_YEAR1 = {
   brolucizumab: 6.3,
 };
 
+/** 行注記用。1年目回数の短い出典（数値は変えない） */
+export const META_2026_YEAR1_NOTE_SOURCE = {
+  ranibizumab: "Wojciechowski 2025、Q4とQ8の中点",
+  ranibizumab_bs: "Wojciechowski 2025、Q4とQ8の中点",
+  aflibercept: "Wojciechowski 2025、報告上限",
+  aflibercept_bs: "Wojciechowski 2025、報告上限",
+  aflibercept_8mg: "Wojciechowski 2025、Q12とQ16の中点",
+  faricimab: "Wojciechowski 2025、範囲中点",
+  brolucizumab: "Matsumoto 2022 / Inoda 2024 の中点",
+};
+
+/** 行注記用。2年目以降の短い出典 */
+export const META_2026_YEAR2_NOTE_SOURCE = {
+  aflibercept_8mg: "Q16維持相当、専門家による推計",
+};
+
 /** @type {Record<string, { referenceIntervalWeeks: number, regimenLabel: string }>} */
 export const INJECTIONS_2026_META_REGIMEN = {
   aflibercept: { referenceIntervalWeeks: 8, regimenLabel: "Q8 T&E" },

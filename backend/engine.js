@@ -11,6 +11,7 @@ import {
   patientDrugIds,
   getDrugTransitionKey,
   getDrugClinicalNote,
+  getDrugInjectionNote,
   sortByDrugDisplayOrder,
 } from "./drugs.js";
 import { SUBTYPES } from "./clinical.js";
@@ -323,6 +324,7 @@ export {
   patientDrugIds,
   getDrugTransitionKey,
   getDrugClinicalNote,
+  getDrugInjectionNote,
   sortByDrugDisplayOrder,
   PATIENT_DISPLAY_ORDER,
   SUBTYPES,

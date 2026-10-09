@@ -241,7 +241,7 @@ function resolveRunInputs(input) {
       : null;
 
   const warnings = [];
-  const clinicalNote = getDrugClinicalNote(drugId, { transitionMode });
+  const clinicalNote = getDrugClinicalNote(drugId, { transitionMode, clinicalCase });
   if (clinicalNote) warnings.push(clinicalNote);
   if (
     dataset.missingInjectionsWarning &&

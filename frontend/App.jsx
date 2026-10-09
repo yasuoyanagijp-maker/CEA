@@ -1867,7 +1867,10 @@ export default function App() {
                     </thead>
                     <tbody>
                       {patientSummaryRows.map((row, i) => {
-                        const clinicalNote = getDrugClinicalNote(row.drugId, { transitionMode });
+                        const clinicalNote = getDrugClinicalNote(row.drugId, {
+                          transitionMode,
+                          clinicalCase,
+                        });
                         return (
                         <tr key={row.drugId} style={{ background: i % 2 ? "#fff" : "#F8FAFC" }}>
                           <td style={compactTdStyle}>

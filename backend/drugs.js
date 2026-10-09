@@ -1,5 +1,15 @@
 import { POOLED_TRANSITION_NOTE } from "./config/citations.js";
 import { isPooledTransitionMode } from "./config/transition-pool.js";
+import {
+  getInjections2026MetaForDrug,
+  META_2026_YEAR1_NOTE_SOURCE,
+  META_2026_YEAR2_NOTE_SOURCE,
+} from "./config/injections-2026-meta.js";
+import {
+  CLINICAL_CASE_LIT_2025,
+  getInjectionsLit2025ForDrug,
+  LIT_2025_YEAR1_SOURCE,
+} from "./config/injections-lit-2025.js";
 
 /** 7 薬剤 — clinicalKey=drugId、遷移(S5)は transitionKey */
 export const DRUG_CATALOG = {
@@ -57,7 +67,7 @@ export const DRUG_CATALOG = {
     transitionKey: "aflibercept",
     transitionNote: "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）",
     injectionNote:
-      "注射: ベース/シナリオは induction=3・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）",
+      "注射：induction=3・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）",
     injectionReference: true,
   },
   faricimab: {
@@ -70,7 +80,7 @@ export const DRUG_CATALOG = {
     transitionKey: "aflibercept",
     transitionNote: "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）",
     injectionNote:
-      "注射: ベース/シナリオは induction=4・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）",
+      "注射：induction=4・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）",
     injectionReference: true,
   },
   brolucizumab: {
@@ -83,7 +93,7 @@ export const DRUG_CATALOG = {
     transitionKey: "aflibercept",
     transitionNote: "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）",
     injectionNote:
-      "注射: ベース/シナリオは induction=2・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）",
+      "注射：induction=2・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）",
     injectionReference: true,
   },
 };
@@ -93,21 +103,72 @@ function joinClinicalNote(transitionNote, injectionNote) {
   return transitionNote || injectionNote || "";
 }
 
+function formatInjCount(n) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return String(Math.round(n * 1e10) / 1e10);
+}
+
+function injectionBiosimilarClause(drugId) {
+  if (drugId === "ranibizumab_bs") return "（先発と同一回数、薬価のみ BS）";
+  if (drugId === "aflibercept_bs") return "（2 mg と同一回数、薬価のみ BS）";
+  return "";
+}
+
+function year2NoteSource(drugId) {
+  return META_2026_YEAR2_NOTE_SOURCE[drugId] ?? "専門家による推計";
+}
+
+function formatYearInclusiveInjectionNote(drugId, phases, year1Source) {
+  if (!phases) return "";
+  const y1 = formatInjCount(phases.year1);
+  const y2 = formatInjCount(phases.year2);
+  const source = year1Source || "文献値";
+  return `注射：1年目 ${y1}（${source}）、2年目以降 ${y2}（${year2NoteSource(drugId)}）${injectionBiosimilarClause(drugId)}`;
+}
+
+/**
+ * いま選ばれている注射回数セットに対応する1文。数値は変えない。
+ * @param {string} drugId
+ * @param {'base'|'scenario'|'2026_meta'|'lit_2025_2026'} [clinicalCase]
+ */
+export function getDrugInjectionNote(drugId, clinicalCase = "base") {
+  const drug = DRUG_CATALOG[drugId];
+  if (!drug) return "";
+  if (clinicalCase === "2026_meta") {
+    return formatYearInclusiveInjectionNote(
+      drugId,
+      getInjections2026MetaForDrug(drugId),
+      META_2026_YEAR1_NOTE_SOURCE[drugId]
+    );
+  }
+  if (clinicalCase === CLINICAL_CASE_LIT_2025) {
+    return formatYearInclusiveInjectionNote(
+      drugId,
+      getInjectionsLit2025ForDrug(drugId),
+      LIT_2025_YEAR1_SOURCE[drugId]
+    );
+  }
+  if (clinicalCase === "scenario") {
+    return drug.injectionNote.replaceAll("S6", "S8");
+  }
+  return drug.injectionNote;
+}
+
 for (const drug of Object.values(DRUG_CATALOG)) {
   drug.clinicalNote = joinClinicalNote(drug.transitionNote, drug.injectionNote);
 }
 
 /**
- * 利用者向け臨床注記。統合モードでは薬剤別 S5 列ではなく「全薬剤共通」と出す。
+ * 利用者向け臨床注記。遷移は選択モード、注射は選択セットの1文だけ。
  * 数値・計算経路は変えない。
  */
-export function getDrugClinicalNote(drugId, { transitionMode } = {}) {
+export function getDrugClinicalNote(drugId, { transitionMode, clinicalCase } = {}) {
   const drug = DRUG_CATALOG[drugId];
   if (!drug) return "";
   const transitionNote = isPooledTransitionMode(transitionMode)
     ? POOLED_TRANSITION_NOTE
     : drug.transitionNote;
-  return joinClinicalNote(transitionNote, drug.injectionNote);
+  return joinClinicalNote(transitionNote, getDrugInjectionNote(drugId, clinicalCase));
 }
 
 export const DRUG_IDS = Object.keys(DRUG_CATALOG);
