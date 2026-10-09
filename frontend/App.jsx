@@ -997,9 +997,9 @@ export default function App() {
                   </tbody>
                 </table>
                 <p style={{ margin: "6px 0 0", color: "#64748B" }}>
-                  1年目は導入期を含む総数（最初の12か月の合計＝year1。主に Wojciechowski 2025
+                  1年目は導入期を含む総数（最初の12か月の合計＝year1。主に Wojciechowski, Ophthalmol Ther, 2025
                   の範囲中点。AFL 2 mg は報告上限、ラニビズマブ 9.88 は Q4 12.14 / Q8 7.62 の中点、
-                  ブロルシズマブは日本 TAE の中点）。2年目以降は year1 − 3 の仮定{EXPERT_ESTIMATE_LABEL}。
+                  ブロルシズマブは Matsumoto, Sci Rep, 2022 / Inoda, Sci Rep, 2024 の中点）。2年目以降は year1 − 3 の仮定{EXPERT_ESTIMATE_LABEL}。
                   AFL 8 mg は Q16 維持相当（52/16=3.25回/年）。
                 </p>
               </div>
@@ -1192,7 +1192,7 @@ export default function App() {
               />
             </label>
             <p style={{ ...hintStyle, marginTop: -4 }}>
-              病型切替で Markov ベースケース（Yoneda [1]）の BCVA に自動リセット。
+              病型切替で Markov ベースケース（Yoneda, Ophthalmol Retina, 2023）の BCVA に自動リセット。
               既定値のとき初期分布は Table S2（Markov と同一）、変更時は BCVA から導出。
             </p>
             <label style={labelStyle}>
@@ -1208,7 +1208,7 @@ export default function App() {
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
               個別患者タブは全7薬剤を表示。各薬剤は clinicalKey=drugId で独立し、
               注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ
-              （S6 未掲載の AFL 8 mg / ファリ / ブロルは{EXPERT_ESTIMATE_LABEL}。2026 meta / 感度分析の2年目以降も同注釈）、
+              （S6 未掲載の AFL 8 mg / ファリ / ブロルは{EXPERT_ESTIMATE_LABEL}。ネットワークメタ解析・感度分析の2年目以降も同注釈）、
               視力遷移は transitionKey（rbz_bs / aflibercept）を使用。
               <br />
               <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、フォロー期間（最長生存タイムライン）の
@@ -1286,7 +1286,7 @@ export default function App() {
                 ? [["missing", `要確認 (${missingParams.length + (hasIncompleteResults ? 1 : 0)})`]]
                 : []),
               ...(costPaperId === "paper2_rbz"
-                ? [["validate", "Table S12 照合"]]
+                ? [["validate", "Table S12 照合（Yanagi, Ophthalmol Ther, 2024）"]]
                 : []),
             ].map(([tab, label]) => (
               <TabButton
@@ -1386,7 +1386,7 @@ export default function App() {
               <p style={{ fontSize: 11, color: "#64748B", marginTop: 8, lineHeight: 1.5 }}>
                 注射回数のうち、論文照合で原典の数値が見つからない値には{EXPERT_ESTIMATE_LABEL}。
                 {clinicalCase === "2026_meta"
-                  ? " 2026 meta の2年目以降（全薬剤・全病型）が該当。ラニビズマブ 9.88 は Table 2 中点のため1年目は非推計。"
+                  ? " ネットワークメタ解析セットの2年目以降（全薬剤・全病型）が該当。ラニビズマブ 9.88 は Wojciechowski, Ophthalmol Ther, 2025 Table 2 中点のため1年目は非推計。"
                   : clinicalCase === CLINICAL_CASE_LIT_2025
                     ? " 感度分析は新文献のないセル（ラニビズマブ1年目と全薬剤2年目以降）が該当。"
                     : " ベース/シナリオでは AFL 8 mg・ファリシマブ・ブロルシズマブの全病型・全フェーズ（S6/S8 未掲載の ×0.8）が該当。"}
@@ -1565,7 +1565,7 @@ export default function App() {
                   </table>
                   </ScrollTable>
                   <p style={{ fontSize: 11, color: "#B45309", marginTop: 8 }}>
-                    絶対値は Table S12 と完全一致しない（効用規則・中止・僚眼発症などが論文と異なる）。増分の方向性を確認してください。
+                    絶対値は Table S12（Yanagi, Ophthalmol Ther, 2024）と完全一致しない（効用規則・中止・僚眼発症などが論文と異なる）。増分の方向性を確認してください。
                   </p>
                 </div>
               )}
@@ -2703,8 +2703,8 @@ export default function App() {
                     各薬剤の Markov コホートにおける治療眼の期待 BCVA（5状態中央値の加重平均）。
                     生存者の状態分布（{STATE_LABELS.join(" / ")}）から算出。初期分布は Table S2、遷移は
                     {transitionMode === "rbz_afl_pooled"
-                      ? " 病型別 RBZ+AFL 症例数加重統合（S5 の2列を期間ごとに統合し、その病型の値を全薬剤に適用）。"
-                      : " Table S5（typical/PCV: Yoneda Y1 → Jin Y≥2；RAP: Yoneda Y1 → Hoshino Y2 → Kertes Y≥3；導入期は Yanagi 前研究仮定）。"}
+                      ? " 病型別 RBZ+AFL 症例数加重統合（Table S5 の2列を期間ごとに統合し、その病型の値を全薬剤に適用。Yanagi, Ophthalmol Ther, 2024）。"
+                      : " Table S5（Yanagi, Ophthalmol Ther, 2024。typical/PCV: Yoneda, Ophthalmol Retina, 2023 の Y1 → Jin, Sci Rep, 2021 の Y≥2；RAP: Yoneda, Ophthalmol Retina, 2023 の Y1 → Hoshino, 日眼会誌, 2020 の Y2 → Kertes, Ophthalmology, 2021 の Y≥3；導入期は Yanagi, Ophthalmol Ther, 2023 前研究仮定）。"}
                   </p>
                   <ResponsiveContainer width="100%" height={360}>
                     <LineChart data={visionTrajectoryData}>
@@ -2740,7 +2740,7 @@ export default function App() {
           )}
 
           {activeTab === "validate" && costPaperId === "paper2_rbz" && (
-            <Panel title={`Table S12 照合（${subtype.label}・シナリオ）`}>
+            <Panel title={`Table S12 照合（${subtype.label}・シナリオ・Yanagi, Ophthalmol Ther, 2024）`}>
               <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
                 臨床=シナリオ（S7–S8）。参入年齢={PAPER_S12_ENTRY_AGE[subtypeId] ?? subtype.meanAge}歳（S12 論文設定）、
                 20年・令和5年生命表（コホート計算に半周期補正は用いていない）。

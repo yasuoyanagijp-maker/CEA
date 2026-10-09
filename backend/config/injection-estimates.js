@@ -25,7 +25,7 @@ const PHASES = ["induction", "year1", "year2", "year3plus"];
 const SUBTYPE_IDS = ["typical", "pcv", "rap"];
 
 export const META_2026_ESTIMATE_REASON = {
-  induction: "Wojciechowski は週52までの総数のみ。導入3回は year1 の内訳仮定",
+  induction: "Wojciechowski, Ophthalmol Ther, 2025 は週52までの総数のみ。導入3回は year1 の内訳仮定",
   year2: "NMA は1年ホライズン。year2+ = year1−3 はモデル仮定（AFL 8 mg は Q16=3.25）",
 };
 
@@ -89,7 +89,7 @@ export function listExpertEstimateInjections() {
         drugId,
         drugName: DRUG_CATALOG[drugId]?.name ?? drugId,
         subtypeId: null,
-        subtypeNote: "病型共通（2026 meta は病型で回数を分けない）",
+        subtypeNote: "病型共通（ネットワークメタ解析セットは病型で回数を分けない）",
         phase,
         value: phases[phase],
         reason:
@@ -115,10 +115,10 @@ export function listExpertEstimateInjections() {
         value: phases?.[phase],
         reason:
           phase === "year1"
-            ? "感度セットに新文献なし。2026 meta 既存値を流用"
+            ? "感度セットに新文献なし。Wojciechowski, Ophthalmol Ther, 2025 セットの既存値を流用"
             : phase === "induction"
               ? META_2026_ESTIMATE_REASON.induction
-              : "確認文献は1年ホライズン。year2+ は 2026 meta 既存値",
+              : "確認文献は1年ホライズン。year2+ は Wojciechowski, Ophthalmol Ther, 2025 セットの既存値",
       });
     }
   }

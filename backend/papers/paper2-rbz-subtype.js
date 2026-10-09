@@ -6,11 +6,12 @@ import {
   MONITORING_STANDARD,
   DEFAULT_TRANSPORT,
 } from "../config/cost-common.js";
+import { CITE, COST_PAPER_LABELS } from "../config/citations.js";
 
 export const PAPER2 = {
   id: "paper2_rbz",
-  label: "O&T 2024;13:2629-2644.",
-  description: "Yanagi et al. RBZ BS / nAMD subtype — O&T 2024;13:2629-2644 supplementary costs",
+  label: COST_PAPER_LABELS.paper2_rbz,
+  description: `ラニビズマブ BS / nAMD 病型別 CEA の補足コスト（${CITE.yanagi2024}）`,
 
   drugPrices: DRUG_PRICES_JPY,
 

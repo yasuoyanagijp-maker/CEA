@@ -86,6 +86,6 @@ export const TRANS_BASE_TABLE_S5 = Object.fromEntries(
   Object.entries(S5).map(([subtypeId, drugs]) => [subtypeId, compileSubtype(drugs)])
 );
 
-export const TABLE_S5_SOURCE = "Supplementary Table S5 (base case)";
+export const TABLE_S5_SOURCE = "Table S5（Yanagi, Ophthalmol Ther, 2024）";
 
 export { S5 as TABLE_S5_RAW_PERCENT };

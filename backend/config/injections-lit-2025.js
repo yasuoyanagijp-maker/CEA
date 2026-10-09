@@ -16,7 +16,7 @@ import {
 export const CLINICAL_CASE_LIT_2025 = "lit_2025_2026";
 
 export const INJECTIONS_LIT_2025_SOURCE =
-  "感度分析: 確認文献の1年目回数。無いセルは 2026 meta 既存値（専門家による推計）。2年目以降は文献なしのため既存 year2 を据え置き";
+  "感度分析: 確認文献の1年目回数。無いセルは Wojciechowski, Ophthalmol Ther, 2025 セットの既存値（専門家による推計）。2年目以降は文献なしのため既存 year2 を据え置き";
 
 /** 文献で year1 を置き換えた薬剤。それ以外は 2026 meta を流用 */
 export const LIT_2025_YEAR1_OVERRIDE = {
@@ -29,16 +29,16 @@ export const LIT_2025_YEAR1_OVERRIDE = {
 
 export const LIT_2025_YEAR1_SOURCE = {
   aflibercept_8mg:
-    "PULSAR 日本サブ解析（Iida 2025, Jpn J Ophthalmol）週48完了例 8q12 6.1 / 8q16 5.0 の中点",
-  aflibercept: "PULSAR 日本サブ解析（Iida 2025）週48完了例 2q8 7.0",
-  aflibercept_bs: "PULSAR 日本サブ解析（Iida 2025）週48完了例 2q8 7.0（2 mg と同一回数）",
+    "PULSAR 日本サブ解析（Iida, Jpn J Ophthalmol, 2025）週48完了例 8q12 6.1 / 8q16 5.0 の中点",
+  aflibercept: "PULSAR 日本サブ解析（Iida, Jpn J Ophthalmol, 2025）週48完了例 2q8 7.0",
+  aflibercept_bs: "PULSAR 日本サブ解析（Iida, Jpn J Ophthalmol, 2025）週48完了例 2q8 7.0（2 mg と同一回数）",
   faricimab:
-    "Okawa 2025 PMID 40698349 日本未治療 T&E 6.5±1.0（FARETINA-AMD 未治療 6.4、El Alili 2026 スイッチ 7.05 は未採用）",
-  brolucizumab: "Matsumoto 2022 6.4 / Inoda 2024 naïve 6.2 の中点（2026 meta と同じ）",
+    "Okawa, J Vitreoretin Dis, 2025 日本未治療 T&E 6.5±1.0（FARETINA-AMD 未治療 6.4、El Alili, Ophthalmol Ther, 2026 スイッチ 7.05 は未採用）",
+  brolucizumab: "Matsumoto, Sci Rep, 2022 6.4 / Inoda, Sci Rep, 2024 naïve 6.2 の中点（Wojciechowski セットと同じ）",
   ranibizumab:
-    "当該セットに新文献なし。Wojciechowski Table 2 Q4 12.14 / Q8 7.62 の中点 9.88 を流用",
+    "当該セットに新文献なし。Wojciechowski, Ophthalmol Ther, 2025 Table 2 Q4 12.14 / Q8 7.62 の中点 9.88 を流用",
   ranibizumab_bs:
-    "当該セットに新文献なし。Wojciechowski Table 2 中点 9.88 を流用（先発と同一）",
+    "当該セットに新文献なし。Wojciechowski, Ophthalmol Ther, 2025 Table 2 中点 9.88 を流用（先発と同一）",
 };
 
 export const LIT_2025_PHASE_IS_ESTIMATE = {

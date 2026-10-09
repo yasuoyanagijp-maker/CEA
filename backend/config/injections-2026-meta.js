@@ -18,7 +18,7 @@
  */
 
 export const INJECTIONS_2026_META_SOURCE =
-  "2026 meta: 1年目は主に Wojciechowski 2025 の範囲中点（AFL 2mg は上限）。ブロルシズマブは日本 TAE。2年目以降は原典に当該数値なし（専門家による推計）";
+  "1年目は Wojciechowski, Ophthalmol Ther, 2025 の範囲中点（AFL 2 mg は報告上限）。ブロルシズマブは Matsumoto, Sci Rep, 2022 / Inoda, Sci Rep, 2024。2年目以降は原典に当該数値なし（専門家による推計）";
 
 /**
  * 照合で原典の数値が見つからないフェーズ。

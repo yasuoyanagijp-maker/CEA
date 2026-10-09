@@ -48,6 +48,7 @@ import {
   getInjectionEstimateFlags,
   isExpertEstimateCalendarYear,
 } from "./config/injection-estimates.js";
+import { CITE, CLINICAL_CASE_HINTS, CLINICAL_CASE_LABELS } from "./config/citations.js";
 
 /** ベースライン — Yoneda [1] + Table S2 初期分布；遷移・注射は Table S5–S8 */
 export const SUBTYPES = {
@@ -141,26 +142,26 @@ function makeTableDataset({ id, label, hint, transitions, injections }) {
 
 const BASE_DATASET = makeTableDataset({
   id: "base",
-  label: "ベースケース（Table S5 遷移・S6 注射）",
-  hint: "遷移: Table S5 / 注射: Table S6",
+  label: CLINICAL_CASE_LABELS.base,
+  hint: CLINICAL_CASE_HINTS.base,
   transitions: TRANS_BASE,
   injections: INJ_BASE,
 });
 
 const SCENARIO_DATASET = makeTableDataset({
   id: "scenario",
-  label: "シナリオ（Table S7–S8）",
-  hint: "遷移: Table S7–S8 / 注射: Table S8",
+  label: CLINICAL_CASE_LABELS.scenario,
+  hint: CLINICAL_CASE_HINTS.scenario,
   transitions: TRANS_SCENARIO,
   injections: INJ_SCENARIO,
 });
 
-/** 2026 meta — 遷移は Table S5、注射回数のみ薬剤別メタ解析値 */
+/** 2026_meta — 遷移は Table S5、注射回数のみ薬剤別メタ解析値 */
 const META_2026_DATASET = {
   ...makeTableDataset({
     id: "2026_meta",
-    label: "2026 meta（注射回数のみ更新）",
-    hint: "遷移: Table S5 / 注射: 2026 meta（1年目＝導入期を含む総数。主に Wojciechowski 2025 の範囲中点。2年目以降は専門家による推計）",
+    label: CLINICAL_CASE_LABELS["2026_meta"],
+    hint: CLINICAL_CASE_HINTS["2026_meta"],
     transitions: TRANS_BASE,
     injections: {},
   }),
@@ -168,14 +169,14 @@ const META_2026_DATASET = {
     getInjections2026MetaForDrug(drugId)?.[phase] ?? 0,
   hasInjections: (drugId) => getInjections2026MetaForDrug(drugId) != null,
   missingInjectionsWarning: (drugName) =>
-    `${drugName}: 2026 meta 注射回数が未設定`,
+    `${drugName}: ${CLINICAL_CASE_LABELS["2026_meta"]} の注射回数が未設定`,
 };
 
 const LIT_2025_DATASET = {
   ...makeTableDataset({
     id: CLINICAL_CASE_LIT_2025,
-    label: "感度分析（2025–2026 確認文献の注射回数）",
-    hint: "遷移: Table S5 / 注射: PULSAR日本・Okawa・Matsumoto/Inoda 等の確認値。無いセルは 2026 meta 既存値（専門家による推計）",
+    label: CLINICAL_CASE_LABELS.lit_2025_2026,
+    hint: CLINICAL_CASE_HINTS.lit_2025_2026,
     transitions: TRANS_BASE,
     injections: {},
   }),
@@ -327,15 +328,15 @@ export function getInjectionPhaseReference(
       phases: schedule,
       estimateFlags,
       note: isLit
-        ? `year1 は導入期を含む12か月合計。確認文献がある薬剤だけ差し替え。無いセルと year2以降は 2026 meta 既存値${EXPERT_ESTIMATE_LABEL}`
-        : `year1 は導入期を含む12か月合計（最初の12か月＝year1。導入3回を上乗せしない）。year2以降は原則 year1−3（AFL 8 mgはQ16維持相当）${EXPERT_ESTIMATE_LABEL}。ラニビズマブ year1 9.88 は Table 2 の Q4/Q8 中点`,
+        ? `year1 は導入期を含む12か月合計。確認文献がある薬剤だけ差し替え。無いセルと year2以降は ${CITE.wojciechowski2025} セットの既存値${EXPERT_ESTIMATE_LABEL}`
+        : `year1 は導入期を含む12か月合計（最初の12か月＝year1。導入3回を上乗せしない）。year2以降は原則 year1−3（AFL 8 mgはQ16維持相当）${EXPERT_ESTIMATE_LABEL}。ラニビズマブ year1 9.88 は ${CITE.wojciechowski2025} Table 2 の Q4/Q8 中点`,
     };
   }
 
   const phases = injections?.[subtypeId]?.[drugId] ?? null;
   const isReference = isAfl2mgDerivedInjection(drugId);
   return {
-    source: clinicalCase === "scenario" ? "Supplementary Table S8 (scenario)" : TABLE_S6_SOURCE,
+    source: clinicalCase === "scenario" ? "Table S8（Yanagi, Ophthalmol Ther, 2024）" : TABLE_S6_SOURCE,
     clinicalKey,
     transitionKey,
     phases,

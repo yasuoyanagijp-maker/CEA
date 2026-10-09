@@ -22,6 +22,14 @@ import {
   usesYear1InclusiveSchedule,
   injectionsForCycle,
 } from "../backend/clinical.js";
+import {
+  CITE,
+  CLINICAL_CASE_LABELS,
+  COST_PAPER_LABELS,
+  TRANSITION_MODE_LABELS,
+} from "../backend/config/citations.js";
+import { TRANSITION_MODE_OPTIONS } from "../backend/config/transition-pool.js";
+import { COST_PAPER_LIST } from "../backend/papers/index.js";
 
 describe("専門家による推計ラベル（値は不変）", () => {
   it("ラベル文字列は指定どおり", () => {
@@ -133,6 +141,26 @@ describe("感度分析 lit_2025_2026 注射回数", () => {
     expect(usesYear1InclusiveSchedule("base")).toBe(false);
   });
 
+  it("プルダウン表示名は中身と著者・誌・年で、2026 meta という語を使わない", () => {
+    const byId = Object.fromEntries(CLINICAL_CASE_OPTIONS.map((o) => [o.id, o.label]));
+    expect(byId.base).toBe(CLINICAL_CASE_LABELS.base);
+    expect(byId.scenario).toBe(CLINICAL_CASE_LABELS.scenario);
+    expect(byId["2026_meta"]).toBe(CLINICAL_CASE_LABELS["2026_meta"]);
+    expect(byId[CLINICAL_CASE_LIT_2025]).toBe(CLINICAL_CASE_LABELS.lit_2025_2026);
+    expect(byId["2026_meta"]).toContain(CITE.wojciechowski2025);
+    expect(byId.base).toContain(CITE.yanagi2024);
+    for (const o of CLINICAL_CASE_OPTIONS) {
+      expect(o.label).not.toMatch(/2026 meta|2026メタ/i);
+    }
+    const trans = Object.fromEntries(TRANSITION_MODE_OPTIONS.map((o) => [o.id, o.label]));
+    expect(trans.drug_specific).toBe(TRANSITION_MODE_LABELS.drug_specific);
+    expect(trans.rbz_afl_pooled).toBe(TRANSITION_MODE_LABELS.rbz_afl_pooled);
+    const costs = Object.fromEntries(COST_PAPER_LIST.map((p) => [p.id, p.label]));
+    expect(costs.default_integrated).toBe(COST_PAPER_LABELS.default_integrated);
+    expect(costs.paper1_faricimab).toBe(COST_PAPER_LABELS.paper1_faricimab);
+    expect(costs.paper2_rbz).toBe(COST_PAPER_LABELS.paper2_rbz);
+  });
+
   it("確認文献の year1 だけ差し替え、無いセルと year2 は 2026 meta 既存値", () => {
     expect(LIT_2025_YEAR1_OVERRIDE.aflibercept_8mg).toBe(5.55);
     expect(LIT_2025_YEAR1_OVERRIDE.aflibercept).toBe(7.0);
@@ -161,10 +189,10 @@ describe("感度分析 lit_2025_2026 注射回数", () => {
   });
 
   it("出典注記があり、新文献のない RBZ year1 と全薬剤 year2 は推計", () => {
-    expect(LIT_2025_YEAR1_SOURCE.aflibercept_8mg).toMatch(/Iida 2025/);
+    expect(LIT_2025_YEAR1_SOURCE.aflibercept_8mg).toMatch(/Iida, Jpn J Ophthalmol, 2025/);
     expect(LIT_2025_YEAR1_SOURCE.aflibercept).toMatch(/2q8 7\.0/);
-    expect(LIT_2025_YEAR1_SOURCE.faricimab).toMatch(/Okawa 2025/);
-    expect(LIT_2025_YEAR1_SOURCE.brolucizumab).toMatch(/Matsumoto/);
+    expect(LIT_2025_YEAR1_SOURCE.faricimab).toMatch(/Okawa, J Vitreoretin Dis, 2025/);
+    expect(LIT_2025_YEAR1_SOURCE.brolucizumab).toMatch(/Matsumoto, Sci Rep, 2022/);
     expect(LIT_2025_YEAR1_SOURCE.ranibizumab).toMatch(/新文献なし/);
 
     expect(

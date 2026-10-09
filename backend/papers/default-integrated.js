@@ -11,12 +11,13 @@ import {
   MONITORING_STANDARD,
   DEFAULT_TRANSPORT,
 } from "../config/cost-common.js";
+import { CITE, COST_PAPER_LABELS } from "../config/citations.js";
 
 export const PAPER_DEFAULT_INTEGRATED = {
   id: "default_integrated",
-  label: "Default（2論文統合コスト）",
+  label: COST_PAPER_LABELS.default_integrated,
   description:
-    "薬剤費は現行リポジトリ値。注射手技は O&T 2024 の G016 6,000円/回を採用し、診察・検査・画像は来院ごとの分解構造で別積算。AE は重複項目を平均し、RAO は O&T 点数表ベース 8,820円を採用。",
+    `薬剤費は現行リポジトリ値。注射手技は ${CITE.yanagi2024} の G016 6,000円/回を採用し、診察・検査・画像は来院ごとの分解構造で別積算。AE は重複項目を平均し、RAO は ${CITE.yanagi2024} 点数表ベース 8,820円を採用。`,
 
   drugPrices: DRUG_PRICES_JPY,
 

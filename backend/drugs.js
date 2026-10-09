@@ -49,7 +49,7 @@ export const DRUG_CATALOG = {
     clinicalKey: "aflibercept_8mg",
     transitionKey: "aflibercept",
     clinicalNote:
-      "遷移 S5: aflibercept 列。注射: ベース/シナリオは induction=3・year1以降 AFL 2 mg × 0.8（病型別 S6、専門家による推計）。2026 meta では薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
+      "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）。注射: ベース/シナリオは induction=3・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
     injectionReference: true,
   },
   faricimab: {
@@ -61,7 +61,7 @@ export const DRUG_CATALOG = {
     clinicalKey: "faricimab",
     transitionKey: "aflibercept",
     clinicalNote:
-      "遷移 S5: aflibercept 列（暫定）。注射: ベース/シナリオは induction=4・year1以降 AFL 2 mg × 0.8（病型別 S6、専門家による推計）。2026 meta では薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
+      "遷移 Table S5: aflibercept 列（暫定、Yanagi, Ophthalmol Ther, 2024）。注射: ベース/シナリオは induction=4・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
     injectionReference: true,
   },
   brolucizumab: {
@@ -73,7 +73,7 @@ export const DRUG_CATALOG = {
     clinicalKey: "brolucizumab",
     transitionKey: "aflibercept",
     clinicalNote:
-      "遷移 S5: aflibercept 列（暫定）。注射: ベース/シナリオは induction=2・year1以降 AFL 2 mg × 0.8（病型別 S6、専門家による推計）。2026 meta では薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
+      "遷移 Table S5: aflibercept 列（暫定、Yanagi, Ophthalmol Ther, 2024）。注射: ベース/シナリオは induction=2・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
     injectionReference: true,
   },
 };

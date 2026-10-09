@@ -11,6 +11,7 @@
 
 import { tp } from "../utils.js";
 import { TABLE_S5_RAW_PERCENT } from "./table-s5-transitions.js";
+import { CITE, TRANSITION_MODE_HINTS, TRANSITION_MODE_LABELS } from "./citations.js";
 
 export const DEFAULT_TRANSITION_MODE = "drug_specific";
 export const TRANSITION_MODE_POOLED = "rbz_afl_pooled";
@@ -18,13 +19,13 @@ export const TRANSITION_MODE_POOLED = "rbz_afl_pooled";
 export const TRANSITION_MODE_OPTIONS = [
   {
     id: DEFAULT_TRANSITION_MODE,
-    label: "薬剤別（S5: ラニビズマブ列 / アフリベルセプト列）",
-    hint: "ラニビズマブ系は S5 rbz_bs 列、アフリベルセプト系・ファリ・ブロルは S5 aflibercept 列。",
+    label: TRANSITION_MODE_LABELS.drug_specific,
+    hint: TRANSITION_MODE_HINTS.drug_specific,
   },
   {
     id: TRANSITION_MODE_POOLED,
-    label: "共通（病型別・RBZ+AFL 症例数加重統合）",
-    hint: "各病型・各期間で S5 の RBZ 列と AFL 列を元研究の症例数で加重平均し、その病型の統合値を全薬剤に適用（病型横断はしない）。",
+    label: TRANSITION_MODE_LABELS.rbz_afl_pooled,
+    hint: TRANSITION_MODE_HINTS.rbz_afl_pooled,
   },
 ];
 
@@ -173,7 +174,7 @@ export const TRANS_POOLED_TABLE = BUILT.compiled;
 export const TRANSITION_POOL_NOTES = BUILT.notes;
 
 export const TRANSITION_POOL_SOURCE =
-  "病型別・期間別に Table S5 の RBZ 列と AFL 列を元研究の症例数で加重平均。病型横断はしない。Yoneda Y1 は 7:3、Jin Y≥2 は 131:84 を病型合計に按分。RAP Y2/Y≥3 は薬剤別 n 不明または片群のみのため 1:1。";
+  `病型別・期間別に Table S5（${CITE.yanagi2024}）の RBZ 列と AFL 列を元研究の症例数で加重平均。病型横断はしない。${CITE.yoneda2023} の Y1 は 7:3、${CITE.jin2021} の Y≥2 は 131:84 を病型合計に按分。RAP Y2（${CITE.hoshino2020}）/ Y≥3（${CITE.kertes2021}）は薬剤別 n 不明または片群のみのため 1:1。`;
 
 export function isPooledTransitionMode(transitionMode) {
   return transitionMode === TRANSITION_MODE_POOLED;

@@ -67,4 +67,4 @@ export const INJ_SCENARIO_TABLE_S8 = {
   },
 };
 
-export const TABLE_S7_S8_SOURCE = "Supplementary Table S7–S8 (scenario case)";
+export const TABLE_S7_S8_SOURCE = "Table S7–S8（Yanagi, Ophthalmol Ther, 2024）";
