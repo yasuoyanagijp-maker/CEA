@@ -17,7 +17,6 @@ import {
   getClinicalTables,
   getBscTransitionProbs,
   injectionsForMonth,
-  usesYear1InclusiveSchedule,
 } from "./clinical.js";
 import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDisplayOrder, getDrugClinicalNote } from "./drugs.js";
 import { DEFAULT_COST_PAPER_ID, getCostPaper } from "./papers/index.js";
@@ -562,7 +561,7 @@ export function runPatientSimulation(input) {
   });
 
   const warnings = [];
-  const clinicalNote = getDrugClinicalNote(drugId, { transitionMode });
+  const clinicalNote = getDrugClinicalNote(drugId, { transitionMode, clinicalCase });
   if (clinicalNote) warnings.push(clinicalNote);
   if (costs.injUnitMissing) warnings.push(`薬価未設定: ${drug.name}`);
 
@@ -874,13 +873,11 @@ export function runPatientDrugComparison(input) {
     const qalyResult = getQaly(transitionKey, clinicalPath);
 
     const warnings = [];
-    const clinicalNote = getDrugClinicalNote(drugId, { transitionMode: input.transitionMode });
+    const clinicalNote = getDrugClinicalNote(drugId, {
+      transitionMode: input.transitionMode,
+      clinicalCase: input.clinicalCase,
+    });
     if (clinicalNote) warnings.push(clinicalNote);
-    if (drug.injectionReference && !usesYear1InclusiveSchedule(input.clinicalCase ?? "base")) {
-      warnings.push(
-        `注射回数は（専門家による推計）（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`
-      );
-    }
     if (costs.injUnitMissing) warnings.push(`薬価未設定: ${drug.name}`);
 
     results[drugId] = {
