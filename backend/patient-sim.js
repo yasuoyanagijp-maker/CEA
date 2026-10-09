@@ -58,23 +58,19 @@ function quarterlyToMonthly(probs) {
   });
 }
 
-function transitionProbsToArray(probs) {
-  return [probs.wors2, probs.wors1, probs.remain, probs.imp1, probs.imp2];
-}
-
+/**
+ * Improving = 視力良好方向（状態番号が小さくなる）、Worsening = 失明方向。
+ * 失明は吸収（O&T 2023/2024）。
+ */
 function sampleTransition(state, probs, rng) {
-  const arr = transitionProbsToArray(probs);
-  const offset = 2;
-  const outcomes = [];
-  for (let d = -2; d <= 2; d++) {
-    const idx = d + offset;
-    if (arr[idx] > 0) {
-      outcomes.push({
-        next: Math.max(0, Math.min(N_STATES - 1, state + d)),
-        p: arr[idx],
-      });
-    }
-  }
+  if (state === N_STATES - 1) return state;
+  const outcomes = [
+    { next: Math.max(0, state - 2), p: probs.imp2 },
+    { next: Math.max(0, state - 1), p: probs.imp1 },
+    { next: state, p: probs.remain },
+    { next: Math.min(N_STATES - 1, state + 1), p: probs.wors1 },
+    { next: Math.min(N_STATES - 1, state + 2), p: probs.wors2 },
+  ].filter((o) => o.p > 0);
   const u = rng();
   let cum = 0;
   for (const o of outcomes) {
@@ -869,7 +865,7 @@ export function runPatientDrugComparison(input) {
 
     const warnings = [];
     if (drug.clinicalNote) warnings.push(drug.clinicalNote);
-    if (drug.injectionReference) {
+    if (drug.injectionReference && (input.clinicalCase ?? "base") !== "2026_meta") {
       warnings.push(
         `注射回数は参考値（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`
       );

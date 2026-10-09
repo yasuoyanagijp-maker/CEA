@@ -42,21 +42,6 @@ export function phaseForCycle(cycleIndex, cycleLengthYears) {
   return "year3plus";
 }
 
-/**
- * 治療終了後の BSC（自然経過）遷移 — 無治療時は改善↓・悪化↑
- * @param {object} treated — normalize 済みの治療 arm 遷移
- * @param {number} multiplier — 悪化方向の倍率（clinical.js の BSC_PROGRESSION_MULTIPLIER を明示的に渡す）
- */
-export function deriveBscTransitionProbs(treated, multiplier) {
-  return normalizeTransitionProbs({
-    imp2: Math.min(0.5, treated.imp2 * multiplier),
-    imp1: Math.min(0.5, treated.imp1 * multiplier),
-    remain: treated.remain / multiplier,
-    wors1: treated.wors1 * 0.25,
-    wors2: treated.wors2 * 0.25,
-  });
-}
-
 /** @param {number|null} treatmentDurationYears — null なら生涯治療 */
 export function isOnTreatment(cycleIndex, cycleLengthYears, treatmentDurationYears) {
   if (treatmentDurationYears == null) return true;

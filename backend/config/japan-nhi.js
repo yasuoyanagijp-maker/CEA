@@ -1,17 +1,18 @@
 /**
  * 日本の健康保険 — 患者自己負担・高額療養費（外来・月次）
  *
- * 平成30年8月改定以降の現行限度額（2026年7月時点）。
- * 2025年8月施行予定だった限度額引き上げは見送り、2026年8月施行予定の
- * 引き上げ・年間上限の新設は未施行のため反映しない。
- * 複数回受診の合算は月次で処理する。
+ * 令和8年8月1日改定後の限度額（2026年8月〜2027年7月）。
+ * 出典: https://www.kenpo.gr.jp/sogo-seibu/topics/r8houkai/houkai0801.htm
  *
  * 簡略化している点:
- * - 70歳以上・一般区分の外来年間上限（14.4万円）は月次モデルでは未適用
- * - 75歳以上・一般区分の2割負担（令和4年10月〜、一定所得以上）は未対応（1割固定）
+ * - 70歳以上・一般区分の外来年間上限（21.6万円）は月次モデルでは未適用
+ * - 75歳以上の一般は一般I（1割）として扱う。一般II（2割、令和4年10月〜）は未対応
+ * - 70歳以上・住民税非課税は非課税世帯II（外来 11,000円）として扱う。
+ *   非課税世帯I（一定所得以下・外来 8,000円）は区分していない
  * - 多数回該当（4回目以降の限度額軽減）は未適用
+ * - 年間上限の新設は未適用
  *
- * @see 厚生労働省「高額療養費制度について」
+ * 「+1%」は（月の総医療費 − 定額上限÷0.3）×1%（上記 kenpo 解説）。
  */
 
 /**
@@ -20,8 +21,12 @@
  * 70歳未満のエ/ウ境界（〜年収約370万円）とほぼ一致するため同一区分で扱う。
  */
 export const INCOME_BRACKETS = {
-  low: { id: "low", label: "住民税非課税", tier: "A" },
-  standard: { id: "standard", label: "一般（〜年収約370万円）", tier: "I" },
+  low: { id: "low", label: "住民税非課税（非課税II）", tier: "A" },
+  standard: {
+    id: "standard",
+    label: "一般I（〜年収約370万円・75歳以上は1割負担。一般IIの2割は未対応）",
+    tier: "I",
+  },
   general: { id: "general", label: "年収約370〜770万円（現役並みI）", tier: "U" },
   high: { id: "high", label: "年収約770〜1,160万円（現役並みII）", tier: "E" },
   top: { id: "top", label: "年収約1,160万円〜（現役並みIII）", tier: "O" },
@@ -34,8 +39,16 @@ function isActiveIncomeElderly(tier) {
   return tier === "U" || tier === "E" || tier === "O";
 }
 
+/** 定率加算の基準医療費 = 定額上限 ÷ 0.3 */
+const ACTIVE_INCOME_LIMITS = {
+  U: { base: 85_800, threshold: 286_000 },
+  E: { base: 179_100, threshold: 597_000 },
+  O: { base: 270_300, threshold: 901_000 },
+};
+
 /**
  * 年齢・所得区分に応じた自己負担割合
+ * 75歳以上・一般（standard）は一般I（1割）。一般II（2割）は未対応。
  * @param {number} age — 満年齢
  * @param {'early_elderly_10'|null} [elderlyCopay] — 70–74歳・一般で1割の場合
  * @param {keyof typeof INCOME_BRACKETS} [incomeBracket]
@@ -51,8 +64,8 @@ export function getCopayRate(age, elderlyCopay = null, incomeBracket = "standard
 }
 
 /**
- * 月次自己負担限度額（円）
- * - 70歳以上: 外来特例（個人ごと）。現役並みは特例廃止（平成30年〜）のため世帯限度額と同一
+ * 月次自己負担限度額（円）— 2026年8月改定後
+ * - 70歳以上: 外来特例（個人ごと）。現役並みは特例なしのため世帯限度額と同一
  * - 70歳未満: 外来特例なし — 高額療養費の月単位限度額（ア〜オ）を適用
  * @param {number} age
  * @param {keyof typeof INCOME_BRACKETS} incomeBracket
@@ -61,28 +74,23 @@ export function getCopayRate(age, elderlyCopay = null, incomeBracket = "standard
 export function getMonthlyOutpatientLimit(age, incomeBracket, monthlyTotalMedical = 0) {
   const tier = INCOME_BRACKETS[incomeBracket]?.tier ?? "I";
 
-  // 現役並みI〜III / ウ・イ・ア相当 — 年齢によらず同一の定率加算式
-  switch (tier) {
-    case "U":
-      return 80_100 + Math.max(0, monthlyTotalMedical - 267_000) * 0.01;
-    case "E":
-      return 167_400 + Math.max(0, monthlyTotalMedical - 558_000) * 0.01;
-    case "O":
-      return 252_600 + Math.max(0, monthlyTotalMedical - 842_000) * 0.01;
+  if (ACTIVE_INCOME_LIMITS[tier]) {
+    const { base, threshold } = ACTIVE_INCOME_LIMITS[tier];
+    return base + Math.max(0, monthlyTotalMedical - threshold) * 0.01;
   }
 
   if (age >= 70) {
-    // 外来特例（個人ごと）
-    return tier === "A" ? 8_000 : 18_000;
+    // 外来特例（個人ごと）: 一般 22,000 / 非課税II 11,000
+    return tier === "A" ? 11_000 : 22_000;
   }
 
-  // 70歳未満 — 外来特例はなく月単位の限度額（オ: 35,400 / エ: 57,600）
-  return tier === "A" ? 35_400 : 57_600;
+  // 70歳未満 — オ: 36,900 / エ: 61,500
+  return tier === "A" ? 36_900 : 61_500;
 }
 
 /** 患者向け表示用の出典・時点表記 */
 export const NHI_SOURCE_NOTE =
-  "厚生労働省「高額療養費制度について」— 2026年7月時点の現行値（2026年8月改定は未反映）";
+  "健康保険組合連合会（総合西部）「2026年8月から高額療養費制度が変わりました」（kenpo.gr.jp r8houkai/houkai0801）— 2026年8月1日改定後の値";
 
 /**
  * 月次限度額の表示用ラベル — 定率加算のある区分は式のまま示す
@@ -93,8 +101,7 @@ export const NHI_SOURCE_NOTE =
 export function describeMonthlyLimit(age, incomeBracket) {
   const tier = INCOME_BRACKETS[incomeBracket]?.tier ?? "I";
   if (isActiveIncomeElderly(tier)) {
-    const base = getMonthlyOutpatientLimit(age, incomeBracket, 0);
-    const threshold = { U: 267_000, E: 558_000, O: 842_000 }[tier];
+    const { base, threshold } = ACTIVE_INCOME_LIMITS[tier];
     return `${base.toLocaleString("ja-JP")}円＋(医療費−${threshold.toLocaleString("ja-JP")}円)×1%`;
   }
   return `${getMonthlyOutpatientLimit(age, incomeBracket, 0).toLocaleString("ja-JP")}円`;
@@ -105,7 +112,7 @@ export function describeMonthlyLimit(age, incomeBracket) {
  *
  * 上限は「定額請求」ではなく天井（cap）である。
  * 定率負担（1割・2割・3割）が月次限度額未満なら、限度額ぴったりではなく
- * 定率負担額のまま返す（例: 75歳・一般・上限18,000円でも、1割が15,172円なら15,172円）。
+ * 定率負担額のまま返す（例: 75歳・一般I・上限22,000円でも、1割が15,172円なら15,172円）。
  * これは制度上・本シミュレーション仕様上ともに正しい。
  *
  * @param {object} opts

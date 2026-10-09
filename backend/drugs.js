@@ -48,7 +48,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept_8mg",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列。注射: induction=3、year1以降は AFL 2 mg × 0.8（病型別 S6）",
+    clinicalNote:
+      "遷移 S5: aflibercept 列。注射: ベース/シナリオは induction=3・year1以降 AFL 2 mg × 0.8（病型別 S6）。2026 meta では薬剤別メタ値（導入期は1年目に含む）。",
     injectionReference: true,
   },
   faricimab: {
@@ -59,7 +60,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "faricimab",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列（暫定）。注射: induction=4、year1以降は AFL 2 mg × 0.8（病型別 S6）",
+    clinicalNote:
+      "遷移 S5: aflibercept 列（暫定）。注射: ベース/シナリオは induction=4・year1以降 AFL 2 mg × 0.8（病型別 S6）。2026 meta では薬剤別メタ値（導入期は1年目に含む）。",
     injectionReference: true,
   },
   brolucizumab: {
@@ -70,7 +72,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "brolucizumab",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列（暫定）。注射: induction=2、year1以降は AFL 2 mg × 0.8（病型別 S6）",
+    clinicalNote:
+      "遷移 S5: aflibercept 列（暫定）。注射: ベース/シナリオは induction=2・year1以降 AFL 2 mg × 0.8（病型別 S6）。2026 meta では薬剤別メタ値（導入期は1年目に含む）。",
     injectionReference: true,
   },
 };

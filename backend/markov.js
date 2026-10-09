@@ -6,6 +6,7 @@ import {
   isOnTreatment,
 } from "./utils.js";
 import { SUBTYPES, getClinicalDataset, getEffectiveAnnualInjectionRate } from "./clinical.js";
+import { metaInjectionsForCycle } from "./config/injections-2026-meta.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
@@ -18,16 +19,24 @@ function expectedBcvaFromCohort(cohort, aliveMass) {
   return cohort.reduce((s, m, i) => s + m * STATE_BCVA_CENTROIDS[i], 0) / aliveMass;
 }
 
+/**
+ * Improving = 視力良好方向（状態番号が小さくなる、15/30 ETDRS letters）。
+ * Worsening = 失明方向。失明（状態 index 4）は吸収 — O&T 2023/2024。
+ */
 function applyTransition(dist, probs) {
   const next = [0, 0, 0, 0, 0];
   for (let i = 0; i < N_STATES; i++) {
     const s = dist[i];
     if (s <= 0) continue;
-    next[Math.min(N_STATES - 1, i + 2)] += s * probs.imp2;
-    next[Math.min(N_STATES - 1, i + 1)] += s * probs.imp1;
+    if (i === N_STATES - 1) {
+      next[i] += s;
+      continue;
+    }
+    next[Math.max(0, i - 2)] += s * probs.imp2;
+    next[Math.max(0, i - 1)] += s * probs.imp1;
     next[i] += s * probs.remain;
-    next[Math.max(0, i - 1)] += s * probs.wors1;
-    next[Math.max(0, i - 2)] += s * probs.wors2;
+    next[Math.min(N_STATES - 1, i + 1)] += s * probs.wors1;
+    next[Math.min(N_STATES - 1, i + 2)] += s * probs.wors2;
   }
   return next;
 }
@@ -330,8 +339,18 @@ function simulateCohort(
           phase,
         })
       : 0;
-    const injThisCycle =
-      phase === "induction" && intervalWeeks == null ? annualInj : annualInj * cycleLen;
+    let injThisCycle = 0;
+    if (onTreatment) {
+      if (intervalWeeks != null && intervalWeeks > 0) {
+        injThisCycle = annualInj * cycleLen;
+      } else if (clinicalCase === "2026_meta") {
+        // year1 は導入期を含む12か月合計。phaseForCycle の year1=cycle1–4 は使わない。
+        injThisCycle = metaInjectionsForCycle(drugId, c, cycleLen);
+      } else {
+        injThisCycle =
+          phase === "induction" ? annualInj : annualInj * cycleLen;
+      }
+    }
     const cohort = dist.map((s) => s * aliveMass);
 
     series.push({

@@ -1,10 +1,10 @@
 /**
  * QALY — 視力状態遷移（Markov）からの算出
  *
- * Yanagi et al. 2024 準拠:
+ * Yanagi et al. 2024 準拠の効用算出ヘルパー:
  * - 3ヶ月サイクル
  * - 両眼モデル: 較好眼 BCVA に基づく5状態効用（非罹患眼は utilityNone）
- * - 半周期補正: (U_cycle開始 + U_cycle終了) / 2 × サイクル長 × 割引
+ * - 半周期補正関数 qalyForCycle は個別患者経路用。コホート Markov では未使用。
  */
 
 import { N_STATES } from "./constants.js";
@@ -48,7 +48,7 @@ export function patientBetterEyeUtility(treatedState, fellowState, secondEye, qa
 
 /**
  * 臨床経路（個別患者）から QALY・生存年数を算出
- * — 死亡月で打ち切り、3ヶ月半周期補正・割引（Markov と同一）
+ * — 死亡月で打ち切り、3ヶ月半周期補正・割引（個別患者経路のみ。コホート Markov は半周期補正なし）
  */
 export function computeQalyFromClinicalPath(
   path,

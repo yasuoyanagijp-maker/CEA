@@ -32,10 +32,11 @@
 
 **実装ロジック（2026 meta default）**
 
-- 1年目（`year1`）は上記メタ解析/NMAの薬剤別平均注射回数を使用。
-- 2年目以降（`year2`, `year3plus`）は原則 `year1 − 3` 回/年（導入期3回を除いた維持負担の近似）。
-- 例外: **アフリベルセプト 8mg** は PULSAR の Q16 到達率（96週時点で Q16 78%）と、臨床的にファリシマブと同程度の注射負担とみなす方針を反映し、2年目以降は **Q16 維持相当 = 52/16 = 3.25 回/年** とする。
-- この設定により、ファリシマブ `year2+ = 6.45 − 3 = 3.45 回/年` とアフリベルセプト 8mg `year2+ = 3.25 回/年` が近接し、臨床感覚とRCT到達率の両方に整合する。Q12（4.33回/年）はスイッチ実臨床の保守的下限として扱い、default 長期維持値には採用しない。
+- 1年目の値は、主に **Wojciechowski 2025** NMA 抄録の1年目注射回数（導入期を含む総数）から作った代表値である。8 mg 5.5・ファリシマブ 6.45・ラニビズマブ 9.85 は報告範囲の中点。AFL 2 mg 7.67 は報告上限（"up to 7.67"）。ブロルシズマブ 6.3 は当該 NMA になく、日本の TAE 研究（Matsumoto 6.4、Inoda 6.2）由来。他のメタ解析は主に相対差の報告で、薬剤別1年目回数の直接の出典ではない。
+- **最初の12か月の合計 = year1**（導入期3回を year1 の上に足さない）。
+- 2年目以降（`year2`, `year3plus`）は原則 `year1 − 3` 回/年。これは文献値ではなくモデル上の仮定。
+- 例外: **アフリベルセプト 8mg** の2年目以降は **Q16 維持相当 = 52/16 = 3.25 回/年**。
+- この設定により、ファリシマブ `year2+ = 6.45 − 3 = 3.45 回/年` とアフリベルセプト 8mg `year2+ = 3.25 回/年` が近接する。Q12（4.33回/年）はスイッチ実臨床の保守的下限として扱い、default 長期維持値には採用しない。
 
 - **Wojciechowski P, et al.** (2025). Efficacy, Safety, and Injection Frequency with Novel Aflibercept 8 mg in Neovascular Age-Related Macular Degeneration: A Comparison with Existing Anti-VEGF Regimens Using a Bayesian Network Meta-Analysis. *Ophthalmology and Therapy, 14, 733–753.* https://doi.org/10.1007/s40123-025-01098-y
 - **Butler E, et al.** (2025). Comparative efficacy of intravitreal anti-VEGF therapy for neovascular age-related macular degeneration: A systematic review with network meta-analysis. *Acta Ophthalmologica, 103, 741–763.* https://doi.org/10.1111/aos.17506
@@ -49,7 +50,7 @@
 ### 2.2 経済モデル（長期注射負担の外挿）
 
 - **Baljoon A, et al.** (2026). Cost-Utility Analysis of Faricimab Versus Aflibercept in Treating nAMD in the United States. *PharmacoEconomics - Open.* https://doi.org/10.1007/s41669-026-00643-0
-- **Alili E, et al.** (2026). Budget Impact of Faricimab in Neovascular AMD in the Netherlands: A Systematic Review and Meta-Analysis of Injection Count. *Ophthalmology and Therapy, 15, 591–639.* https://doi.org/10.1007/s40123-025-01301-0
+- **El Alili M, et al.** (2026). Budget Impact of Faricimab in Neovascular AMD in the Netherlands: A Systematic Review and Meta-Analysis of Injection Count. *Ophthalmology and Therapy, 15*(2), 591–639. PMID 41543675. https://doi.org/10.1007/s40123-025-01301-0
 
 ---
 
@@ -64,7 +65,7 @@
 - **Koizumi H, et al.** (2024). TENAYA/LUCERNE 日本亜群解析.
 - **London N, et al.** (2025). Faricimab 長期アウトカム.
 - **Mori R, et al.** (2023). Faricimab 実臨床.
-- **Alili E, et al.** (2026). スイッチ後注射回数 9.70→7.05/年（Δ ≈ −2.65）. https://doi.org/10.1007/s40123-025-01301-0
+- **El Alili M, et al.** (2026). スイッチ後注射回数 9.70→7.05/年（Δ ≈ −2.65）. PMID 41543675. https://doi.org/10.1007/s40123-025-01301-0
 - **Jin E, Chan A, Thomas G.** (2025). Efficacy of faricimab secondary to anti-VEGF agents in nAMD: a systematic review and meta-analysis. *Eye, 39, 2738–2751.* https://doi.org/10.1038/s41433-025-03943-7
 - **Khodor A, et al.** (2025). Functional and Anatomical Outcomes of Faricimab in Previously Treated Wet AMD: Systematic Review and Pooled Analysis. *Ophthalmology and Therapy, 14, 1965–1984.* https://doi.org/10.1007/s40123-025-01181-4
 - **Zhang C, et al.** (2025). Clinical Efficacy of Switching to Faricimab in Treatment Resistant Neovascular AMD: Systematic Review and Meta-analysis. *American Journal of Ophthalmology.* https://doi.org/10.1016/j.ajo.2025.08.034
@@ -94,7 +95,7 @@
 
 ### 3.4 アフリベルセプト 2mg（trialReach: ≥Q12W 57% / ≥Q16W 44%、tier = t&e-derived）
 
-T&E 運用下の到達率であり、スイッチ集団の直接到達ではない点に注意（naïve T&E の上限参照）。
+本ツールの ≥12週 57% / ≥16週 44% は **ALTAIR（日本人 T&E）** 由来。ARIES 104週の ≥12週 47.2/51.9% はより低く、この数値の出典ではない。スイッチ集団の直接到達ではない点に注意。
 
 - **Ohji M, et al.** (2020). ALTAIR — aflibercept 2mg T&E（96週 ≥12週 56.9/60.2%・≥16週 42–46%、PCV 51.1%）.
 - **Mitchell P, et al.** (2021). ARIES — aflibercept 2mg T&E（104週 ≥12週 47.2/51.9%）. *Retina, 41, 1911–1920.* https://doi.org/10.1097/iae.0000000000003128
@@ -106,7 +107,7 @@ T&E 運用下の到達率であり、スイッチ集団の直接到達ではな�
 
 **重要な限界**: アフリベルセプト BS の非劣性エビデンスは、ほぼすべて **3回ローディング後 q8 週固定** で得られており、
 **延長耐久性（T&E での長間隔到達）そのものは直接検証されていない**。したがって本ツールは BS の到達率を
-先行品 2mg（ARIES/ALTAIR）から**借用（reference-derived）**として扱い、「BS で実証」ではなく
+先行品 2mg（ALTAIR・日本人 T&E）から**借用（reference-derived）**として扱い、「BS で実証」ではなく
 「**先行品 2mg 由来の推定**」であることを明示する。BS に「Q13.0 到達可能」を BS 固有の確定判定として表示しない。
 
 - **Woo SJ, et al.** (2023). Efficacy and Safety of the Aflibercept Biosimilar SB15 in Neovascular AMD（q8 固定で先行品に非劣性）. *JAMA Ophthalmology, 141, 668–676.* https://doi.org/10.1001/jamaophthalmol.2023.2260
@@ -118,11 +119,11 @@ T&E 運用下の到達率であり、スイッチ集団の直接到達ではな�
 - **Rashid M, et al.** (2025). Efficacy and safety of aflibercept biosimilars compared to reference aflibercept for retinal diseases: A systematic review and meta-analysis. *Survey of Ophthalmology.* https://doi.org/10.1016/j.survophthal.2025.11.007
 - **Al-Shammari YM, et al.** (2026). Clinical efficacy and safety of anti-VEGF biosimilars compared to reference anti-VEGF agents for nAMD: a systematic review, meta-analysis, and meta-regression. *International Ophthalmology, 46(1).* https://doi.org/10.1007/s10792-026-04043-5
 
-> 借用元は第3.4節 ARIES/ALTAIR。tier は `t&e-derived`（先行品自体の T&E 由来）ではなく `reference-derived`（BS が先行品から借用）として区別する。
+> 借用元は第3.4節 ALTAIR（日本人）。ARIES の ≥12週到達率はより低く、57%/44% の出典ではない。tier は `t&e-derived`（先行品自体の T&E 由来）ではなく `reference-derived`（BS が先行品から借用）として区別する。
 
 ### 3.6 ラニビズマブ / ラニビズマブ BS（trialReach 未収載 = unknown）
 
-ARIES/ALTAIR に相当する ≥Q12/16W T&E 到達率が本エビデンスセットに未収載。一般に他剤より間隔が短く、延長による損益分岐到達は限定的。
+ALTAIR に相当する ≥Q12/16W T&E 到達率が本エビデンスセットに未収載。一般に他剤より間隔が短く、延長による損益分岐到達は限定的。
 
 - **Wojciechowski P, et al.** (2025). 前掲（Q4〜PRN/T&E 7.6〜12.1 回/年）. https://doi.org/10.1007/s40123-025-01098-y
 - **Butler E, et al.** (2025). 前掲. https://doi.org/10.1111/aos.17506
@@ -186,7 +187,8 @@ Yanagi 論文の Supplementary Table に対応する Markov モデル構成要�
 | Table S6 | 注射回数（ベースケース・年次フェーズ別） | `table-s6-injections.js` |
 | Table S7–S8 | シナリオケース | `table-s7-s8-scenario.js` |
 | Table S9–S11 | コスト（薬価・手技・社会的費用） | `cost-common.js`, `paper2-rbz-subtype.js` |
-| Table S12 | 効用値（health-state utilities） | `default-model-params.js`（0.76 / 0.70 / 0.64 / 0.60 / 0.51） |
+| Table S12 | CEA 結果（QALY・コスト） | `clinical.js` の `referenceS12`。効用値の出典ではない |
+| （効用） | 0.76 / 0.70 / 0.64 / 0.60 / 0.51、非罹患眼 0.83 | `default-model-params.js`。出典はユーザー指定（2025-05）。公表論文との一致は未確認。O&T 2023 S6 とは異なる |
 
 ---
 

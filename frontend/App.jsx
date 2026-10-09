@@ -946,8 +946,9 @@ export default function App() {
                   </tbody>
                 </table>
                 <p style={{ margin: "6px 0 0", color: "#64748B" }}>
-                  サブタイプ共通。導入期（最初3か月）は 3.0 回。2年目以降は原則 year1 − 3。
-                  AFL 8 mg は Q16 維持相当（52/16=3.25回/年）を使用。
+                  1年目は導入期を含む総数（最初の12か月の合計＝year1。主に Wojciechowski 2025
+                  の範囲中点。AFL 2 mg は報告上限、ブロルシズマブは日本の TAE 研究）。
+                  2年目以降は year1 − 3 の仮定。AFL 8 mg は Q16 維持相当（52/16=3.25回/年）。
                 </p>
               </div>
             )}
@@ -955,7 +956,8 @@ export default function App() {
 
           <Section title="QALY パラメータ">
             <p style={hintStyle}>
-              Markov 5状態（BCVA）の遷移から較好眼効用を算出。3ヶ月サイクル・半周期補正・2%割引（論文準拠）。
+              Markov 5状態（BCVA）の遷移から較好眼効用を算出。3ヶ月サイクル・2%割引（論文準拠）。コホート計算に半周期補正は用いていない。
+              効用値はユーザー指定（2025-05）で、公表論文の効用表との一致は未確認。
             </p>
             {STATE_LABELS.map((lbl, i) => (
               <label key={lbl} style={labelStyle}>
@@ -1451,7 +1453,7 @@ export default function App() {
                   </table>
                   </ScrollTable>
                   <p style={{ fontSize: 11, color: "#B45309", marginTop: 8 }}>
-                    本ツールの QALY 水準は Table S12（7–8 QALY）より高く、絶対値の一致より増分の方向性を確認してください。
+                    絶対値は Table S12 と完全一致しない（効用規則・中止・僚眼発症などが論文と異なる）。増分の方向性を確認してください。
                   </p>
                 </div>
               )}
@@ -1673,7 +1675,7 @@ export default function App() {
                       <p style={{ fontSize: 11, color: "#64748B", marginTop: 8, lineHeight: 1.6 }}>
                         {NHI_SOURCE_NOTE}。
                         {parseInt(patientAge, 10) >= 70
-                          ? "70歳以上の「一般」「住民税非課税」には外来だけの上限（外来特例）が適用されます。現役並み所得の方は外来特例の対象外です。"
+                          ? "70歳以上の「一般I」「住民税非課税（非課税II）」には外来だけの上限（外来特例）が適用されます。75歳以上の一般は一般I（1割負担）として扱います（一般IIの2割は未対応）。現役並み所得の方は外来特例の対象外です。"
                           : "70歳未満には外来だけの特例上限はなく、高額療養費の月単位の限度額が適用されます。"}
                       </p>
                       <p style={{ fontSize: 11, color: "#64748B", marginTop: 12, lineHeight: 1.6 }}>
@@ -1682,7 +1684,7 @@ export default function App() {
                         定率負担額のまま表示されます（例: 上限16,000円でも1割が15,000円なら15,000円）。
                         実際の窓口負担は受診内容・検査の有無・保険の適用状況により変わります。金額は選択中の薬価・
                         診療報酬に基づく試算であり、将来の改定は反映していません。多数回該当（4回目以降の軽減）・
-                        外来年間上限（14.4万円）は考慮していないため、実際の負担はこの試算より少なくなる場合があります。
+                        外来年間上限（一般 21.6万円）は考慮していないため、実際の負担はこの試算より少なくなる場合があります。
                       </p>
                     </div>
                   ) : (
@@ -2606,7 +2608,7 @@ export default function App() {
             <Panel title={`Table S12 照合（${subtype.label}・シナリオ）`}>
               <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
                 臨床=シナリオ（S7–S8）。参入年齢={PAPER_S12_ENTRY_AGE[subtypeId] ?? subtype.meanAge}歳（S12 論文設定）、
-                20年・半周期補正・令和5年生命表。
+                20年・令和5年生命表（コホート計算に半周期補正は用いていない）。
               </p>
               <ScrollTable>
               <table style={{ ...tableStyle, minWidth: 480 }}>

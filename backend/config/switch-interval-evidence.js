@@ -39,7 +39,7 @@ export const SWITCH_INTERVAL_EVIDENCE = {
     trialEvidenceTier: "direct",
     injectionChangePerYear: -2.65,
     note: "既治療スイッチ +1.6〜2.1週。TENAYA/LUCERNE week112 は ≥Q12W 77.8%/Q16W 63.1%（PTI 直接実測、Japan 亜群でも再現）",
-    sources: "Khanani 2024; Koizumi 2024; London 2025; Mori 2023; Alili 2026; Jin 2025",
+    sources: "Khanani 2024; Koizumi 2024; London 2025; Mori 2023; El Alili 2026; Jin 2025",
   },
   brolucizumab: {
     realisticExtensionWeeks: [1, 2],
@@ -70,33 +70,33 @@ export const SWITCH_INTERVAL_EVIDENCE = {
   },
   aflibercept: {
     realisticExtensionWeeks: null,
-    // ARIES/ALTAIR 2mg T&E（treatment-naive 上限参照）: ≥12週 ~57%, ≥16週 ~44%
+    // ALTAIR（日本人 T&E）由来: ≥12週 ~57%, ≥16週 ~44%。ARIES は ≥12週 47.2/51.9% でより低く、本値の出典ではない。
     trialReach: [
       { weeks: 12, fraction: 0.57 },
       { weeks: 16, fraction: 0.44 },
     ],
     trialEvidenceTier: "t&e-derived",
-    note: "Q8 T&E 基準薬。ALTAIR 96週 ≥12週 56.9/60.2%・≥16週 42–46%（PCV 51.1%）、ARIES 104週 ≥12週 47.2/51.9%（naive T&E の上限参照）。スイッチ集団の直接到達ではない点に注意",
-    sources: "Ohji 2020 (ALTAIR); Mitchell 2021 (ARIES); Okada 2022",
+    note: "Q8 T&E 基準薬。到達率は ALTAIR（日本人）96週 ≥12週 56.9/60.2%・≥16週 42–46% 由来。ARIES 104週 ≥12週 47.2/51.9% はより低く、本ツールの 57%/44% の出典ではない。スイッチ集団の直接到達ではない点に注意",
+    sources: "Ohji 2020 (ALTAIR; 到達率の出典); Mitchell 2021 (ARIES; 比較参照); Okada 2022",
   },
   aflibercept_bs: {
     realisticExtensionWeeks: [0, 0],
     // BS の非劣性は q8 固定で実証（SB15/P041/ABP938）。延長耐久性は未検証のため、
-    // trialReach は先行 2mg（ARIES/ALTAIR）からの「借用」であり BS 固有の実証ではない。
+    // trialReach は先行 2mg ALTAIR（日本人）からの「借用」であり BS 固有の実証ではない。
     trialReach: [
       { weeks: 12, fraction: 0.57 },
       { weeks: 16, fraction: 0.44 },
     ],
     trialEvidenceTier: "reference-derived",
     reachIsBorrowed: true,
-    note: "BS の非劣性は q8 固定投与で実証（SB15/P041/ABP938）だが延長耐久性は未検証。到達率は先行 2mg（ARIES/ALTAIR ≥12週 ~57%/≥16週 ~44%）の借用で、BS 固有の到達判定ではない。先行品からのスイッチは間隔不変・薬価差のみ",
-    sources: "Woo 2023 (SB15); Karkhaneh 2024 (P041); Friedman 2025 (ABP938); Ohji 2020/Mitchell 2021 (借用元); Zhang 2026; Sawires 2025; Aljuhani 2025",
+    note: "BS の非劣性は q8 固定投与で実証（SB15/P041/ABP938）だが延長耐久性は未検証。到達率は先行 2mg ALTAIR（日本人、≥12週 ~57%/≥16週 ~44%）の借用で、BS 固有の到達判定ではない。先行品からのスイッチは間隔不変・薬価差のみ",
+    sources: "Woo 2023 (SB15); Karkhaneh 2024 (P041); Friedman 2025 (ABP938); Ohji 2020 (ALTAIR; 借用元); Zhang 2026; Sawires 2025; Aljuhani 2025",
   },
   ranibizumab: {
     realisticExtensionWeeks: null,
     trialReach: null,
     trialEvidenceTier: null,
-    note: "Q4〜PRN/T&E 7.6〜12.1 回/年 — 一般に他剤より間隔が短く、ARIES/ALTAIR に相当する ≥Q12/16W T&E 到達率は本エビデンスセットに未収載。長間隔化しにくいため延長による損益分岐到達は限定的",
+    note: "Q4〜PRN/T&E 7.6〜12.1 回/年 — 一般に他剤より間隔が短く、ALTAIR に相当する ≥Q12/16W T&E 到達率は本エビデンスセットに未収載。長間隔化しにくいため延長による損益分岐到達は限定的",
     sources: "Wojciechowski 2025; Butler 2025",
   },
   ranibizumab_bs: {
