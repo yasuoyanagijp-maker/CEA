@@ -1,15 +1,27 @@
 /**
- * 2026 meta-analysis — nAMD 年間注射回数（year 1）
- * 原則として year 2 以降は year1 − 3（0 未満は 0）。
- * ただし aflibercept 8 mg は Q16 維持投与を反映し、52/16 = 3.25 回/年を使う。
- * 導入期（最初の3か月）は Table S6 と同様 3.0 回/年換算
+ * 2026 meta — nAMD 注射回数
+ *
+ * 1年目（year1）の出典（主に Wojciechowski 2025 NMA, PMID 39994103 の範囲）:
+ *   - 8 mg 5.9（Q12）/ 5.1（Q16）→ 5.5 は中点
+ *   - ファリシマブ 6.2〜6.7 → 6.45 は中点
+ *   - ラニビズマブ 7.62〜12.14 → 9.85 はほぼ中点
+ *   - AFL 2 mg「up to 7.67」→ 上限値
+ *   - ブロルシズマブ 6.3 は当該 NMA になく、日本の TAE 研究（Matsumoto 6.4、Inoda 6.2）由来
+ * 抄録の1年目回数は導入期を含む総数。2年目以降 = year1 − 3 は文献値ではなくモデル上の仮定。
+ * AFL 8 mg の year2+ のみ Q16 維持（52/16 = 3.25）で上書き。
+ *
+ * 配分: 最初の12か月の合計 = year1（導入期3回を二重計上しない）。
+ *   - 導入期（最初3か月 / cycle 0）: 3回
+ *   - 月3–11 / cycle 1–3: (year1 − 3) を均等
+ *   - 12か月目以降: year2 を年率
+ * 遷移のフェーズ境界（phaseForCycle）は変えない。
  */
 
 export const INJECTIONS_2026_META_SOURCE =
-  "2026 meta-analysis regimen (year 1); year ≥2 = year1 − 3 except AFL 8 mg = Q16 maintenance";
+  "2026 meta: 1年目は主に Wojciechowski 2025 の範囲中点（AFL 2mg は上限）。ブロルシズマブは日本 TAE。2年目以降は仮定（year1−3、AFL 8mg は Q16）";
 
 /**
- * drugId → year 1 平均注射回数 + その値が報告されたレジメンの参考間隔（週）
+ * drugId → year 1 総注射回数（導入期を含む）+ その値が報告されたレジメンの参考間隔（週）
  * UI で Q8 等を選んだときは meta 値 × (referenceIntervalWeeks / 選択間隔) でスケール
  */
 export const INJECTIONS_2026_META_YEAR1 = {
@@ -78,6 +90,35 @@ export function getInjections2026MetaForDrug(drugId) {
   return buildInjectionPhasesFromYear1(y1, {
     year2plus: INJECTIONS_2026_META_YEAR2PLUS_OVERRIDES[drugId] ?? null,
   });
+}
+
+/**
+ * 2026 meta の四半期あたり注射回数。
+ * 最初の12か月（cycle 0–3）の合計 = year1（導入期を含む）。
+ */
+export function metaInjectionsForCycle(drugId, cycleIndex, cycleLengthYears = 0.25) {
+  const schedule = getInjections2026MetaForDrug(drugId);
+  if (!schedule) return 0;
+  if (cycleIndex <= 0) return schedule.induction;
+  const elapsedYears = cycleIndex * cycleLengthYears;
+  if (elapsedYears < 1) {
+    const remaining = Math.max(0, schedule.year1 - schedule.induction);
+    const maintCycles = Math.max(1, Math.round(1 / cycleLengthYears) - 1);
+    return remaining / maintCycles;
+  }
+  return schedule.year2 * cycleLengthYears;
+}
+
+/**
+ * 2026 meta の月次注射回数。
+ * 月0–2＝導入（合計3回）、月3–11＝(year1−3)/9、月12以降＝year2/12。
+ */
+export function metaInjectionsForMonth(drugId, monthIndex) {
+  const schedule = getInjections2026MetaForDrug(drugId);
+  if (!schedule) return 0;
+  if (monthIndex < 3) return schedule.induction / 3;
+  if (monthIndex < 12) return Math.max(0, schedule.year1 - schedule.induction) / 9;
+  return schedule.year2 / 12;
 }
 
 /** UI 用 — 薬剤名とフェーズ別回数 */

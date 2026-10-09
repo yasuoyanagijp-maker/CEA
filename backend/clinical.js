@@ -1,8 +1,4 @@
-import {
-  deriveBscTransitionProbs,
-  phaseForCycle,
-  isOnTreatment,
-} from "./utils.js";
+import { phaseForCycle, isOnTreatment } from "./utils.js";
 import { buildSubtypeBaseline } from "./config/baseline-characteristics.js";
 import {
   TRANS_BASE_TABLE_S5,
@@ -20,7 +16,10 @@ import {
 import {
   getInjections2026MetaForDrug,
   INJECTIONS_2026_META_SOURCE,
+  metaInjectionsForCycle,
+  metaInjectionsForMonth,
 } from "./config/injections-2026-meta.js";
+import { getPaperBscTransitions, TABLE_S2_BSC_SOURCE } from "./config/table-s2-bsc-transitions.js";
 import { annualInjectionsFromIntervalWeeks } from "./config/treatment-intervals.js";
 import {
   buildInjectionsByDrugSubtype,
@@ -31,11 +30,6 @@ import {
 } from "./config/drug-clinical-profile.js";
 import { getDrug } from "./drugs.js";
 import { DEFAULT_HORIZON } from "./constants.js";
-
-/** BSC 自然経過 — Table S5 に BSC 列がないため rbz_bs 治療遷移から導出（論文1 簡略モデルと同趣旨） */
-export const BSC_PROGRESSION_MULTIPLIER = 1.35;
-
-const BSC_REFERENCE_KEY = "rbz_bs";
 
 /** ベースライン — Yoneda [1] + Table S2 初期分布；遷移・注射は Table S5–S8 */
 export const SUBTYPES = {
@@ -79,7 +73,13 @@ export const INJ_SCENARIO = INJ_SCENARIO_TABLE_S8;
 export const INJ_BASE_PERDRUG = buildInjectionsByDrugSubtype("base");
 export const INJ_SCENARIO_PERDRUG = buildInjectionsByDrugSubtype("scenario");
 
-export { TABLE_S5_SOURCE, TABLE_S6_SOURCE, TABLE_S7_S8_SOURCE, INJECTIONS_2026_META_SOURCE };
+export {
+  TABLE_S5_SOURCE,
+  TABLE_S6_SOURCE,
+  TABLE_S7_S8_SOURCE,
+  INJECTIONS_2026_META_SOURCE,
+  TABLE_S2_BSC_SOURCE,
+};
 
 /**
  * 臨床データセット — 遷移・注射回数の3系統（base / scenario / 2026_meta）を
@@ -107,11 +107,7 @@ function makeTableDataset({ id, label, hint, transitions, injections }) {
       transitions[subtypeId]?.[clinicalKey] != null,
     getTransitions: (subtypeId, clinicalKey, phase) =>
       transitions[subtypeId]?.[clinicalKey]?.[phase] ?? null,
-    getBscTransitions: (subtypeId, phase) => {
-      const treated = transitions[subtypeId]?.[BSC_REFERENCE_KEY]?.[phase];
-      if (!treated) return null;
-      return deriveBscTransitionProbs(treated, BSC_PROGRESSION_MULTIPLIER);
-    },
+    getBscTransitions: (_subtypeId, phase) => getPaperBscTransitions(phase),
     getAnnualInjections: ({ subtypeId, clinicalKey, phase }) =>
       injections[subtypeId]?.[clinicalKey]?.[phase] ?? 0,
     hasInjections: (drugId, subtypeId, clinicalKey) =>
@@ -140,7 +136,7 @@ const META_2026_DATASET = {
   ...makeTableDataset({
     id: "2026_meta",
     label: "2026 meta（注射回数のみ更新）",
-    hint: "遷移: Table S5 / 注射: 2026 meta（year1 固定、year≥2 は原則 year1−3、AFL 8 mg は Q16 維持）",
+    hint: "遷移: Table S5 / 注射: 2026 meta（1年目＝導入期を含む総数。主に Wojciechowski 2025 の範囲中点）",
     transitions: TRANS_BASE,
     injections: {},
   }),
@@ -250,7 +246,7 @@ export function getInjectionPhaseReference(
       clinicalKey,
       transitionKey,
       phases: schedule,
-      note: "induction=最初3か月の合計3回、year1=年間回数、year2以降=原則year1−3（AFL 8 mgはQ16維持相当）",
+      note: "year1 は導入期を含む12か月合計（最初の12か月＝year1。導入3回を上乗せしない）。year2以降は原則 year1−3（AFL 8 mgはQ16維持相当）",
     };
   }
 
@@ -271,9 +267,9 @@ export function getInjectionPhaseReference(
 }
 
 /**
- * カレンダー年ごとの期待注射回数（Table S6 意味論に基づく決定論的集計）
- * - induction: 参入後0–2か月に phase 値を3等分（合計=induction値）
- * - その他: 年間率 × 該当月数 / 12
+ * カレンダー年ごとの期待注射回数（決定論的集計）
+ * - ベース/シナリオ: induction は0–2か月に3等分、その他は年率×月/12
+ * - 2026 meta: 最初の12か月合計＝year1（導入期を二重計上しない）
  */
 export function buildInjectionYearReference({
   subtypeId,
@@ -292,14 +288,13 @@ export function buildInjectionYearReference({
   for (let year = 0; year < timeHorizonYears; year++) {
     let expected = 0;
     for (let month = year * 12; month < Math.min((year + 1) * 12, maxMonths); month++) {
-      if (!isOnTreatment(Math.floor(month / 3), 0.25, treatmentDurationYears)) continue;
-      const phase = phaseForCycle(Math.floor(month / 3), 0.25);
-      const rate = getInjectionRate(clinicalCase, injections, subtypeId, drugId, phase);
-      if (phase === "induction" && month < 3) {
-        expected += rate / 3;
-      } else if (phase !== "induction") {
-        expected += rate / 12;
-      }
+      expected += injectionsForMonth(month, {
+        clinicalCase,
+        injections,
+        subtypeId,
+        drugId,
+        treatmentDurationYears,
+      });
     }
     expected = Math.round(expected * 1000) / 1000;
     lifetime += expected;
@@ -319,6 +314,10 @@ export function injectionsForMonth(monthIndex, context) {
 
   if (!isOnTreatment(Math.floor(monthIndex / 3), 0.25, treatmentDurationYears)) {
     return 0;
+  }
+
+  if (clinicalCase === "2026_meta") {
+    return metaInjectionsForMonth(drugId, monthIndex);
   }
 
   const phase = phaseForCycle(Math.floor(monthIndex / 3), 0.25);
@@ -352,6 +351,10 @@ export function injectionsForCycle(cycleIndex, context) {
     return 0;
   }
 
+  if (clinicalCase === "2026_meta") {
+    return metaInjectionsForCycle(drugId, cycleIndex, cycleLengthYears);
+  }
+
   const phase = phaseForCycle(cycleIndex, cycleLengthYears);
   const rate = getInjectionRate(clinicalCase, injections, subtypeId, drugId, phase);
 
@@ -362,11 +365,10 @@ export function injectionsForCycle(cycleIndex, context) {
 }
 
 /**
- * 治療中止後の BSC 遷移（サブタイプ×フェーズ）— テスト・外部利用向け
- * @param {object} transitions — TRANS_BASE または TRANS_SCENARIO
+ * 治療中止後の BSC 遷移 — O&T 2023 ESM Table S2（Wong 2008）。病型・治療列には依存しない。
+ * @param {object} [_transitions] — 後方互換（未使用）
+ * @param {string} [_subtypeId] — 後方互換（未使用）
  */
-export function getBscTransitionProbs(transitions, subtypeId, phase) {
-  const treated = transitions[subtypeId]?.[BSC_REFERENCE_KEY]?.[phase];
-  if (!treated) return null;
-  return deriveBscTransitionProbs(treated, BSC_PROGRESSION_MULTIPLIER);
+export function getBscTransitionProbs(_transitions, _subtypeId, phase) {
+  return getPaperBscTransitions(phase);
 }
