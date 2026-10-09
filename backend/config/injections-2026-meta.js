@@ -18,7 +18,22 @@
  */
 
 export const INJECTIONS_2026_META_SOURCE =
-  "2026 meta: 1年目は主に Wojciechowski 2025 の範囲中点（AFL 2mg は上限）。ブロルシズマブは日本 TAE。2年目以降は仮定（year1−3、AFL 8mg は Q16）";
+  "2026 meta: 1年目は主に Wojciechowski 2025 の範囲中点（AFL 2mg は上限）。ブロルシズマブは日本 TAE。2年目以降とラニビズマブ 9.85 は原典に当該数値なし（専門家による推計）";
+
+/**
+ * 照合で原典の数値が見つからないフェーズ。値は変えない。
+ * year1 の 5.5 / 6.45 / 7.67 / 6.3 は文献値または報告2値の中点。
+ * ラニビズマブ 9.85 は Table 2 に無く、Q4 12.14 / Q8 7.62 の中点 9.88 とも一致しない。
+ */
+export const META_2026_PHASE_IS_ESTIMATE = {
+  faricimab: { induction: true, year1: false, year2: true, year3plus: true },
+  aflibercept_8mg: { induction: true, year1: false, year2: true, year3plus: true },
+  aflibercept: { induction: true, year1: false, year2: true, year3plus: true },
+  aflibercept_bs: { induction: true, year1: false, year2: true, year3plus: true },
+  ranibizumab: { induction: true, year1: true, year2: true, year3plus: true },
+  ranibizumab_bs: { induction: true, year1: true, year2: true, year3plus: true },
+  brolucizumab: { induction: true, year1: false, year2: true, year3plus: true },
+};
 
 /**
  * drugId → year 1 総注射回数（導入期を含む）+ その値が報告されたレジメンの参考間隔（週）
@@ -125,11 +140,14 @@ export function metaInjectionsForMonth(drugId, monthIndex) {
 export function listInjections2026MetaSummary(drugCatalog) {
   return Object.entries(INJECTIONS_2026_META_YEAR1).map(([drugId, year1]) => {
     const phases = getInjections2026MetaForDrug(drugId);
+    const flags = META_2026_PHASE_IS_ESTIMATE[drugId] ?? {};
     return {
       drugId,
       name: drugCatalog[drugId]?.name ?? drugId,
       year1,
       year2plus: phases.year2,
+      year1Estimate: flags.year1 === true,
+      year2plusEstimate: flags.year2 === true,
     };
   });
 }

@@ -199,6 +199,7 @@ function resolveRunInputs(input) {
     subtypeId,
     costPaperId,
     clinicalCase = "base",
+    transitionMode,
     modelParams = {},
     intervalWeeks = null,
   } = input;
@@ -206,7 +207,7 @@ function resolveRunInputs(input) {
   const drug = getDrug(drugId);
   const subtype = SUBTYPES[subtypeId];
   const paper = getCostPaper(costPaperId);
-  const dataset = getClinicalDataset(clinicalCase);
+  const dataset = getClinicalDataset(clinicalCase, transitionMode);
   // サマリー/スイッチの Markov は S5/S6 列（rbz_bs / aflibercept）で集約するため
   // transitionKey を用いる（個別患者タブは薬剤別 drugId を別途使用）。
   const clinicalKey = drug.transitionKey ?? drug.clinicalKey;
