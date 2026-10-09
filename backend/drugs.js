@@ -1,3 +1,6 @@
+import { POOLED_TRANSITION_NOTE } from "./config/citations.js";
+import { isPooledTransitionMode } from "./config/transition-pool.js";
+
 /** 7 薬剤 — clinicalKey=drugId、遷移(S5)は transitionKey */
 export const DRUG_CATALOG = {
   ranibizumab: {
@@ -8,7 +11,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "ranibizumab",
     transitionKey: "rbz_bs",
-    clinicalNote: "遷移 S5: rbz_bs 列。注射 S6: 病型別 rbz_bs 列（BS と同一回数）",
+    transitionNote: "遷移 S5: rbz_bs 列",
+    injectionNote: "注射 S6: 病型別 rbz_bs 列（BS と同一回数）",
   },
   ranibizumab_bs: {
     id: "ranibizumab_bs",
@@ -18,7 +22,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "ranibizumab_bs",
     transitionKey: "rbz_bs",
-    clinicalNote: "遷移 S5: rbz_bs 列。注射 S6: 病型別 rbz_bs 列（先発と同一回数、薬価のみ BS）",
+    transitionNote: "遷移 S5: rbz_bs 列",
+    injectionNote: "注射 S6: 病型別 rbz_bs 列（先発と同一回数、薬価のみ BS）",
   },
   aflibercept: {
     id: "aflibercept",
@@ -28,7 +33,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列。注射 S6: 病型別 aflibercept 列",
+    transitionNote: "遷移 S5: aflibercept 列",
+    injectionNote: "注射 S6: 病型別 aflibercept 列",
   },
   aflibercept_bs: {
     id: "aflibercept_bs",
@@ -38,7 +44,8 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept_bs",
     transitionKey: "aflibercept",
-    clinicalNote: "遷移 S5: aflibercept 列。注射 S6: 病型別 aflibercept 列（2 mg と同一回数、薬価のみ BS）",
+    transitionNote: "遷移 S5: aflibercept 列",
+    injectionNote: "注射 S6: 病型別 aflibercept 列（2 mg と同一回数、薬価のみ BS）",
   },
   aflibercept_8mg: {
     id: "aflibercept_8mg",
@@ -48,8 +55,9 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "aflibercept_8mg",
     transitionKey: "aflibercept",
-    clinicalNote:
-      "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）。注射: ベース/シナリオは induction=3・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
+    transitionNote: "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）",
+    injectionNote:
+      "注射: ベース/シナリオは induction=3・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）",
     injectionReference: true,
   },
   faricimab: {
@@ -60,8 +68,9 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "faricimab",
     transitionKey: "aflibercept",
-    clinicalNote:
-      "遷移 Table S5: aflibercept 列（暫定、Yanagi, Ophthalmol Ther, 2024）。注射: ベース/シナリオは induction=4・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
+    transitionNote: "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）",
+    injectionNote:
+      "注射: ベース/シナリオは induction=4・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）",
     injectionReference: true,
   },
   brolucizumab: {
@@ -72,11 +81,34 @@ export const DRUG_CATALOG = {
     monitoringRegimen: "tae",
     clinicalKey: "brolucizumab",
     transitionKey: "aflibercept",
-    clinicalNote:
-      "遷移 Table S5: aflibercept 列（暫定、Yanagi, Ophthalmol Ther, 2024）。注射: ベース/シナリオは induction=2・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）。",
+    transitionNote: "遷移 Table S5: aflibercept 列（Yanagi, Ophthalmol Ther, 2024）",
+    injectionNote:
+      "注射: ベース/シナリオは induction=2・year1以降 AFL 2 mg × 0.8（病型別 Table S6、専門家による推計）。ネットワークメタ解析セットでは薬剤別メタ値（導入期は1年目に含む。2年目以降は専門家による推計）",
     injectionReference: true,
   },
 };
+
+function joinClinicalNote(transitionNote, injectionNote) {
+  if (transitionNote && injectionNote) return `${transitionNote}。${injectionNote}`;
+  return transitionNote || injectionNote || "";
+}
+
+for (const drug of Object.values(DRUG_CATALOG)) {
+  drug.clinicalNote = joinClinicalNote(drug.transitionNote, drug.injectionNote);
+}
+
+/**
+ * 利用者向け臨床注記。統合モードでは薬剤別 S5 列ではなく「全薬剤共通」と出す。
+ * 数値・計算経路は変えない。
+ */
+export function getDrugClinicalNote(drugId, { transitionMode } = {}) {
+  const drug = DRUG_CATALOG[drugId];
+  if (!drug) return "";
+  const transitionNote = isPooledTransitionMode(transitionMode)
+    ? POOLED_TRANSITION_NOTE
+    : drug.transitionNote;
+  return joinClinicalNote(transitionNote, drug.injectionNote);
+}
 
 export const DRUG_IDS = Object.keys(DRUG_CATALOG);
 

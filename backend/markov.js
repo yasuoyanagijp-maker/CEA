@@ -13,7 +13,7 @@ import {
   usesYear1InclusiveSchedule,
 } from "./clinical.js";
 import { scheduleInjectionsForCycle } from "./config/injections-2026-meta.js";
-import { getDrug } from "./drugs.js";
+import { getDrug, getDrugClinicalNote } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
 import { annualMortalityForAge, DEFAULT_MALE_RATIO } from "./config/mortality.js";
@@ -241,7 +241,8 @@ function resolveRunInputs(input) {
       : null;
 
   const warnings = [];
-  if (drug.clinicalNote) warnings.push(drug.clinicalNote);
+  const clinicalNote = getDrugClinicalNote(drugId, { transitionMode });
+  if (clinicalNote) warnings.push(clinicalNote);
   if (
     dataset.missingInjectionsWarning &&
     !dataset.hasInjections(drugId, subtypeId, clinicalKey)

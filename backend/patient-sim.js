@@ -19,7 +19,7 @@ import {
   injectionsForMonth,
   usesYear1InclusiveSchedule,
 } from "./clinical.js";
-import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDisplayOrder } from "./drugs.js";
+import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDisplayOrder, getDrugClinicalNote } from "./drugs.js";
 import { DEFAULT_COST_PAPER_ID, getCostPaper } from "./papers/index.js";
 import { computeMonthlyPatientOop } from "./config/japan-nhi.js";
 import { cycleDeathProbability, analysisHorizonYears, remainingLifeExpectancy } from "./config/mortality.js";
@@ -397,7 +397,7 @@ function applyDrugCostsToPath({
     monthMon += monCost;
     monthDirect += monCost;
 
-    const { patientOop } = computeMonthlyPatientOop({
+    const { patientOop, capped, limit } = computeMonthlyPatientOop({
       monthlyDirectMedical: monthDirect,
       age,
       incomeBracket,
@@ -425,6 +425,8 @@ function applyDrugCostsToPath({
       injections: monthInj,
       directMedical: Math.round(monthDirect),
       patientOop: Math.round(patientOop),
+      capped: Boolean(capped),
+      limit: Math.round(limit ?? 0),
       drugAdmin: Math.round(monthDrug),
       monitoring: Math.round(monthMon),
       adverseEvents: Math.round(monthAe),
@@ -560,7 +562,8 @@ export function runPatientSimulation(input) {
   });
 
   const warnings = [];
-  if (drug.clinicalNote) warnings.push(drug.clinicalNote);
+  const clinicalNote = getDrugClinicalNote(drugId, { transitionMode });
+  if (clinicalNote) warnings.push(clinicalNote);
   if (costs.injUnitMissing) warnings.push(`薬価未設定: ${drug.name}`);
 
   return {
@@ -871,7 +874,8 @@ export function runPatientDrugComparison(input) {
     const qalyResult = getQaly(transitionKey, clinicalPath);
 
     const warnings = [];
-    if (drug.clinicalNote) warnings.push(drug.clinicalNote);
+    const clinicalNote = getDrugClinicalNote(drugId, { transitionMode: input.transitionMode });
+    if (clinicalNote) warnings.push(clinicalNote);
     if (drug.injectionReference && !usesYear1InclusiveSchedule(input.clinicalCase ?? "base")) {
       warnings.push(
         `注射回数は（専門家による推計）（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`
