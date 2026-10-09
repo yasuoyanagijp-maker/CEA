@@ -89,11 +89,12 @@ export function buildInjectionPhasesFromYear1(
   } = {}
 ) {
   const later = year2plus ?? Math.max(0, year1 - year2Offset);
+  const laterRounded = Math.round(later * 100) / 100;
   return {
     induction,
     year1,
-    year2: later,
-    year3plus: later,
+    year2: laterRounded,
+    year3plus: laterRounded,
   };
 }
 

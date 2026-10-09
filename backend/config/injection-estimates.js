@@ -60,7 +60,10 @@ export function isExpertEstimateCalendarYear({ clinicalCase, drugId, calendarYea
 /** @param {unknown} value @param {boolean} estimate */
 export function formatInjectionCount(value, estimate) {
   if (value == null || value === "") return "—";
-  const text = typeof value === "number" ? String(value) : String(value);
+  const text =
+    typeof value === "number" && Number.isFinite(value)
+      ? String(Math.round(value * 1e10) / 1e10)
+      : String(value);
   return estimate ? `${text}${EXPERT_ESTIMATE_LABEL}` : text;
 }
 

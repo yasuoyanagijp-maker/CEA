@@ -35,6 +35,7 @@ describe("専門家による推計ラベル（値は不変）", () => {
   it("ラベル文字列は指定どおり", () => {
     expect(EXPERT_ESTIMATE_LABEL).toBe("（専門家による推計）");
     expect(formatInjectionCount(6.88, true)).toBe(`6.88${EXPERT_ESTIMATE_LABEL}`);
+    expect(formatInjectionCount(6.880000000000001, true)).toBe(`6.88${EXPERT_ESTIMATE_LABEL}`);
     expect(formatInjectionCount(7.67, false)).toBe("7.67");
   });
 
