@@ -13,6 +13,11 @@ import {
   META_2026_PHASE_IS_ESTIMATE,
   getInjections2026MetaForDrug,
 } from "./injections-2026-meta.js";
+import {
+  CLINICAL_CASE_LIT_2025,
+  LIT_2025_PHASE_IS_ESTIMATE,
+  getInjectionsLit2025ForDrug,
+} from "./injections-lit-2025.js";
 
 export const EXPERT_ESTIMATE_LABEL = "（専門家による推計）";
 
@@ -21,7 +26,6 @@ const SUBTYPE_IDS = ["typical", "pcv", "rap"];
 
 export const META_2026_ESTIMATE_REASON = {
   induction: "Wojciechowski は週52までの総数のみ。導入3回は year1 の内訳仮定",
-  year1_rbz: "Table 2 に 9.85 なし（Q4 12.14 / Q8 7.62。中点は 9.88）",
   year2: "NMA は1年ホライズン。year2+ = year1−3 はモデル仮定（AFL 8 mg は Q16=3.25）",
 };
 
@@ -34,6 +38,9 @@ const S6_DERIVED_REASON =
 export function isExpertEstimateInjection({ clinicalCase, drugId, phase }) {
   if (clinicalCase === "2026_meta") {
     return META_2026_PHASE_IS_ESTIMATE[drugId]?.[phase] === true;
+  }
+  if (clinicalCase === CLINICAL_CASE_LIT_2025) {
+    return LIT_2025_PHASE_IS_ESTIMATE[drugId]?.[phase] === true;
   }
   if (clinicalCase === "base" || clinicalCase === "scenario") {
     return isAfl2mgDerivedInjection(drugId);
@@ -86,11 +93,32 @@ export function listExpertEstimateInjections() {
         phase,
         value: phases[phase],
         reason:
+          phase === "induction"
+            ? META_2026_ESTIMATE_REASON.induction
+            : META_2026_ESTIMATE_REASON.year2,
+      });
+    }
+  }
+
+  for (const drugId of Object.keys(INJECTIONS_2026_META_YEAR1)) {
+    const phases = getInjectionsLit2025ForDrug(drugId);
+    const flags = LIT_2025_PHASE_IS_ESTIMATE[drugId] ?? {};
+    for (const phase of PHASES) {
+      if (!flags[phase]) continue;
+      rows.push({
+        clinicalCase: CLINICAL_CASE_LIT_2025,
+        drugId,
+        drugName: DRUG_CATALOG[drugId]?.name ?? drugId,
+        subtypeId: null,
+        subtypeNote: "病型共通",
+        phase,
+        value: phases?.[phase],
+        reason:
           phase === "year1"
-            ? META_2026_ESTIMATE_REASON.year1_rbz
+            ? "感度セットに新文献なし。2026 meta 既存値を流用"
             : phase === "induction"
               ? META_2026_ESTIMATE_REASON.induction
-              : META_2026_ESTIMATE_REASON.year2,
+              : "確認文献は1年ホライズン。year2+ は 2026 meta 既存値",
       });
     }
   }

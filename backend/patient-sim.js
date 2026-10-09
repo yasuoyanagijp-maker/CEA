@@ -17,6 +17,7 @@ import {
   getClinicalTables,
   getBscTransitionProbs,
   injectionsForMonth,
+  usesYear1InclusiveSchedule,
 } from "./clinical.js";
 import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDisplayOrder } from "./drugs.js";
 import { DEFAULT_COST_PAPER_ID, getCostPaper } from "./papers/index.js";
@@ -871,7 +872,7 @@ export function runPatientDrugComparison(input) {
 
     const warnings = [];
     if (drug.clinicalNote) warnings.push(drug.clinicalNote);
-    if (drug.injectionReference && (input.clinicalCase ?? "base") !== "2026_meta") {
+    if (drug.injectionReference && !usesYear1InclusiveSchedule(input.clinicalCase ?? "base")) {
       warnings.push(
         `注射回数は（専門家による推計）（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`
       );

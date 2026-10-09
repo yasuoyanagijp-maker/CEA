@@ -32,7 +32,7 @@ import {
  * @property {string} referenceDrugId — ICER 参照薬
  * @property {string} subtypeId — typical | pcv | rap
  * @property {string} costPaperId — default_integrated | paper1_faricimab | paper2_rbz
- * @property {'base'|'scenario'|'2026_meta'} clinicalCase
+ * @property {'base'|'scenario'|'2026_meta'|'lit_2025_2026'} clinicalCase
  * @property {'drug_specific'|'rbz_afl_pooled'} [transitionMode]
  * @property {{timeHorizonYears:number,cycleLengthYears:number,discountRate:number}} horizon
  * @property {number|null} [treatmentDurationYears] — 2 / 5 / null（生涯）
@@ -281,8 +281,12 @@ export {
   injectionsForMonth,
   injectionsForCycle,
   INJECTIONS_2026_META_SOURCE,
+  INJECTIONS_LIT_2025_SOURCE,
+  CLINICAL_CASE_LIT_2025,
+  usesYear1InclusiveSchedule,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";
+export { listInjectionsLit2025Summary } from "./config/injections-lit-2025.js";
 export {
   EXPERT_ESTIMATE_LABEL,
   formatInjectionCount,

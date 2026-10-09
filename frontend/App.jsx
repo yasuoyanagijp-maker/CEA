@@ -44,7 +44,11 @@ import {
   describeMonthlyLimit,
   NHI_SOURCE_NOTE,
   listInjections2026MetaSummary,
+  listInjectionsLit2025Summary,
   INJECTIONS_2026_META_SOURCE,
+  INJECTIONS_LIT_2025_SOURCE,
+  CLINICAL_CASE_LIT_2025,
+  usesYear1InclusiveSchedule,
   EXPERT_ESTIMATE_LABEL,
   formatInjectionCount,
   getMarkovBaselineBcva,
@@ -260,6 +264,10 @@ export default function App() {
 
   const injections2026Meta = useMemo(
     () => listInjections2026MetaSummary(DRUG_CATALOG),
+    []
+  );
+  const injectionsLit2025 = useMemo(
+    () => listInjectionsLit2025Summary(DRUG_CATALOG),
     []
   );
 
@@ -990,11 +998,49 @@ export default function App() {
                 </table>
                 <p style={{ margin: "6px 0 0", color: "#64748B" }}>
                   1年目は導入期を含む総数（最初の12か月の合計＝year1。主に Wojciechowski 2025
-                  の範囲中点。AFL 2 mg は報告上限、ブロルシズマブは日本の TAE 研究の中点）。
-                  原典に当該数値がないセルには{EXPERT_ESTIMATE_LABEL}。2年目以降は year1 − 3
-                  の仮定{EXPERT_ESTIMATE_LABEL}。AFL 8 mg は Q16 維持相当（52/16=3.25回/年）。
-                  ラニビズマブ 9.85 は Table 2 に無く、Q4/Q8 中点 9.88 とも一致しない。
+                  の範囲中点。AFL 2 mg は報告上限、ラニビズマブ 9.88 は Q4 12.14 / Q8 7.62 の中点、
+                  ブロルシズマブは日本 TAE の中点）。2年目以降は year1 − 3 の仮定{EXPERT_ESTIMATE_LABEL}。
+                  AFL 8 mg は Q16 維持相当（52/16=3.25回/年）。
                 </p>
+              </div>
+            )}
+            {clinicalCase === CLINICAL_CASE_LIT_2025 && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#475569",
+                  marginTop: 8,
+                  padding: 8,
+                  background: "#F1F5F9",
+                  borderRadius: 6,
+                  lineHeight: 1.5,
+                }}
+              >
+                <strong>{INJECTIONS_LIT_2025_SOURCE}</strong>
+                <table style={{ width: "100%", marginTop: 6, borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", borderBottom: "1px solid #CBD5E1" }}>
+                      <th style={{ padding: "2px 4px" }}>薬剤</th>
+                      <th style={{ padding: "2px 4px" }}>1年目</th>
+                      <th style={{ padding: "2px 4px" }}>2年目以降</th>
+                      <th style={{ padding: "2px 4px" }}>出典</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {injectionsLit2025.map((row) => (
+                      <tr key={row.drugId}>
+                        <td style={{ padding: "2px 4px" }}>{row.name}</td>
+                        <td style={{ padding: "2px 4px" }}>
+                          {formatInjectionCount(row.year1, row.year1Estimate)}
+                        </td>
+                        <td style={{ padding: "2px 4px" }}>
+                          {formatInjectionCount(row.year2plus, row.year2plusEstimate)}
+                        </td>
+                        <td style={{ padding: "2px 4px", color: "#64748B" }}>{row.year1Source}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </Section>
@@ -1162,7 +1208,7 @@ export default function App() {
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
               個別患者タブは全7薬剤を表示。各薬剤は clinicalKey=drugId で独立し、
               注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ
-              （S6 未掲載の AFL 8 mg / ファリ / ブロルは{EXPERT_ESTIMATE_LABEL}。2026 meta の2年目以降とラニビズマブ 9.85 も同注釈）、
+              （S6 未掲載の AFL 8 mg / ファリ / ブロルは{EXPERT_ESTIMATE_LABEL}。2026 meta / 感度分析の2年目以降も同注釈）、
               視力遷移は transitionKey（rbz_bs / aflibercept）を使用。
               <br />
               <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、フォロー期間（最長生存タイムライン）の
@@ -1304,12 +1350,13 @@ export default function App() {
                                 (Table {r.tableExpectedInjections.toFixed(1)})
                               </div>
                             )}
-                          {clinicalCase === "2026_meta" ? (
+                          {usesYear1InclusiveSchedule(clinicalCase) ? (
                             <div style={{ fontSize: 10, color: "#B45309" }}>
                               2年目以降{EXPERT_ESTIMATE_LABEL}
-                              {(id === "ranibizumab" || id === "ranibizumab_bs") && (
-                                <> / 1年目{EXPERT_ESTIMATE_LABEL}</>
-                              )}
+                              {clinicalCase === CLINICAL_CASE_LIT_2025 &&
+                                (id === "ranibizumab" || id === "ranibizumab_bs") && (
+                                  <> / 1年目{EXPERT_ESTIMATE_LABEL}</>
+                                )}
                             </div>
                           ) : (
                             DRUG_CATALOG[id].injectionReference && (
@@ -1339,8 +1386,10 @@ export default function App() {
               <p style={{ fontSize: 11, color: "#64748B", marginTop: 8, lineHeight: 1.5 }}>
                 注射回数のうち、論文照合で原典の数値が見つからない値には{EXPERT_ESTIMATE_LABEL}。
                 {clinicalCase === "2026_meta"
-                  ? " 2026 meta の2年目以降（全薬剤・全病型）とラニビズマブ系1年目 9.85 が該当。値は変えていない。"
-                  : " ベース/シナリオでは AFL 8 mg・ファリシマブ・ブロルシズマブの全病型・全フェーズ（S6/S8 未掲載の ×0.8）が該当。"}
+                  ? " 2026 meta の2年目以降（全薬剤・全病型）が該当。ラニビズマブ 9.88 は Table 2 中点のため1年目は非推計。"
+                  : clinicalCase === CLINICAL_CASE_LIT_2025
+                    ? " 感度分析は新文献のないセル（ラニビズマブ1年目と全薬剤2年目以降）が該当。"
+                    : " ベース/シナリオでは AFL 8 mg・ファリシマブ・ブロルシズマブの全病型・全フェーズ（S6/S8 未掲載の ×0.8）が該当。"}
               </p>
 
               <div style={{ marginTop: 28 }}>
@@ -1825,13 +1874,14 @@ export default function App() {
                           </td>
                           <td style={{ ...compactTdStyle, textAlign: "right" }}>
                             {row.totalInjections ?? "—"}回
-                            {clinicalCase === "2026_meta" ? (
+                            {usesYear1InclusiveSchedule(clinicalCase) ? (
                               <div style={{ fontSize: 10, color: "#B45309" }}>
                                 2年目以降{EXPERT_ESTIMATE_LABEL}
-                                {(row.drugId === "ranibizumab" ||
-                                  row.drugId === "ranibizumab_bs") && (
-                                  <> / 1年目{EXPERT_ESTIMATE_LABEL}</>
-                                )}
+                                {clinicalCase === CLINICAL_CASE_LIT_2025 &&
+                                  (row.drugId === "ranibizumab" ||
+                                    row.drugId === "ranibizumab_bs") && (
+                                    <> / 1年目{EXPERT_ESTIMATE_LABEL}</>
+                                  )}
                               </div>
                             ) : (
                               row.injectionReference && (
