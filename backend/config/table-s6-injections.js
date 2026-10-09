@@ -33,6 +33,6 @@ export const INJ_BASE_TABLE_S6 = Object.fromEntries(
   Object.entries(S6).map(([id, drugs]) => [id, cloneSubtype(drugs)])
 );
 
-export const TABLE_S6_SOURCE = "Supplementary Table S6 (base case)";
+export const TABLE_S6_SOURCE = "Table S6（Yanagi, Ophthalmol Ther, 2024）";
 
 export { S6 as TABLE_S6_RAW };

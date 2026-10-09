@@ -17,6 +17,7 @@ import {
   getClinicalTables,
   getBscTransitionProbs,
   injectionsForMonth,
+  usesYear1InclusiveSchedule,
 } from "./clinical.js";
 import { getDrug, DRUG_CATALOG, DRUG_IDS, getDrugTransitionKey, sortByDrugDisplayOrder } from "./drugs.js";
 import { DEFAULT_COST_PAPER_ID, getCostPaper } from "./papers/index.js";
@@ -215,6 +216,7 @@ function simulateClinicalPath({
   subtypeId,
   transitionKey,
   clinicalCase,
+  transitionMode,
   timeHorizonYears,
   treatmentDurationYears,
   modelParams,
@@ -222,7 +224,7 @@ function simulateClinicalPath({
   rng,
 }) {
   const subtype = SUBTYPES[subtypeId];
-  const { transitions } = getClinicalTables(clinicalCase);
+  const { transitions } = getClinicalTables(clinicalCase, transitionMode);
   const vision = resolvePatientVisionBaseline(subtypeId, patientBaseline);
 
   const useLifeTable =
@@ -500,6 +502,7 @@ export function runPatientSimulation(input) {
     drugId,
     costPaperId,
     clinicalCase = "base",
+    transitionMode,
     timeHorizonYears = DEFAULT_HORIZON.timeHorizonYears,
     treatmentDurationYears = null,
     discountRate = DEFAULT_HORIZON.discountRate,
@@ -521,6 +524,7 @@ export function runPatientSimulation(input) {
     subtypeId,
     transitionKey: getDrugTransitionKey(drugId),
     clinicalCase,
+    transitionMode,
     timeHorizonYears: effectiveHorizon,
     treatmentDurationYears,
     modelParams,
@@ -605,6 +609,7 @@ export function runPatientMidSwitchComparison(input) {
     switchAtYear,
     costPaperId = DEFAULT_COST_PAPER_ID,
     clinicalCase = "base",
+    transitionMode,
     timeHorizonYears = DEFAULT_HORIZON.timeHorizonYears,
     treatmentDurationYears = null,
     incomeBracket = "standard",
@@ -631,6 +636,7 @@ export function runPatientMidSwitchComparison(input) {
       subtypeId,
       transitionKey: tk,
       clinicalCase,
+      transitionMode,
       timeHorizonYears: effectiveHorizon,
       treatmentDurationYears,
       modelParams,
@@ -802,6 +808,7 @@ export function runPatientDrugComparison(input) {
         subtypeId: input.subtypeId,
         transitionKey,
         clinicalCase: input.clinicalCase ?? "base",
+        transitionMode: input.transitionMode,
         timeHorizonYears: effectiveHorizon,
         treatmentDurationYears: input.treatmentDurationYears ?? null,
         modelParams: input.modelParams ?? {},
@@ -865,9 +872,9 @@ export function runPatientDrugComparison(input) {
 
     const warnings = [];
     if (drug.clinicalNote) warnings.push(drug.clinicalNote);
-    if (drug.injectionReference && (input.clinicalCase ?? "base") !== "2026_meta") {
+    if (drug.injectionReference && !usesYear1InclusiveSchedule(input.clinicalCase ?? "base")) {
       warnings.push(
-        `注射回数は参考値（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`
+        `注射回数は（専門家による推計）（induction 薬剤別、year1以降 AFL 2 mg × 0.8、${input.subtypeId} 病型 S6）`
       );
     }
     if (costs.injUnitMissing) warnings.push(`薬価未設定: ${drug.name}`);

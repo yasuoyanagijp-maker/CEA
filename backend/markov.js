@@ -5,8 +5,14 @@ import {
   normalizeTransitionProbs,
   isOnTreatment,
 } from "./utils.js";
-import { SUBTYPES, getClinicalDataset, getEffectiveAnnualInjectionRate } from "./clinical.js";
-import { metaInjectionsForCycle } from "./config/injections-2026-meta.js";
+import {
+  SUBTYPES,
+  getClinicalDataset,
+  getEffectiveAnnualInjectionRate,
+  getInjectionScheduleForCase,
+  usesYear1InclusiveSchedule,
+} from "./clinical.js";
+import { scheduleInjectionsForCycle } from "./config/injections-2026-meta.js";
 import { getDrug } from "./drugs.js";
 import { getCostPaper } from "./papers/index.js";
 import { transportationCostPerVisit } from "./config/transport.js";
@@ -199,6 +205,7 @@ function resolveRunInputs(input) {
     subtypeId,
     costPaperId,
     clinicalCase = "base",
+    transitionMode,
     modelParams = {},
     intervalWeeks = null,
   } = input;
@@ -206,7 +213,7 @@ function resolveRunInputs(input) {
   const drug = getDrug(drugId);
   const subtype = SUBTYPES[subtypeId];
   const paper = getCostPaper(costPaperId);
-  const dataset = getClinicalDataset(clinicalCase);
+  const dataset = getClinicalDataset(clinicalCase, transitionMode);
   // サマリー/スイッチの Markov は S5/S6 列（rbz_bs / aflibercept）で集約するため
   // transitionKey を用いる（個別患者タブは薬剤別 drugId を別途使用）。
   const clinicalKey = drug.transitionKey ?? drug.clinicalKey;
@@ -343,9 +350,13 @@ function simulateCohort(
     if (onTreatment) {
       if (intervalWeeks != null && intervalWeeks > 0) {
         injThisCycle = annualInj * cycleLen;
-      } else if (clinicalCase === "2026_meta") {
+      } else if (usesYear1InclusiveSchedule(clinicalCase)) {
         // year1 は導入期を含む12か月合計。phaseForCycle の year1=cycle1–4 は使わない。
-        injThisCycle = metaInjectionsForCycle(drugId, c, cycleLen);
+        injThisCycle = scheduleInjectionsForCycle(
+          getInjectionScheduleForCase(clinicalCase, drugId),
+          c,
+          cycleLen
+        );
       } else {
         injThisCycle =
           phase === "induction" ? annualInj : annualInj * cycleLen;

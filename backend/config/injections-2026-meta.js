@@ -4,7 +4,7 @@
  * 1年目（year1）の出典（主に Wojciechowski 2025 NMA, PMID 39994103 の範囲）:
  *   - 8 mg 5.9（Q12）/ 5.1（Q16）→ 5.5 は中点
  *   - ファリシマブ 6.2〜6.7 → 6.45 は中点
- *   - ラニビズマブ 7.62〜12.14 → 9.85 はほぼ中点
+ *   - ラニビズマブ Q4 12.14 / Q8 7.62 → 9.88 は中点
  *   - AFL 2 mg「up to 7.67」→ 上限値
  *   - ブロルシズマブ 6.3 は当該 NMA になく、日本の TAE 研究（Matsumoto 6.4、Inoda 6.2）由来
  * 抄録の1年目回数は導入期を含む総数。2年目以降 = year1 − 3 は文献値ではなくモデル上の仮定。
@@ -18,7 +18,21 @@
  */
 
 export const INJECTIONS_2026_META_SOURCE =
-  "2026 meta: 1年目は主に Wojciechowski 2025 の範囲中点（AFL 2mg は上限）。ブロルシズマブは日本 TAE。2年目以降は仮定（year1−3、AFL 8mg は Q16）";
+  "1年目は Wojciechowski, Ophthalmol Ther, 2025 の範囲中点（AFL 2 mg は報告上限）。ブロルシズマブは Matsumoto, Sci Rep, 2022 / Inoda, Sci Rep, 2024。2年目以降は原典に当該数値なし（専門家による推計）";
+
+/**
+ * 照合で原典の数値が見つからないフェーズ。
+ * year1 の 5.5 / 6.45 / 7.67 / 6.3 / 9.88 は文献値または報告2値の中点。
+ */
+export const META_2026_PHASE_IS_ESTIMATE = {
+  faricimab: { induction: true, year1: false, year2: true, year3plus: true },
+  aflibercept_8mg: { induction: true, year1: false, year2: true, year3plus: true },
+  aflibercept: { induction: true, year1: false, year2: true, year3plus: true },
+  aflibercept_bs: { induction: true, year1: false, year2: true, year3plus: true },
+  ranibizumab: { induction: true, year1: false, year2: true, year3plus: true },
+  ranibizumab_bs: { induction: true, year1: false, year2: true, year3plus: true },
+  brolucizumab: { induction: true, year1: false, year2: true, year3plus: true },
+};
 
 /**
  * drugId → year 1 総注射回数（導入期を含む）+ その値が報告されたレジメンの参考間隔（週）
@@ -29,8 +43,8 @@ export const INJECTIONS_2026_META_YEAR1 = {
   aflibercept_8mg: 5.5,
   aflibercept: 7.67,
   aflibercept_bs: 7.67,
-  ranibizumab: 9.85,
-  ranibizumab_bs: 9.85,
+  ranibizumab: 9.88,
+  ranibizumab_bs: 9.88,
   brolucizumab: 6.3,
 };
 
@@ -92,12 +106,8 @@ export function getInjections2026MetaForDrug(drugId) {
   });
 }
 
-/**
- * 2026 meta の四半期あたり注射回数。
- * 最初の12か月（cycle 0–3）の合計 = year1（導入期を含む）。
- */
-export function metaInjectionsForCycle(drugId, cycleIndex, cycleLengthYears = 0.25) {
-  const schedule = getInjections2026MetaForDrug(drugId);
+/** year1 に導入を含むスケジュールの四半期配分 */
+export function scheduleInjectionsForCycle(schedule, cycleIndex, cycleLengthYears = 0.25) {
   if (!schedule) return 0;
   if (cycleIndex <= 0) return schedule.induction;
   const elapsedYears = cycleIndex * cycleLengthYears;
@@ -109,27 +119,46 @@ export function metaInjectionsForCycle(drugId, cycleIndex, cycleLengthYears = 0.
   return schedule.year2 * cycleLengthYears;
 }
 
-/**
- * 2026 meta の月次注射回数。
- * 月0–2＝導入（合計3回）、月3–11＝(year1−3)/9、月12以降＝year2/12。
- */
-export function metaInjectionsForMonth(drugId, monthIndex) {
-  const schedule = getInjections2026MetaForDrug(drugId);
+/** year1 に導入を含むスケジュールの月次配分 */
+export function scheduleInjectionsForMonth(schedule, monthIndex) {
   if (!schedule) return 0;
   if (monthIndex < 3) return schedule.induction / 3;
   if (monthIndex < 12) return Math.max(0, schedule.year1 - schedule.induction) / 9;
   return schedule.year2 / 12;
 }
 
+/**
+ * 2026 meta の四半期あたり注射回数。
+ * 最初の12か月（cycle 0–3）の合計 = year1（導入期を含む）。
+ */
+export function metaInjectionsForCycle(drugId, cycleIndex, cycleLengthYears = 0.25) {
+  return scheduleInjectionsForCycle(
+    getInjections2026MetaForDrug(drugId),
+    cycleIndex,
+    cycleLengthYears
+  );
+}
+
+/**
+ * 2026 meta の月次注射回数。
+ * 月0–2＝導入（合計3回）、月3–11＝(year1−3)/9、月12以降＝year2/12。
+ */
+export function metaInjectionsForMonth(drugId, monthIndex) {
+  return scheduleInjectionsForMonth(getInjections2026MetaForDrug(drugId), monthIndex);
+}
+
 /** UI 用 — 薬剤名とフェーズ別回数 */
 export function listInjections2026MetaSummary(drugCatalog) {
   return Object.entries(INJECTIONS_2026_META_YEAR1).map(([drugId, year1]) => {
     const phases = getInjections2026MetaForDrug(drugId);
+    const flags = META_2026_PHASE_IS_ESTIMATE[drugId] ?? {};
     return {
       drugId,
       name: drugCatalog[drugId]?.name ?? drugId,
       year1,
       year2plus: phases.year2,
+      year1Estimate: flags.year1 === true,
+      year2plusEstimate: flags.year2 === true,
     };
   });
 }

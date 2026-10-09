@@ -29,7 +29,7 @@ export const AFL2MG_DERIVED_INJECTION_OVERRIDES = {
   brolucizumab: { induction: 2 },
 };
 export const AFL2MG_DERIVED_INJECTION_NOTE =
-  "参考値: induction は薬剤別（AFL 8 mg=3, ファリ=4, ブロル=2）。year1以降は同一病型 AFL 2 mg × 0.8。S6 未掲載のため暫定。";
+  "（専門家による推計）: induction は薬剤別（AFL 8 mg=3, ファリ=4, ブロル=2）。year1以降は同一病型 AFL 2 mg × 0.8。S6/S8 未掲載のため原典の回数なし。";
 
 /** Supplementary Table S8 — scenario 注射回数（clinical.js 由来） */
 const S8_SCENARIO_RAW = {

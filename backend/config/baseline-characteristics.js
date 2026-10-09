@@ -1,8 +1,10 @@
 /**
  * Baseline characteristics
- * - 年齢・両眼罹患・平均 BCVA: Yoneda et al. [1]
- * - 5状態の初期分布: Supplementary Table S2 (Yoneda et al. [1])
+ * - 年齢・両眼罹患・平均 BCVA: Yoneda, Ophthalmol Retina, 2023
+ * - 5状態の初期分布: Table S2（Yoneda, Ophthalmol Retina, 2023）
  */
+
+import { CITE } from "./citations.js";
 
 /** 5状態の小数 BCVA カテゴリー中央値（無・軽・中・重・失明） */
 export const STATE_BCVA_CENTROIDS = [0.625, 0.437, 0.2, 0.075, 0.025];
@@ -85,8 +87,8 @@ export function buildSubtypeBaseline(subtypeId) {
   const fellowInitial = normalizeDist([...s2.fellow]);
   return {
     ...row,
-    baselineSource: "Yoneda et al. [1]",
-    initialDistributionSource: "Supplementary Table S2 (Yoneda et al. [1])",
+    baselineSource: CITE.yoneda2023,
+    initialDistributionSource: `Table S2（${CITE.yoneda2023}）`,
     treatedInitial,
     fellowInitial,
     impliedBcvaAffected: meanBcvaOfDistribution(treatedInitial),

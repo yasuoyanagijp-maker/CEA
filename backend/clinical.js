@@ -16,9 +16,14 @@ import {
 import {
   getInjections2026MetaForDrug,
   INJECTIONS_2026_META_SOURCE,
-  metaInjectionsForCycle,
-  metaInjectionsForMonth,
+  scheduleInjectionsForCycle,
+  scheduleInjectionsForMonth,
 } from "./config/injections-2026-meta.js";
+import {
+  CLINICAL_CASE_LIT_2025,
+  INJECTIONS_LIT_2025_SOURCE,
+  getInjectionsLit2025ForDrug,
+} from "./config/injections-lit-2025.js";
 import { getPaperBscTransitions, TABLE_S2_BSC_SOURCE } from "./config/table-s2-bsc-transitions.js";
 import { annualInjectionsFromIntervalWeeks } from "./config/treatment-intervals.js";
 import {
@@ -30,6 +35,20 @@ import {
 } from "./config/drug-clinical-profile.js";
 import { getDrug } from "./drugs.js";
 import { DEFAULT_HORIZON } from "./constants.js";
+import {
+  DEFAULT_TRANSITION_MODE,
+  TRANSITION_MODE_OPTIONS,
+  TRANSITION_POOL_SOURCE,
+  isPooledTransitionMode,
+  overlayPooledTransitions,
+  TRANS_POOLED_TABLE,
+} from "./config/transition-pool.js";
+import {
+  EXPERT_ESTIMATE_LABEL,
+  getInjectionEstimateFlags,
+  isExpertEstimateCalendarYear,
+} from "./config/injection-estimates.js";
+import { CITE, CLINICAL_CASE_HINTS, CLINICAL_CASE_LABELS } from "./config/citations.js";
 
 /** ベースライン — Yoneda [1] + Table S2 初期分布；遷移・注射は Table S5–S8 */
 export const SUBTYPES = {
@@ -79,10 +98,16 @@ export {
   TABLE_S7_S8_SOURCE,
   INJECTIONS_2026_META_SOURCE,
   TABLE_S2_BSC_SOURCE,
+  DEFAULT_TRANSITION_MODE,
+  TRANSITION_MODE_OPTIONS,
+  TRANSITION_POOL_SOURCE,
+  EXPERT_ESTIMATE_LABEL,
+  INJECTIONS_LIT_2025_SOURCE,
+  CLINICAL_CASE_LIT_2025,
 };
 
 /**
- * 臨床データセット — 遷移・注射回数の3系統（base / scenario / 2026_meta）を
+ * 臨床データセット — 遷移・注射回数の4系統（base / scenario / 2026_meta / lit_2025_2026）を
  * 同一インターフェースで提供する。呼び出し側（markov.js）は clinicalCase の
  * 分岐を持たず、datasets のメソッドのみを使う。
  *
@@ -117,26 +142,26 @@ function makeTableDataset({ id, label, hint, transitions, injections }) {
 
 const BASE_DATASET = makeTableDataset({
   id: "base",
-  label: "ベースケース（Table S5 遷移・S6 注射）",
-  hint: "遷移: Table S5 / 注射: Table S6",
+  label: CLINICAL_CASE_LABELS.base,
+  hint: CLINICAL_CASE_HINTS.base,
   transitions: TRANS_BASE,
   injections: INJ_BASE,
 });
 
 const SCENARIO_DATASET = makeTableDataset({
   id: "scenario",
-  label: "シナリオ（Table S7–S8）",
-  hint: "遷移: Table S7–S8 / 注射: Table S8",
+  label: CLINICAL_CASE_LABELS.scenario,
+  hint: CLINICAL_CASE_HINTS.scenario,
   transitions: TRANS_SCENARIO,
   injections: INJ_SCENARIO,
 });
 
-/** 2026 meta — 遷移は Table S5、注射回数のみ薬剤別メタ解析値 */
+/** 2026_meta — 遷移は Table S5、注射回数のみ薬剤別メタ解析値 */
 const META_2026_DATASET = {
   ...makeTableDataset({
     id: "2026_meta",
-    label: "2026 meta（注射回数のみ更新）",
-    hint: "遷移: Table S5 / 注射: 2026 meta（1年目＝導入期を含む総数。主に Wojciechowski 2025 の範囲中点）",
+    label: CLINICAL_CASE_LABELS["2026_meta"],
+    hint: CLINICAL_CASE_HINTS["2026_meta"],
     transitions: TRANS_BASE,
     injections: {},
   }),
@@ -144,22 +169,62 @@ const META_2026_DATASET = {
     getInjections2026MetaForDrug(drugId)?.[phase] ?? 0,
   hasInjections: (drugId) => getInjections2026MetaForDrug(drugId) != null,
   missingInjectionsWarning: (drugName) =>
-    `${drugName}: 2026 meta 注射回数が未設定`,
+    `${drugName}: ${CLINICAL_CASE_LABELS["2026_meta"]} の注射回数が未設定`,
+};
+
+const LIT_2025_DATASET = {
+  ...makeTableDataset({
+    id: CLINICAL_CASE_LIT_2025,
+    label: CLINICAL_CASE_LABELS.lit_2025_2026,
+    hint: CLINICAL_CASE_HINTS.lit_2025_2026,
+    transitions: TRANS_BASE,
+    injections: {},
+  }),
+  getAnnualInjections: ({ drugId, phase }) =>
+    getInjectionsLit2025ForDrug(drugId)?.[phase] ?? 0,
+  hasInjections: (drugId) => getInjectionsLit2025ForDrug(drugId) != null,
+  missingInjectionsWarning: (drugName) =>
+    `${drugName}: 感度分析注射回数が未設定`,
 };
 
 export const CLINICAL_DATASETS = {
   base: BASE_DATASET,
   scenario: SCENARIO_DATASET,
   "2026_meta": META_2026_DATASET,
+  [CLINICAL_CASE_LIT_2025]: LIT_2025_DATASET,
 };
+
+export function usesYear1InclusiveSchedule(clinicalCase) {
+  return clinicalCase === "2026_meta" || clinicalCase === CLINICAL_CASE_LIT_2025;
+}
+
+export function getInjectionScheduleForCase(clinicalCase, drugId) {
+  if (clinicalCase === CLINICAL_CASE_LIT_2025) {
+    return getInjectionsLit2025ForDrug(drugId);
+  }
+  if (clinicalCase === "2026_meta") {
+    return getInjections2026MetaForDrug(drugId);
+  }
+  return null;
+}
 
 export const CLINICAL_CASE_OPTIONS = Object.values(CLINICAL_DATASETS).map(
   ({ id, label, hint }) => ({ id, label, hint })
 );
 
 /** @returns {ClinicalDataset} */
-export function getClinicalDataset(clinicalCase) {
-  return CLINICAL_DATASETS[clinicalCase] ?? BASE_DATASET;
+export function getClinicalDataset(
+  clinicalCase,
+  transitionMode = DEFAULT_TRANSITION_MODE
+) {
+  const base = CLINICAL_DATASETS[clinicalCase] ?? BASE_DATASET;
+  if (!isPooledTransitionMode(transitionMode)) return base;
+  return {
+    ...base,
+    getTransitions: (subtypeId, _clinicalKey, phase) =>
+      TRANS_POOLED_TABLE[subtypeId]?.pooled?.[phase] ?? null,
+    hasTransitions: (subtypeId) => TRANS_POOLED_TABLE[subtypeId]?.pooled != null,
+  };
 }
 
 /**
@@ -193,21 +258,33 @@ export function getEffectiveAnnualInjectionRate({
  * 個別患者タブ用 — 遷移（clinicalKey 別）と注射（薬剤ID 別）を返す。
  * サマリー/スイッチが使う getClinicalDataset とは別に、薬剤別注射モデル
  * （AFL 8mg/ファリ/ブロル = AFL 2mg 由来）を保持する。
- * @param {'base'|'scenario'|'2026_meta'} clinicalCase
+ * @param {'base'|'scenario'|'2026_meta'|'lit_2025_2026'} clinicalCase
+ * @param {string} [transitionMode]
  */
-export function getClinicalTables(clinicalCase) {
+export function getClinicalTables(
+  clinicalCase,
+  transitionMode = DEFAULT_TRANSITION_MODE
+) {
+  let tables;
   if (clinicalCase === "scenario") {
-    return { transitions: TRANS_SCENARIO, injections: INJ_SCENARIO_PERDRUG };
+    tables = { transitions: TRANS_SCENARIO, injections: INJ_SCENARIO_PERDRUG };
+  } else if (usesYear1InclusiveSchedule(clinicalCase)) {
+    tables = { transitions: TRANS_BASE, injections: null };
+  } else {
+    tables = { transitions: TRANS_BASE, injections: INJ_BASE_PERDRUG };
   }
-  if (clinicalCase === "2026_meta") {
-    return { transitions: TRANS_BASE, injections: null };
+  if (isPooledTransitionMode(transitionMode)) {
+    return {
+      ...tables,
+      transitions: overlayPooledTransitions(tables.transitions),
+    };
   }
-  return { transitions: TRANS_BASE, injections: INJ_BASE_PERDRUG };
+  return tables;
 }
 
 /**
  * フェーズあたり年間注射回数（薬剤ID 別）
- * @param {'base'|'scenario'|'2026_meta'} clinicalCase
+ * @param {'base'|'scenario'|'2026_meta'|'lit_2025_2026'} clinicalCase
  */
 export function getInjectionRate(
   clinicalCase,
@@ -216,8 +293,8 @@ export function getInjectionRate(
   drugId,
   phase
 ) {
-  if (clinicalCase === "2026_meta") {
-    const schedule = getInjections2026MetaForDrug(drugId);
+  if (usesYear1InclusiveSchedule(clinicalCase)) {
+    const schedule = getInjectionScheduleForCase(clinicalCase, drugId);
     if (!schedule) return 0;
     return schedule[phase] ?? 0;
   }
@@ -239,29 +316,36 @@ export function getInjectionPhaseReference(
   const transitionKey = drug.transitionKey ?? getTransitionKey(drugId);
   const { injections } = getClinicalTables(clinicalCase);
 
-  if (clinicalCase === "2026_meta") {
-    const schedule = getInjections2026MetaForDrug(drugId);
+  const estimateFlags = getInjectionEstimateFlags(clinicalCase, drugId);
+
+  if (usesYear1InclusiveSchedule(clinicalCase)) {
+    const schedule = getInjectionScheduleForCase(clinicalCase, drugId);
+    const isLit = clinicalCase === CLINICAL_CASE_LIT_2025;
     return {
-      source: INJECTIONS_2026_META_SOURCE,
+      source: isLit ? INJECTIONS_LIT_2025_SOURCE : INJECTIONS_2026_META_SOURCE,
       clinicalKey,
       transitionKey,
       phases: schedule,
-      note: "year1 は導入期を含む12か月合計（最初の12か月＝year1。導入3回を上乗せしない）。year2以降は原則 year1−3（AFL 8 mgはQ16維持相当）",
+      estimateFlags,
+      note: isLit
+        ? `year1 は導入期を含む12か月合計。確認文献がある薬剤だけ差し替え。無いセルと year2以降は ${CITE.wojciechowski2025} セットの既存値${EXPERT_ESTIMATE_LABEL}`
+        : `year1 は導入期を含む12か月合計（最初の12か月＝year1。導入3回を上乗せしない）。year2以降は原則 year1−3（AFL 8 mgはQ16維持相当）${EXPERT_ESTIMATE_LABEL}。ラニビズマブ year1 9.88 は ${CITE.wojciechowski2025} Table 2 の Q4/Q8 中点`,
     };
   }
 
   const phases = injections?.[subtypeId]?.[drugId] ?? null;
   const isReference = isAfl2mgDerivedInjection(drugId);
   return {
-    source: clinicalCase === "scenario" ? "Supplementary Table S8 (scenario)" : TABLE_S6_SOURCE,
+    source: clinicalCase === "scenario" ? "Table S8（Yanagi, Ophthalmol Ther, 2024）" : TABLE_S6_SOURCE,
     clinicalKey,
     transitionKey,
     phases,
+    estimateFlags,
     isInjectionReference: isReference,
     injectionReferenceFactor: isReference ? AFL2MG_DERIVED_INJECTION_FACTOR : null,
     injectionReferenceNote: isReference ? AFL2MG_DERIVED_INJECTION_NOTE : null,
     note: isReference
-      ? `参考値 — induction は薬剤別（AFL 8 mg=3, ファリ=4, ブロル=2）。year1以降は同一病型 AFL 2 mg × ${AFL2MG_DERIVED_INJECTION_FACTOR}`
+      ? `${EXPERT_ESTIMATE_LABEL} — induction は薬剤別（AFL 8 mg=3, ファリ=4, ブロル=2）。year1以降は同一病型 AFL 2 mg × ${AFL2MG_DERIVED_INJECTION_FACTOR}`
       : "induction=最初3か月の回数、year1/year2/year3plus=年間回数（病型×薬剤別）",
   };
 }
@@ -298,7 +382,15 @@ export function buildInjectionYearReference({
     }
     expected = Math.round(expected * 1000) / 1000;
     lifetime += expected;
-    rows.push({ year, expected });
+    rows.push({
+      year,
+      expected,
+      expertEstimate: isExpertEstimateCalendarYear({
+        clinicalCase,
+        drugId,
+        calendarYear: year,
+      }),
+    });
   }
 
   return {
@@ -316,8 +408,11 @@ export function injectionsForMonth(monthIndex, context) {
     return 0;
   }
 
-  if (clinicalCase === "2026_meta") {
-    return metaInjectionsForMonth(drugId, monthIndex);
+  if (usesYear1InclusiveSchedule(clinicalCase)) {
+    return scheduleInjectionsForMonth(
+      getInjectionScheduleForCase(clinicalCase, drugId),
+      monthIndex
+    );
   }
 
   const phase = phaseForCycle(Math.floor(monthIndex / 3), 0.25);
@@ -351,8 +446,12 @@ export function injectionsForCycle(cycleIndex, context) {
     return 0;
   }
 
-  if (clinicalCase === "2026_meta") {
-    return metaInjectionsForCycle(drugId, cycleIndex, cycleLengthYears);
+  if (usesYear1InclusiveSchedule(clinicalCase)) {
+    return scheduleInjectionsForCycle(
+      getInjectionScheduleForCase(clinicalCase, drugId),
+      cycleIndex,
+      cycleLengthYears
+    );
   }
 
   const phase = phaseForCycle(cycleIndex, cycleLengthYears);

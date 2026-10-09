@@ -6,11 +6,12 @@ import {
   MONITORING_JME_2025,
   SOCIETAL_JME_2025,
 } from "../config/cost-common.js";
+import { CITE, COST_PAPER_LABELS } from "../config/citations.js";
 
 export const PAPER1 = {
   id: "paper1_faricimab",
-  label: "JME 2025;28:448-459.",
-  description: "Yanagi et al. Faricimab nAMD/DME CEA — JME 2025;28:448-459 supplementary costs",
+  label: COST_PAPER_LABELS.paper1_faricimab,
+  description: `ファリシマブ nAMD CEA の補足コスト（${CITE.yanagi2025jme}）`,
 
   drugPrices: DRUG_PRICES_JPY,
 

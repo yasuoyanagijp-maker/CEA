@@ -141,6 +141,13 @@ describe("2026 meta 注射回数", () => {
     for (let c = 0; c < 20; c++) total += injectionsForCycle(c, ctx);
     expect(total).toBeCloseTo(s.year1 + 4 * s.year2, 9);
   });
+
+  it("ラニビズマブ 9.88 / 6.88 の5年期待回数は 37.40", () => {
+    const s = getInjections2026MetaForDrug("ranibizumab_bs");
+    expect(s.year1).toBe(9.88);
+    expect(s.year2).toBeCloseTo(6.88, 10);
+    expect(s.year1 + 4 * s.year2).toBeCloseTo(37.4, 10);
+  });
 });
 
 describe("runMarkov の出力整合", () => {

@@ -406,6 +406,7 @@ export function runSwitchCostMinimization(input) {
     subtypeId,
     costPaperId,
     clinicalCase,
+    transitionMode: input.transitionMode,
     horizon,
     treatmentDurationYears,
     modelParams,
@@ -552,8 +553,8 @@ export function runSwitchCostMinimization(input) {
 
 function buildInjectionModelNote(clinicalCase) {
   const metaNote =
-    clinicalCase === "2026_meta"
-      ? " 左サイドバー「2026 meta」の year1 値（7.67 / 5.5 等）はサマリー Markov 用で、スイッチタブでは使いません。"
+    clinicalCase === "2026_meta" || clinicalCase === "lit_2025_2026"
+      ? " 左サイドバーの year1 値はサマリー Markov 用で、スイッチタブでは使いません。2年目以降は（専門家による推計）。ネットワークメタ解析は Wojciechowski, Ophthalmol Ther, 2025。"
       : "";
   return (
     `年間注射 = 52 ÷ 選択間隔（週）。Q8 → 6.5 回/年 — 薬剤に依存せず UI の間隔だけで決まります。` +

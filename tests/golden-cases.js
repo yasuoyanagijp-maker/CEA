@@ -42,8 +42,8 @@ export function buildGoldenCases() {
     }
   }
 
-  // 全7薬剤（デフォルト条件） — 臨床キー代理・2026 meta 個別回数のカバー
-  for (const clinicalCase of ["base", "2026_meta"]) {
+  // 全7薬剤（デフォルト条件） — 臨床キー代理・2026 meta / 感度分析個別回数のカバー
+  for (const clinicalCase of ["base", "2026_meta", "lit_2025_2026"]) {
     cases.push({
       id: `all_drugs__typical__${clinicalCase}__paper2`,
       input: {

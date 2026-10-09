@@ -18,7 +18,7 @@
 import { tp } from "../utils.js";
 
 export const TABLE_S2_BSC_SOURCE =
-  "O&T 2023 ESM Table S2 BSC column (Wong 2008); applied per 3-month cycle (paper does not state cycle vs annual)";
+  "Table S2 BSC 列（Yanagi, Ophthalmol Ther, 2023；Wong, Ophthalmology, 2008）。3か月サイクルあたりで適用（論文はサイクル単位か年単位かを明記せず）";
 
 /** フェーズ → 正規化済み遷移（改善 0%） */
 export const BSC_TRANSITIONS_TABLE_S2 = {

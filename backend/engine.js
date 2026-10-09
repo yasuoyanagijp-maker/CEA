@@ -32,7 +32,8 @@ import {
  * @property {string} referenceDrugId — ICER 参照薬
  * @property {string} subtypeId — typical | pcv | rap
  * @property {string} costPaperId — default_integrated | paper1_faricimab | paper2_rbz
- * @property {'base'|'scenario'|'2026_meta'} clinicalCase
+ * @property {'base'|'scenario'|'2026_meta'|'lit_2025_2026'} clinicalCase
+ * @property {'drug_specific'|'rbz_afl_pooled'} [transitionMode]
  * @property {{timeHorizonYears:number,cycleLengthYears:number,discountRate:number}} horizon
  * @property {number|null} [treatmentDurationYears] — 2 / 5 / null（生涯）
  * @property {object} modelParams — QALY・死亡・第二眼・AE 等
@@ -128,6 +129,7 @@ export function runAnalysis(input) {
       subtypeId: input.subtypeId ?? "typical",
       costPaperId: input.costPaperId ?? DEFAULT_COST_PAPER_ID,
       clinicalCase: input.clinicalCase ?? "base",
+      transitionMode: input.transitionMode,
       horizon,
       treatmentDurationYears,
       modelParams,
@@ -160,6 +162,7 @@ export function runAnalysis(input) {
       subtypeId: input.subtypeId,
       costPaperId: input.costPaperId,
       clinicalCase: input.clinicalCase,
+      transitionMode: input.transitionMode,
       horizon,
       treatmentDurationYears,
     },
@@ -267,6 +270,9 @@ export {
 export {
   CLINICAL_DATASETS,
   CLINICAL_CASE_OPTIONS,
+  DEFAULT_TRANSITION_MODE,
+  TRANSITION_MODE_OPTIONS,
+  TRANSITION_POOL_SOURCE,
   getClinicalDataset,
   getEffectiveAnnualInjectionRate,
   getInjectionRate,
@@ -275,8 +281,19 @@ export {
   injectionsForMonth,
   injectionsForCycle,
   INJECTIONS_2026_META_SOURCE,
+  INJECTIONS_LIT_2025_SOURCE,
+  CLINICAL_CASE_LIT_2025,
+  usesYear1InclusiveSchedule,
 } from "./clinical.js";
 export { listInjections2026MetaSummary } from "./config/injections-2026-meta.js";
+export { listInjectionsLit2025Summary } from "./config/injections-lit-2025.js";
+export {
+  EXPERT_ESTIMATE_LABEL,
+  formatInjectionCount,
+  isExpertEstimateInjection,
+  isExpertEstimateCalendarYear,
+  listExpertEstimateInjections,
+} from "./config/injection-estimates.js";
 export {
   buildS12ModelParams,
   PAPER_S12_ENTRY_AGE,

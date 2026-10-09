@@ -35,13 +35,22 @@ import {
   TREATMENT_DURATION_OPTIONS,
   TREATMENT_INTERVAL_OPTIONS,
   CLINICAL_CASE_OPTIONS,
+  DEFAULT_TRANSITION_MODE,
+  TRANSITION_MODE_OPTIONS,
+  TRANSITION_POOL_SOURCE,
   EVIDENCE_TIER_LABELS,
   INCOME_BRACKET_LIST,
   getCopayRate,
   describeMonthlyLimit,
   NHI_SOURCE_NOTE,
   listInjections2026MetaSummary,
+  listInjectionsLit2025Summary,
   INJECTIONS_2026_META_SOURCE,
+  INJECTIONS_LIT_2025_SOURCE,
+  CLINICAL_CASE_LIT_2025,
+  usesYear1InclusiveSchedule,
+  EXPERT_ESTIMATE_LABEL,
+  formatInjectionCount,
   getMarkovBaselineBcva,
 } from "../backend/engine.js";
 import { TREATMENT_DURATION_MODES } from "../backend/constants.js";
@@ -123,6 +132,7 @@ export default function App() {
   const [subtypeId, setSubtypeId] = useState(URL_INIT.subtype ?? "typical");
   const [costPaperId, setCostPaperId] = useState(DEFAULT_COST_PAPER_ID);
   const [clinicalCase, setClinicalCase] = useState("2026_meta");
+  const [transitionMode, setTransitionMode] = useState(DEFAULT_TRANSITION_MODE);
   const [selectedDrugIds, setSelectedDrugIds] = useState(() => [...DRUG_IDS]);
   const [referenceDrugId, setReferenceDrugId] = useState("aflibercept_bs");
   const [treatmentDurationMode, setTreatmentDurationMode] = useState("years_5");
@@ -256,9 +266,16 @@ export default function App() {
     () => listInjections2026MetaSummary(DRUG_CATALOG),
     []
   );
+  const injectionsLit2025 = useMemo(
+    () => listInjectionsLit2025Summary(DRUG_CATALOG),
+    []
+  );
 
   const clinicalCaseHint =
     CLINICAL_CASE_OPTIONS.find((o) => o.id === clinicalCase)?.hint ?? "";
+  const transitionModeOption =
+    TRANSITION_MODE_OPTIONS.find((o) => o.id === transitionMode) ??
+    TRANSITION_MODE_OPTIONS[0];
 
   const analysis = useMemo(
     () =>
@@ -268,6 +285,7 @@ export default function App() {
         subtypeId,
         costPaperId,
         clinicalCase,
+        transitionMode,
         horizon,
         treatmentDurationYears,
         modelParams,
@@ -278,6 +296,7 @@ export default function App() {
       subtypeId,
       costPaperId,
       clinicalCase,
+      transitionMode,
       horizon,
       treatmentDurationYears,
       modelParams,
@@ -390,6 +409,7 @@ export default function App() {
       subtypeId,
       costPaperId,
       clinicalCase,
+      transitionMode,
       horizon,
       treatmentDurationYears,
       modelParams,
@@ -403,6 +423,7 @@ export default function App() {
       subtypeId,
       costPaperId,
       clinicalCase,
+      transitionMode,
       horizon,
       treatmentDurationYears,
       modelParams,
@@ -429,6 +450,7 @@ export default function App() {
       subtypeId,
       costPaperId,
       clinicalCase,
+      transitionMode,
       timeHorizonYears: Number(timeHorizonYears),
       treatmentDurationYears,
       discountRate: Number(discountRate) / 100,
@@ -446,6 +468,7 @@ export default function App() {
     subtypeId,
     costPaperId,
     clinicalCase,
+    transitionMode,
     timeHorizonYears,
     treatmentDurationYears,
     discountRate,
@@ -504,6 +527,7 @@ export default function App() {
       switchAtYear: midSwitchYear,
       costPaperId,
       clinicalCase,
+      transitionMode,
       timeHorizonYears: Number(timeHorizonYears),
       treatmentDurationYears,
       incomeBracket,
@@ -521,6 +545,7 @@ export default function App() {
     midSwitchValid,
     costPaperId,
     clinicalCase,
+    transitionMode,
     timeHorizonYears,
     treatmentDurationYears,
     incomeBracket,
@@ -902,12 +927,34 @@ export default function App() {
                 ))}
               </select>
             </label>
+            <label style={labelStyle}>
+              視力遷移
+              <select
+                value={transitionMode}
+                onChange={(e) => setTransitionMode(e.target.value)}
+                style={selectStyle}
+              >
+                {TRANSITION_MODE_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5 }}>
               ベースライン（{subtype.baselineSource ?? "—"}）
               <br />
               初期分布: {subtype.initialDistributionSource ?? "Table S2"}
               <br />
               {clinicalCaseHint}
+              <br />
+              {transitionModeOption.hint}
+              {transitionMode === "rbz_afl_pooled" && (
+                <>
+                  <br />
+                  {TRANSITION_POOL_SOURCE}
+                </>
+              )}
               <br />
               両眼罹患 {subtype.bothEyesBaseline * 100}% • 年齢 {subtype.meanAge}歳
               <br />
@@ -939,17 +986,61 @@ export default function App() {
                     {injections2026Meta.map((row) => (
                       <tr key={row.drugId}>
                         <td style={{ padding: "2px 4px" }}>{row.name}</td>
-                        <td style={{ padding: "2px 4px" }}>{row.year1}</td>
-                        <td style={{ padding: "2px 4px" }}>{row.year2plus}</td>
+                        <td style={{ padding: "2px 4px" }}>
+                          {formatInjectionCount(row.year1, row.year1Estimate)}
+                        </td>
+                        <td style={{ padding: "2px 4px" }}>
+                          {formatInjectionCount(row.year2plus, row.year2plusEstimate)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 <p style={{ margin: "6px 0 0", color: "#64748B" }}>
-                  1年目は導入期を含む総数（最初の12か月の合計＝year1。主に Wojciechowski 2025
-                  の範囲中点。AFL 2 mg は報告上限、ブロルシズマブは日本の TAE 研究）。
-                  2年目以降は year1 − 3 の仮定。AFL 8 mg は Q16 維持相当（52/16=3.25回/年）。
+                  1年目は導入期を含む総数（最初の12か月の合計＝year1。主に Wojciechowski, Ophthalmol Ther, 2025
+                  の範囲中点。AFL 2 mg は報告上限、ラニビズマブ 9.88 は Q4 12.14 / Q8 7.62 の中点、
+                  ブロルシズマブは Matsumoto, Sci Rep, 2022 / Inoda, Sci Rep, 2024 の中点）。2年目以降は year1 − 3 の仮定{EXPERT_ESTIMATE_LABEL}。
+                  AFL 8 mg は Q16 維持相当（52/16=3.25回/年）。
                 </p>
+              </div>
+            )}
+            {clinicalCase === CLINICAL_CASE_LIT_2025 && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#475569",
+                  marginTop: 8,
+                  padding: 8,
+                  background: "#F1F5F9",
+                  borderRadius: 6,
+                  lineHeight: 1.5,
+                }}
+              >
+                <strong>{INJECTIONS_LIT_2025_SOURCE}</strong>
+                <table style={{ width: "100%", marginTop: 6, borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", borderBottom: "1px solid #CBD5E1" }}>
+                      <th style={{ padding: "2px 4px" }}>薬剤</th>
+                      <th style={{ padding: "2px 4px" }}>1年目</th>
+                      <th style={{ padding: "2px 4px" }}>2年目以降</th>
+                      <th style={{ padding: "2px 4px" }}>出典</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {injectionsLit2025.map((row) => (
+                      <tr key={row.drugId}>
+                        <td style={{ padding: "2px 4px" }}>{row.name}</td>
+                        <td style={{ padding: "2px 4px" }}>
+                          {formatInjectionCount(row.year1, row.year1Estimate)}
+                        </td>
+                        <td style={{ padding: "2px 4px" }}>
+                          {formatInjectionCount(row.year2plus, row.year2plusEstimate)}
+                        </td>
+                        <td style={{ padding: "2px 4px", color: "#64748B" }}>{row.year1Source}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </Section>
@@ -1101,7 +1192,7 @@ export default function App() {
               />
             </label>
             <p style={{ ...hintStyle, marginTop: -4 }}>
-              病型切替で Markov ベースケース（Yoneda [1]）の BCVA に自動リセット。
+              病型切替で Markov ベースケース（Yoneda, Ophthalmol Retina, 2023）の BCVA に自動リセット。
               既定値のとき初期分布は Table S2（Markov と同一）、変更時は BCVA から導出。
             </p>
             <label style={labelStyle}>
@@ -1116,7 +1207,8 @@ export default function App() {
             <p style={hintStyle}>
               月次で直接医療費・高額療養費上限を適用。解析期間は min(設定, 余命)。
               個別患者タブは全7薬剤を表示。各薬剤は clinicalKey=drugId で独立し、
-              注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ、
+              注射回数は病型（typical/PCV/RAP）× 薬剤別 Table S6 実臨床データ
+              （S6 未掲載の AFL 8 mg / ファリ / ブロルは{EXPERT_ESTIMATE_LABEL}。ネットワークメタ解析・感度分析の2年目以降も同注釈）、
               視力遷移は transitionKey（rbz_bs / aflibercept）を使用。
               <br />
               <strong>乱数シード</strong>（現在: {patientSeed || "42"}）は、フォロー期間（最長生存タイムライン）の
@@ -1194,7 +1286,7 @@ export default function App() {
                 ? [["missing", `要確認 (${missingParams.length + (hasIncompleteResults ? 1 : 0)})`]]
                 : []),
               ...(costPaperId === "paper2_rbz"
-                ? [["validate", "Table S12 照合"]]
+                ? [["validate", "Table S12 照合（Yanagi, Ophthalmol Ther, 2024）"]]
                 : []),
             ].map(([tab, label]) => (
               <TabButton
@@ -1258,8 +1350,20 @@ export default function App() {
                                 (Table {r.tableExpectedInjections.toFixed(1)})
                               </div>
                             )}
-                          {DRUG_CATALOG[id].injectionReference && (
-                            <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
+                          {usesYear1InclusiveSchedule(clinicalCase) ? (
+                            <div style={{ fontSize: 10, color: "#B45309" }}>
+                              2年目以降{EXPERT_ESTIMATE_LABEL}
+                              {clinicalCase === CLINICAL_CASE_LIT_2025 &&
+                                (id === "ranibizumab" || id === "ranibizumab_bs") && (
+                                  <> / 1年目{EXPERT_ESTIMATE_LABEL}</>
+                                )}
+                            </div>
+                          ) : (
+                            DRUG_CATALOG[id].injectionReference && (
+                              <div style={{ fontSize: 10, color: "#B45309" }}>
+                                {EXPERT_ESTIMATE_LABEL}
+                              </div>
+                            )
                           )}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
@@ -1279,6 +1383,14 @@ export default function App() {
                 </tbody>
               </table>
               </ScrollTable>
+              <p style={{ fontSize: 11, color: "#64748B", marginTop: 8, lineHeight: 1.5 }}>
+                注射回数のうち、論文照合で原典の数値が見つからない値には{EXPERT_ESTIMATE_LABEL}。
+                {clinicalCase === "2026_meta"
+                  ? " ネットワークメタ解析セットの2年目以降（全薬剤・全病型）が該当。ラニビズマブ 9.88 は Wojciechowski, Ophthalmol Ther, 2025 Table 2 中点のため1年目は非推計。"
+                  : clinicalCase === CLINICAL_CASE_LIT_2025
+                    ? " 感度分析は新文献のないセル（ラニビズマブ1年目と全薬剤2年目以降）が該当。"
+                    : " ベース/シナリオでは AFL 8 mg・ファリシマブ・ブロルシズマブの全病型・全フェーズ（S6/S8 未掲載の ×0.8）が該当。"}
+              </p>
 
               <div style={{ marginTop: 28 }}>
                 <h3 style={{ fontSize: 15, margin: "0 0 8px", color: "#0F172A" }}>
@@ -1453,7 +1565,7 @@ export default function App() {
                   </table>
                   </ScrollTable>
                   <p style={{ fontSize: 11, color: "#B45309", marginTop: 8 }}>
-                    絶対値は Table S12 と完全一致しない（効用規則・中止・僚眼発症などが論文と異なる）。増分の方向性を確認してください。
+                    絶対値は Table S12（Yanagi, Ophthalmol Ther, 2024）と完全一致しない（効用規則・中止・僚眼発症などが論文と異なる）。増分の方向性を確認してください。
                   </p>
                 </div>
               )}
@@ -1762,8 +1874,21 @@ export default function App() {
                           </td>
                           <td style={{ ...compactTdStyle, textAlign: "right" }}>
                             {row.totalInjections ?? "—"}回
-                            {row.injectionReference && (
-                              <div style={{ fontSize: 10, color: "#B45309" }}>参考(S6暫定)</div>
+                            {usesYear1InclusiveSchedule(clinicalCase) ? (
+                              <div style={{ fontSize: 10, color: "#B45309" }}>
+                                2年目以降{EXPERT_ESTIMATE_LABEL}
+                                {clinicalCase === CLINICAL_CASE_LIT_2025 &&
+                                  (row.drugId === "ranibizumab" ||
+                                    row.drugId === "ranibizumab_bs") && (
+                                    <> / 1年目{EXPERT_ESTIMATE_LABEL}</>
+                                  )}
+                              </div>
+                            ) : (
+                              row.injectionReference && (
+                                <div style={{ fontSize: 10, color: "#B45309" }}>
+                                  {EXPERT_ESTIMATE_LABEL}
+                                </div>
+                              )
                             )}
                           </td>
                           <td style={{ ...compactTdStyle, textAlign: "right" }}>
@@ -1838,7 +1963,10 @@ export default function App() {
                             <tr key={phase}>
                               <td style={tdStyle}>{phase}</td>
                               <td style={{ ...tdStyle, textAlign: "right" }}>
-                                {injectionPhaseRef.phases[phase] ?? "—"}
+                                {formatInjectionCount(
+                                  injectionPhaseRef.phases[phase],
+                                  injectionPhaseRef.estimateFlags?.[phase]
+                                )}
                               </td>
                               <td style={tdStyle}>{meaning}</td>
                             </tr>
@@ -1878,7 +2006,12 @@ export default function App() {
                                 {row.injections ?? 0}回
                               </td>
                               <td style={{ ...tdStyle, textAlign: "right", color: "#64748B" }}>
-                                {injectionReference?.rows[row.year]?.expected ?? "—"}
+                                {injectionReference?.rows[row.year]
+                                  ? formatInjectionCount(
+                                      injectionReference.rows[row.year].expected,
+                                      injectionReference.rows[row.year].expertEstimate
+                                    )
+                                  : "—"}
                               </td>
                               <td style={{ ...tdStyle, textAlign: "right" }}>
                                 {row.cumInjections ?? 0}回
@@ -2568,8 +2701,10 @@ export default function App() {
                 <>
                   <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12, lineHeight: 1.6 }}>
                     各薬剤の Markov コホートにおける治療眼の期待 BCVA（5状態中央値の加重平均）。
-                    生存者の状態分布（{STATE_LABELS.join(" / ")}）から算出。初期分布は Table S2、遷移は Table S5
-                    （typical/PCV: Yoneda Y1 → Jin Y≥2；RAP: Yoneda Y1 → Hoshino Y2 → Kertes Y≥3；導入期は Yanagi 前研究仮定）。
+                    生存者の状態分布（{STATE_LABELS.join(" / ")}）から算出。初期分布は Table S2、遷移は
+                    {transitionMode === "rbz_afl_pooled"
+                      ? " 病型別 RBZ+AFL 症例数加重統合（Table S5 の2列を期間ごとに統合し、その病型の値を全薬剤に適用。Yanagi, Ophthalmol Ther, 2024）。"
+                      : " Table S5（Yanagi, Ophthalmol Ther, 2024。typical/PCV: Yoneda, Ophthalmol Retina, 2023 の Y1 → Jin, Sci Rep, 2021 の Y≥2；RAP: Yoneda, Ophthalmol Retina, 2023 の Y1 → Hoshino, 日眼会誌, 2020 の Y2 → Kertes, Ophthalmology, 2021 の Y≥3；導入期は Yanagi, Ophthalmol Ther, 2023 前研究仮定）。"}
                   </p>
                   <ResponsiveContainer width="100%" height={360}>
                     <LineChart data={visionTrajectoryData}>
@@ -2605,7 +2740,7 @@ export default function App() {
           )}
 
           {activeTab === "validate" && costPaperId === "paper2_rbz" && (
-            <Panel title={`Table S12 照合（${subtype.label}・シナリオ）`}>
+            <Panel title={`Table S12 照合（${subtype.label}・シナリオ・Yanagi, Ophthalmol Ther, 2024）`}>
               <p style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
                 臨床=シナリオ（S7–S8）。参入年齢={PAPER_S12_ENTRY_AGE[subtypeId] ?? subtype.meanAge}歳（S12 論文設定）、
                 20年・令和5年生命表（コホート計算に半周期補正は用いていない）。
