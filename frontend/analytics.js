@@ -1,4 +1,4 @@
-/** GitHub Pages 本番のページビュー計測。入力値・所得区分は送らない。 */
+/** GitHub Pages 本番のページビュー計測。入力値・所得区分・URL クエリは送らない。 */
 
 export const DEFAULT_GOATCOUNTER_SITE = "yanagi-cea";
 export const ANALYTICS_TABS = Object.freeze([
@@ -9,10 +9,19 @@ export const ANALYTICS_TABS = Object.freeze([
 ]);
 
 const SITE_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/i;
+const SENT_ATTR = "data-cea-analytics";
+const LOCAL_HOST =
+  /(localhost$|^127\.|^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\.|^0\.0\.0\.0$)/;
+const LEAK_RE = /(?:^|[?&])(?:q|age|sex|income|seed|subtype|drug|target|interval)=/i;
 
 export function resolveGoatcounterSite(raw) {
   const site = String(raw ?? "").trim();
   return SITE_RE.test(site) ? site : "";
+}
+
+export function analyticsEndpoint(site) {
+  const resolved = resolveGoatcounterSite(site);
+  return resolved ? `https://${resolved}.goatcounter.com/count` : "";
 }
 
 /** 初期タブだけをパスにする。age / income / seed などは付けない。 */
@@ -24,6 +33,36 @@ export function analyticsPath(search = "", pathname = "/") {
   return `${base}/${safeTab}`;
 }
 
+export function isLocalHost(hostname = "", protocol = "") {
+  if (protocol === "file:") return true;
+  return LOCAL_HOST.test(String(hostname));
+}
+
+/** 参照元は origin のみ。共有 URL のクエリを引き継がない。 */
+export function safeReferrer(raw = "") {
+  if (!raw) return "";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "";
+  }
+}
+
+export function buildCountUrl(
+  endpoint,
+  { path, title, referrer, screenWidth, rnd } = {}
+) {
+  const u = new URL(endpoint);
+  u.search = "";
+  u.searchParams.set("p", path);
+  if (title) u.searchParams.set("t", title);
+  const origin = safeReferrer(referrer);
+  if (origin) u.searchParams.set("r", origin);
+  if (Number.isFinite(screenWidth)) u.searchParams.set("s", String(screenWidth));
+  u.searchParams.set("rnd", rnd || "1");
+  return u.toString();
+}
+
 export function initAnalytics({
   prod = import.meta.env.PROD,
   site = import.meta.env.VITE_GOATCOUNTER_SITE || DEFAULT_GOATCOUNTER_SITE,
@@ -31,23 +70,29 @@ export function initAnalytics({
   loc = typeof window !== "undefined" ? window.location : null,
   win = typeof window !== "undefined" ? window : null,
 } = {}) {
-  const resolved = resolveGoatcounterSite(site);
-  if (!prod || !doc?.createElement || !loc || !win || !resolved) return false;
-  if (doc.querySelector("script[data-goatcounter]")) return false;
+  const endpoint = analyticsEndpoint(site);
+  if (!prod || !doc?.createElement || !loc || !win || !endpoint) return false;
+  if (doc.documentElement?.getAttribute?.(SENT_ATTR) === "1") return false;
+  if (isLocalHost(loc.hostname || "", loc.protocol || "")) return false;
 
-  win.goatcounter = {
-    no_onload: true,
-    allow_local: false,
-    path: () => analyticsPath(loc.search || "", loc.pathname || "/"),
-  };
+  const url = buildCountUrl(endpoint, {
+    path: analyticsPath(loc.search || "", loc.pathname || "/"),
+    title: doc.title || "",
+    referrer: doc.referrer || "",
+    screenWidth: win.screen?.width,
+    rnd: Math.random().toString(36).slice(2, 7),
+  });
+  if (LEAK_RE.test(url)) return false;
 
-  const script = doc.createElement("script");
-  script.async = true;
-  script.src = "https://gc.zgo.at/count.js";
-  script.dataset.goatcounter = `https://${resolved}.goatcounter.com/count`;
-  script.onload = () => {
-    if (typeof win.goatcounter?.count === "function") win.goatcounter.count();
-  };
-  (doc.head || doc.body || doc.documentElement).appendChild(script);
+  doc.documentElement?.setAttribute?.(SENT_ATTR, "1");
+
+  const beacon = win.navigator?.sendBeacon;
+  if (typeof beacon === "function" && beacon.call(win.navigator, url)) return true;
+
+  const img = doc.createElement("img");
+  img.src = url;
+  img.alt = "";
+  img.setAttribute("aria-hidden", "true");
+  (doc.body || doc.documentElement || doc.head).appendChild(img);
   return true;
 }
