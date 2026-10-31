@@ -97,6 +97,29 @@ npm run dev
 
 ---
 
+## アクセス解析（GoatCounter）
+
+公開ページの **ページビュー数・ユニーク訪問・参照元** を、Cookie なしの [GoatCounter](https://www.goatcounter.com/) で取ります。
+
+| 送るもの | 送らないもの |
+|----------|--------------|
+| パス（`/CEA/summary` など初期タブ名のみ） | 年齢・所得区分・seed・薬剤・視力などの入力 |
+| 参照元・ブラウザ幅など GoatCounter 既定値 | 計算結果、フォーム内容、セッション録画 |
+
+ダッシュボード: **https://yanagi-cea.goatcounter.com**（サイト作成後に開く）
+
+### 初回だけ必要な作業
+
+コードは本番ビルドに入っています。数字を貯めるには、GoatCounter 側でサイトを1回作ってください。
+
+1. https://www.goatcounter.com/ で無料登録（メール確認）
+2. サイトコードを **`yanagi-cea`** にする（この名前と一致した時点から計測開始。再デプロイ不要）
+3. Settings で自分のアクセスを除外する場合は「Ignore my visits」を使う
+
+別のサイトコードにしたい場合は、`.github/workflows/deploy-pages.yml` の `VITE_GOATCOUNTER_SITE` と `frontend/analytics.js` の既定値を揃えて再デプロイします。
+
+---
+
 ## アーキテクチャ上の注意
 
 - 本アプリに **独立したバックエンド API サーバーはありません**。

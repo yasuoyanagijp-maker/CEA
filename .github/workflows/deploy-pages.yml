@@ -28,6 +28,7 @@ jobs:
       - run: npm run build
         env:
           VITE_BASE_PATH: /CEA/
+          VITE_GOATCOUNTER_SITE: yanagi-cea
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

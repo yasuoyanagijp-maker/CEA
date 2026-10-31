@@ -37,6 +37,8 @@ npx serve dist
 
 `main` ブランチへの push で GitHub Actions が自動ビルド・公開します。
 
+公開版の訪問数は GoatCounter（Cookie なし、入力値は送らない）。初回セットアップとダッシュボードは [GITHUB_PAGES.md](./GITHUB_PAGES.md) を参照。
+
 詳細（共有文面・更新手順・設定内容）→ **[GITHUB_PAGES.md](./GITHUB_PAGES.md)**
 
 ## Cursor で開く
