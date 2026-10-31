@@ -2,45 +2,47 @@ import { describe, it, expect, vi } from "vitest";
 import {
   ANALYTICS_TABS,
   DEFAULT_GOATCOUNTER_SITE,
+  analyticsEndpoint,
   analyticsPath,
+  buildCountUrl,
   initAnalytics,
+  isLocalHost,
   resolveGoatcounterSite,
+  safeReferrer,
 } from "../frontend/analytics.js";
 
-function fakeDocument() {
+function fakeDocument({ title = "nAMD CEA", referrer = "" } = {}) {
+  const attrs = {};
   const nodes = [];
-  const doc = {
-    nodes,
-    head: {
-      appendChild(el) {
-        nodes.push(el);
-        return el;
-      },
+  const documentElement = {
+    getAttribute(name) {
+      return attrs[name];
     },
-    querySelector(sel) {
-      if (sel === "script[data-goatcounter]") {
-        return nodes.find((n) => n.dataset?.goatcounter) ?? null;
-      }
-      return null;
+    setAttribute(name, value) {
+      attrs[name] = value;
     },
-    createElement() {
-      return {
-        async: false,
-        src: "",
-        dataset: {},
-        onload: null,
-      };
+    appendChild(el) {
+      nodes.push(el);
+      return el;
     },
   };
-  return doc;
+  return {
+    nodes,
+    title,
+    referrer,
+    documentElement,
+    createElement() {
+      return { src: "", alt: "", setAttribute() {} };
+    },
+  };
 }
+
+const SHARE_SEARCH = "?tab=patient&age=68&sex=female&income=standard&seed=7";
 
 describe("analyticsPath", () => {
   it("既定タブは summary で、クエリの個人設定は付けない", () => {
     expect(analyticsPath("", "/CEA/")).toBe("/CEA/summary");
-    expect(
-      analyticsPath("?tab=patient&age=68&income=standard&seed=7", "/CEA/")
-    ).toBe("/CEA/patient");
+    expect(analyticsPath(SHARE_SEARCH, "/CEA/")).toBe("/CEA/patient");
     expect(analyticsPath("tab=switch", "/")).toBe("/switch");
   });
 
@@ -53,71 +55,151 @@ describe("analyticsPath", () => {
   });
 });
 
-describe("resolveGoatcounterSite", () => {
+describe("resolveGoatcounterSite / endpoint", () => {
   it("既定コードを受け入れる", () => {
     expect(resolveGoatcounterSite(DEFAULT_GOATCOUNTER_SITE)).toBe("yanagi-cea");
+    expect(analyticsEndpoint(DEFAULT_GOATCOUNTER_SITE)).toBe(
+      "https://yanagi-cea.goatcounter.com/count"
+    );
   });
 
   it("不正なサイトコードは空文字", () => {
     expect(resolveGoatcounterSite("https://evil.example/x")).toBe("");
     expect(resolveGoatcounterSite("yanagi cea")).toBe("");
+    expect(analyticsEndpoint("yanagi cea")).toBe("");
+  });
+});
+
+describe("buildCountUrl", () => {
+  const endpoint = "https://yanagi-cea.goatcounter.com/count";
+
+  it("path / title / screen だけで、q と共有クエリは付けない", () => {
+    const url = buildCountUrl(endpoint, {
+      path: analyticsPath(SHARE_SEARCH, "/CEA/"),
+      title: "nAMD CEA — 抗VEGF 費用対効果",
+      referrer: "https://example.com/mail?age=68&income=standard",
+      screenWidth: 1400,
+      rnd: "abc12",
+    });
+    const u = new URL(url);
+    expect(u.origin + u.pathname).toBe(endpoint);
+    expect(u.searchParams.get("p")).toBe("/CEA/patient");
+    expect(u.searchParams.get("t")).toBe("nAMD CEA — 抗VEGF 費用対効果");
+    expect(u.searchParams.get("r")).toBe("https://example.com");
+    expect(u.searchParams.get("s")).toBe("1400");
+    expect(u.searchParams.get("rnd")).toBe("abc12");
+    expect(u.searchParams.get("q")).toBeNull();
+    expect(url).not.toMatch(/age=|sex=|income=|seed=/);
+    expect([...u.searchParams.keys()].sort()).toEqual(["p", "r", "rnd", "s", "t"]);
+  });
+});
+
+describe("safeReferrer / isLocalHost", () => {
+  it("参照元は origin だけ残す", () => {
+    expect(safeReferrer("https://mail.example/x?seed=7")).toBe("https://mail.example");
+    expect(safeReferrer("not a url")).toBe("");
+  });
+
+  it("localhost と file は数えない", () => {
+    expect(isLocalHost("127.0.0.1", "http:")).toBe(true);
+    expect(isLocalHost("localhost", "http:")).toBe(true);
+    expect(isLocalHost("example.com", "file:")).toBe(true);
+    expect(isLocalHost("yasuoyanagijp-maker.github.io", "https:")).toBe(false);
   });
 });
 
 describe("initAnalytics", () => {
-  it("開発時はスクリプトを入れない", () => {
+  it("開発時は送らない", () => {
+    const sendBeacon = vi.fn();
     const doc = fakeDocument();
-    const win = {};
     expect(
       initAnalytics({
         prod: false,
         doc,
-        loc: { search: "", pathname: "/CEA/" },
-        win,
+        loc: { search: "", pathname: "/CEA/", hostname: "example.com", protocol: "https:" },
+        win: { navigator: { sendBeacon }, screen: { width: 800 } },
       })
     ).toBe(false);
+    expect(sendBeacon).not.toHaveBeenCalled();
     expect(doc.nodes).toHaveLength(0);
   });
 
-  it("本番では GoatCounter だけを読み、初期タブだけを path にする", () => {
+  it("localhost では送らない", () => {
+    const sendBeacon = vi.fn();
     const doc = fakeDocument();
-    const win = {};
-    const loc = {
-      search: "?tab=vision&age=75&income=standard",
-      pathname: "/CEA/",
-    };
-    expect(initAnalytics({ prod: true, doc, loc, win })).toBe(true);
-    expect(doc.nodes).toHaveLength(1);
-    expect(doc.nodes[0].src).toBe("https://gc.zgo.at/count.js");
-    expect(doc.nodes[0].dataset.goatcounter).toBe(
-      "https://yanagi-cea.goatcounter.com/count"
-    );
-    expect(win.goatcounter.allow_local).toBe(false);
-    expect(win.goatcounter.path()).toBe("/CEA/vision");
-    expect(win.goatcounter.path()).not.toMatch(/age|income|seed/);
+    expect(
+      initAnalytics({
+        prod: true,
+        doc,
+        loc: { search: "", pathname: "/CEA/", hostname: "127.0.0.1", protocol: "http:" },
+        win: { navigator: { sendBeacon }, screen: { width: 800 } },
+      })
+    ).toBe(false);
+    expect(sendBeacon).not.toHaveBeenCalled();
   });
 
-  it("二重初期化しない", () => {
+  it("本番では自前の count URL だけ送り、共有クエリも count.js も使わない", () => {
+    const sendBeacon = vi.fn(() => true);
+    const doc = fakeDocument({
+      referrer: "https://example.net/share?age=75&income=standard",
+    });
+    const loc = {
+      search: SHARE_SEARCH,
+      pathname: "/CEA/",
+      hostname: "yasuoyanagijp-maker.github.io",
+      protocol: "https:",
+    };
+    expect(
+      initAnalytics({
+        prod: true,
+        doc,
+        loc,
+        win: { navigator: { sendBeacon }, screen: { width: 1400 } },
+      })
+    ).toBe(true);
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
+    const url = sendBeacon.mock.calls[0][0];
+    expect(url).toMatch(/^https:\/\/yanagi-cea\.goatcounter\.com\/count\?/);
+    expect(url).not.toContain("gc.zgo.at");
+    expect(url).not.toMatch(/[?&]q=/);
+    expect(url).not.toMatch(/age=|sex=|income=|seed=/);
+    expect(new URL(url).searchParams.get("p")).toBe("/CEA/patient");
+    expect(new URL(url).searchParams.get("r")).toBe("https://example.net");
+    expect(doc.nodes).toHaveLength(0);
+  });
+
+  it("二重送信しない", () => {
+    const sendBeacon = vi.fn(() => true);
     const doc = fakeDocument();
-    const loc = { search: "", pathname: "/CEA/" };
-    const win = {};
+    const loc = {
+      search: "",
+      pathname: "/CEA/",
+      hostname: "yasuoyanagijp-maker.github.io",
+      protocol: "https:",
+    };
+    const win = { navigator: { sendBeacon }, screen: { width: 800 } };
     expect(initAnalytics({ prod: true, doc, loc, win })).toBe(true);
     expect(initAnalytics({ prod: true, doc, loc, win })).toBe(false);
-    expect(doc.nodes).toHaveLength(1);
+    expect(sendBeacon).toHaveBeenCalledTimes(1);
   });
 
-  it("スクリプト読込後に count を1回呼ぶ", () => {
+  it("sendBeacon が使えないときは 1x1 画像に落とす", () => {
     const doc = fakeDocument();
-    const count = vi.fn();
-    const win = {};
-    initAnalytics({
-      prod: true,
-      doc,
-      loc: { search: "", pathname: "/CEA/" },
-      win,
-    });
-    win.goatcounter.count = count;
-    doc.nodes[0].onload();
-    expect(count).toHaveBeenCalledTimes(1);
+    expect(
+      initAnalytics({
+        prod: true,
+        doc,
+        loc: {
+          search: "",
+          pathname: "/CEA/",
+          hostname: "yasuoyanagijp-maker.github.io",
+          protocol: "https:",
+        },
+        win: { navigator: {}, screen: { width: 800 } },
+      })
+    ).toBe(true);
+    expect(doc.nodes).toHaveLength(1);
+    expect(doc.nodes[0].src).toMatch(/^https:\/\/yanagi-cea\.goatcounter\.com\/count\?/);
+    expect(doc.nodes[0].src).not.toMatch(/[?&]q=/);
   });
 });
